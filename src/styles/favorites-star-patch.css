@@ -1,0 +1,26 @@
+/* Pegar en src/styles/components.css (después de .fav-icon-box) */
+
+/* SOLO acceso directo de Favoritos + hero cuando tiene is-named-favorites */
+.favorites-shortcut.is-named-favorites .fav-icon-box,
+.playlist-hero-cover.is-named-favorites,
+.hero-cover-box.is-named-favorites,
+.playlist-cover-box.is-named-favorites,
+#playlist-hero-cover.is-named-favorites,
+#playlist-cover.is-named-favorites {
+  background: linear-gradient(145deg, #f6d56a 0%, #e8b923 42%, #c9920a 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12) !important;
+  color: #fff !important;
+  filter: none !important;
+}
+
+/* Glifo estrella Phosphor (U+E46A) */
+.ph-fill.ph-star:before,
+.fav-side-star:before {
+  content: "\e46a" !important;
+}
+
+.fav-side-star {
+  font-family: "Phosphor-Fill" !important;
+}

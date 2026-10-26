@@ -1,0 +1,74 @@
+
+/* ========== Modo de carátula en listas (Rendimiento) ========== */
+
+/* --- Solo texto: ocultar por completo el hueco de carátula --- */
+html[data-list-cover-mode="none"] .playlist-table-row .row-thumb-box,
+html[data-list-cover-mode="none"] .queue-item .queue-item-icon,
+html[data-list-cover-mode="none"] .queue-history-item .queue-item-icon,
+html[data-list-cover-mode="none"] .list-cover-hidden {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  flex: 0 0 0 !important;
+}
+
+html[data-list-cover-mode="none"] .playlist-table-row .row-title-box {
+  gap: 0;
+}
+html[data-list-cover-mode="none"] .playlist-table-row .row-text-meta {
+  max-width: 100%;
+}
+html[data-list-cover-mode="none"] .queue-item .queue-item-meta {
+  gap: 0.55rem;
+}
+
+/* --- Solo icono: el <img> no debe ocupar espacio; icono centrado --- */
+html[data-list-cover-mode="icon"] .playlist-table-row .row-thumb-box,
+html[data-list-cover-mode="icon"] .queue-item .queue-item-icon {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+html[data-list-cover-mode="icon"] .playlist-table-row .row-thumb-img,
+html[data-list-cover-mode="icon"] .queue-item .queue-thumb-img {
+  display: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+html[data-list-cover-mode="icon"] .list-cover-fallback-icon,
+html[data-list-cover-mode="icon"] .row-thumb-box > i.ph,
+html[data-list-cover-mode="icon"] .queue-item-icon > i.ph {
+  position: absolute;
+  inset: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--accent-light, var(--text-muted));
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.list-cover-fallback-icon {
+  pointer-events: none;
+}

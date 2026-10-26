@@ -1,0 +1,128 @@
+/* === Fondo líquido Visual+ (estilo Apple Music / Spicy Lyrics) === */
+#visual-plus-liquid-bg {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  --liquid-speed: 1;
+}
+#visual-plus-liquid-bg.is-active {
+  display: block;
+}
+#visual-plus-liquid-bg .liquid-orbs {
+  position: absolute;
+  /* Sobredimensionado para que el blur nunca muestre bordes */
+  inset: -40%;
+  width: 180%;
+  height: 180%;
+  filter: blur(110px) saturate(1.45);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+#visual-plus-liquid-bg .liquid-orb {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  will-change: transform;
+  transition: background-color 1.5s ease;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-play-state: paused; /* solo corre con clase is-animating */
+}
+#visual-plus-liquid-bg.is-animating:not(.is-static) .liquid-orb {
+  animation-play-state: running;
+}
+#visual-plus-liquid-bg.is-static .liquid-orb {
+  animation: none !important;
+}
+#visual-plus-liquid-bg .liquid-orb-1 {
+  width: 60%;
+  height: 60%;
+  top: 5%;
+  left: 5%;
+  background: var(--liquid-color-1, #6b5cff);
+  animation-name: liquid-drift-1;
+  animation-duration: calc(18s / var(--liquid-speed, 1));
+}
+#visual-plus-liquid-bg .liquid-orb-2 {
+  width: 55%;
+  height: 55%;
+  top: 25%;
+  right: 0%;
+  background: var(--liquid-color-2, #ff5cad);
+  animation-name: liquid-drift-2;
+  animation-duration: calc(22s / var(--liquid-speed, 1));
+}
+#visual-plus-liquid-bg .liquid-orb-3 {
+  width: 50%;
+  height: 50%;
+  bottom: 2%;
+  left: 20%;
+  background: var(--liquid-color-3, #3ec6ff);
+  animation-name: liquid-drift-3;
+  animation-duration: calc(20s / var(--liquid-speed, 1));
+}
+#visual-plus-liquid-bg .liquid-orb-4 {
+  width: 45%;
+  height: 45%;
+  top: 40%;
+  left: 40%;
+  background: var(--liquid-color-4, #ffc857);
+  animation-name: liquid-drift-4;
+  animation-duration: calc(16s / var(--liquid-speed, 1));
+}
+#visual-plus-liquid-bg .liquid-orb-5 {
+  width: 40%;
+  height: 40%;
+  top: 10%;
+  right: 20%;
+  background: var(--liquid-color-5, #7dffb3);
+  animation-name: liquid-drift-5;
+  animation-duration: calc(24s / var(--liquid-speed, 1));
+}
+#visual-plus-liquid-bg .liquid-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 1;
+}
+/* Movimiento suave de colores (sin rotar el contenedor) */
+@keyframes liquid-drift-1 {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); }
+  33%  { transform: translate3d(22%, 16%, 0) scale(1.18); }
+  66%  { transform: translate3d(8%, 28%, 0) scale(1.1); }
+  100% { transform: translate3d(-12%, 10%, 0) scale(1.05); }
+}
+@keyframes liquid-drift-2 {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1.05); }
+  33%  { transform: translate3d(-24%, -12%, 0) scale(1.2); }
+  66%  { transform: translate3d(-10%, -26%, 0) scale(1.12); }
+  100% { transform: translate3d(14%, -8%, 0) scale(1.08); }
+}
+@keyframes liquid-drift-3 {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); }
+  33%  { transform: translate3d(18%, -22%, 0) scale(1.16); }
+  66%  { transform: translate3d(-16%, -14%, 0) scale(1.22); }
+  100% { transform: translate3d(10%, 12%, 0) scale(1.08); }
+}
+@keyframes liquid-drift-4 {
+  0%   { transform: translate3d(0%, 0%, 0) scale(0.95); }
+  33%  { transform: translate3d(-20%, 18%, 0) scale(1.24); }
+  66%  { transform: translate3d(16%, 8%, 0) scale(1.1); }
+  100% { transform: translate3d(-8%, -16%, 0) scale(1.14); }
+}
+@keyframes liquid-drift-5 {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); }
+  33%  { transform: translate3d(-16%, 14%, 0) scale(1.15); }
+  66%  { transform: translate3d(12%, -18%, 0) scale(1.2); }
+  100% { transform: translate3d(-6%, 8%, 0) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #visual-plus-liquid-bg .liquid-orb {
+    animation: none !important;
+  }
+}

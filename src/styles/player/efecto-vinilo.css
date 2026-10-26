@@ -1,0 +1,93 @@
+/* === Efecto vinilo (pantalla completa) === */
+/* Mismo tamaño que la carátula; solo sobresale a la derecha (~50%) */
+.np-fs-vinyl {
+  display: none;
+  position: absolute;
+  top: 5%;
+  left: 52%;
+  width: 90%;
+  height: 90%;
+  z-index: 1;
+  pointer-events: none;
+}
+body.now-playing-fs.np-fs-vinyl-enabled .np-fs-vinyl {
+  display: block;
+}
+body.now-playing-fs.np-fs-vinyl-enabled.np-fs-swapped .np-fs-vinyl {
+  left: auto;
+  right: 52%;
+}
+.np-fs-vinyl-spin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform-origin: 50% 50%;
+  animation: np-fs-vinyl-spin 3.4s linear infinite;
+  animation-play-state: paused;
+  filter: drop-shadow(4px 6px 14px rgba(0, 0, 0, 0.4));
+}
+body.now-playing-fs.np-fs-vinyl-enabled.np-fs-audio-playing .np-fs-vinyl-spin {
+  animation-play-state: running;
+}
+.np-fs-vinyl-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+}
+/* Centro: miniatura de la carátula (color real del álbum) */
+.np-fs-vinyl-label-art {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30%;
+  height: 30%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: var(--cover-accent-color, #2a2a2a);
+  background-image: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+  z-index: 2;
+  overflow: hidden;
+  /* Agujero central transparente (eje del disco) */
+  -webkit-mask-image: radial-gradient(circle, transparent 0 16%, #000 17%);
+  mask-image: radial-gradient(circle, transparent 0 16%, #000 17%);
+}
+@keyframes np-fs-vinyl-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+body.now-playing-fs.np-fs-vinyl-enabled .lyrics-focus-mini-cover-wrap {
+  position: relative;
+  overflow: visible !important;
+}
+body.now-playing-fs.np-fs-vinyl-enabled .lyrics-overlay.open .lyrics-focus-mini-cover {
+  position: relative;
+  z-index: 3;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+}
+body.now-playing-fs.np-fs-vinyl-enabled .lyrics-focus-cover-fav {
+  z-index: 4 !important;
+}
+.np-fs-vinyl-conflict-hint {
+  color: #ff5c5c !important;
+  font-size: 0.78rem !important;
+  margin-top: 0.35rem !important;
+}
+#np-fs-vinyl-setting-row.is-disabled {
+  opacity: 0.75;
+}
+#np-fs-vinyl-setting-row.is-disabled .switch {
+  pointer-events: none;
+  opacity: 0.5;
+}
+#np-fs-volume-bar option[value="right"]:disabled {
+  color: #888;
+}
+
+
+
+
+
+

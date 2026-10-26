@@ -1,0 +1,160 @@
+/* MENÚ CONTEXTUAL PERSONALIZADO */
+.custom-context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.35rem;
+  min-width: 195px;
+  max-width: 250px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  user-select: none;
+}
+.custom-context-menu.open {
+  display: flex;
+}
+
+.discord-rpc-context-menu {
+  position: fixed;
+  z-index: 1001;
+  display: none;
+  width: min(310px, calc(100vw - 20px));
+  padding: 0.9rem;
+  color: var(--text-main);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.7);
+}
+.discord-rpc-context-menu.open { display: block; }
+.discord-rpc-menu-options { display: flex; flex-direction: column; gap: 0.85rem; }
+.discord-rpc-menu-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.discord-rpc-menu-toggle > div { display: flex; min-width: 0; flex-direction: column; gap: 0.2rem; }
+.discord-rpc-menu-toggle strong { font-size: 0.76rem; }
+.discord-rpc-menu-toggle span { color: var(--text-muted); font-size: 0.67rem; }
+.discord-rpc-menu-toggle .switch { flex: 0 0 44px; }
+.discord-rpc-setting-status { min-height: 0.8rem; margin: 0.45rem 0 0; color: var(--text-muted); font-size: 0.7rem; }
+.discord-rpc-setting-status.is-error { color: #f87171; }
+.discord-rpc-artwork-setting { margin-top: 1rem; }
+.discord-rpc-artwork-setting[hidden] { display: none; }
+.discord-rpc-open-settings { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.35rem; padding: 0.45rem 0; color: var(--accent-light); background: none; border: 0; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.discord-rpc-open-settings:hover { color: var(--text-main); }
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: var(--transition);
+}
+.context-menu-item:hover:not(.disabled) {
+  background: var(--accent-purple);
+  color: #fff;
+}
+.context-menu-item:hover:not(.disabled) i {
+  color: #fff;
+}
+.context-menu-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.context-menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+}
+.context-menu-item-left i {
+  font-size: 1.05rem;
+  color: var(--accent-light);
+  flex-shrink: 0;
+}
+.context-menu-item-left span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0.25rem 0;
+}
+
+.context-submenu-wrapper {
+  position: relative;
+  width: 100%;
+}
+.context-submenu {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.35rem;
+  min-width: 170px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+.context-submenu-wrapper:hover .context-submenu {
+  display: flex;
+}
+
+.context-submenu-wrapper.submenu-left .context-submenu {
+  left: auto;
+  right: 100%;
+}
+
+:root[data-vibrant-accents="true"] .nav-item.active {
+  border-left: 2px solid var(--accent-secondary);
+  box-shadow: inset 2px 0 12px color-mix(in srgb, var(--accent-secondary) 18%, transparent);
+}
+:root[data-vibrant-accents="true"] .favorites-shortcut .fav-icon-box {
+  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-tertiary));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-secondary) 24%, transparent);
+}
+:root[data-vibrant-accents="true"] .playlist-table-row.is-active {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 0%,
+    color-mix(in srgb, var(--bg-card) 88%, var(--accent-secondary)) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--accent-secondary) 42%, var(--border-subtle)) !important;
+}
+:root[data-vibrant-accents="true"] .playlist-table-row.is-active .row-text-meta strong {
+  color: var(--accent-light);
+}
+:root[data-vibrant-accents="true"] .playlist-table-row.is-active .sound-wave span {
+  background-color: var(--accent-tertiary);
+}
+:root[data-vibrant-accents="true"] .queue-badge-count,
+:root[data-vibrant-accents="true"] #fav-count,
+:root[data-vibrant-accents="true"] #playlist-hero-count,
+:root[data-vibrant-accents="true"] .playlist-grid-count {
+  color: color-mix(in srgb, var(--accent-secondary) 72%, var(--text-main));
+}
+:root[data-vibrant-accents="true"] .queue-badge-count {
+  border-color: color-mix(in srgb, var(--accent-secondary) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-secondary) 9%, var(--bg-surface));
+}
+
+

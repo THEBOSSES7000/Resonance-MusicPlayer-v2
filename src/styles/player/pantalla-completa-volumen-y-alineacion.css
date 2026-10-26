@@ -1,0 +1,321 @@
+/* === Barra de volumen FS === */
+#np-fs-volume[hidden],
+#np-fs-volume[data-placement="off"] {
+  display: none !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"],
+body.now-playing-fs #np-fs-volume[data-placement="right"],
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 25 !important;
+  box-sizing: border-box !important;
+}
+
+/* Color unificado (mismo que barra centrada / progreso) */
+body.now-playing-fs #np-fs-volume {
+  --np-fs-vol-color: var(--accent-light, var(--accent, #5b8cff));
+}
+
+body.now-playing-fs .lyrics-focus-cover-row {
+  display: block !important;
+  position: relative !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+body.now-playing-fs .lyrics-focus-cover-row .lyrics-focus-mini-cover-wrap {
+  position: relative !important;
+  width: min(42vh, 320px) !important;
+  max-width: min(42vh, 320px) !important;
+  overflow: visible !important;
+}
+
+body.now-playing-fs.np-fs-cover-large .lyrics-focus-cover-row .lyrics-focus-mini-cover-wrap {
+  width: min(48vh, 380px) !important;
+  max-width: min(48vh, 380px) !important;
+}
+
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
+  position: absolute !important;
+  right: 0.55rem !important;
+  bottom: 0.55rem !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: 40 !important;
+  display: inline-flex !important;
+}
+
+/* Centrado: carátula = ancho dock / progreso */
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock {
+  width: min(420px, 92%) !important;
+  max-width: min(420px, 92%) !important;
+}
+body.now-playing-fs.np-fs-centered.np-fs-cover-large .lyrics-overlay.open .lyrics-dock {
+  width: min(480px, 94%) !important;
+  max-width: min(480px, 94%) !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-focus-cover-row {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-focus-cover-row .lyrics-focus-mini-cover-wrap,
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-focus-mini-cover {
+  width: 100% !important;
+  max-width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-focus-mini-progress,
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock-transport {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/*
+ * Vertical izq/der:
+ * misma longitud aprox. que el slider centrado (~220px), centrada respecto a la carátula
+ */
+body.now-playing-fs #np-fs-volume[data-placement="left"],
+body.now-playing-fs #np-fs-volume[data-placement="right"] {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  flex-direction: column-reverse !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.35rem !important;
+  width: 1.4rem !important;
+  height: 220px !important;
+  max-height: 220px !important;
+  min-height: 220px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"] {
+  left: -2.55rem !important;
+  right: auto !important;
+}
+body.now-playing-fs #np-fs-volume[data-placement="right"] {
+  right: -2.55rem !important;
+  left: auto !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"] .np-fs-volume-range,
+body.now-playing-fs #np-fs-volume[data-placement="right"] .np-fs-volume-range {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  writing-mode: vertical-lr !important;
+  direction: rtl !important;
+  width: 6px !important;
+  height: 180px !important;
+  max-height: 180px !important;
+  min-height: 180px !important;
+  flex: 0 0 180px !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(
+    to top,
+    var(--np-fs-vol-color) 0%,
+    var(--np-fs-vol-color) var(--np-fs-vol, 50%),
+    rgba(255, 255, 255, 0.18) var(--np-fs-vol, 50%),
+    rgba(255, 255, 255, 0.18) 100%
+  ) !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"] .np-fs-volume-range::-webkit-slider-runnable-track,
+body.now-playing-fs #np-fs-volume[data-placement="right"] .np-fs-volume-range::-webkit-slider-runnable-track {
+  width: 6px !important;
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"] .np-fs-volume-range::-webkit-slider-thumb,
+body.now-playing-fs #np-fs-volume[data-placement="right"] .np-fs-volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: var(--np-fs-vol-color) !important;
+  border: none !important;
+  margin-left: -3px !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25) !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="left"] .np-fs-volume-range::-moz-range-progress,
+body.now-playing-fs #np-fs-volume[data-placement="right"] .np-fs-volume-range::-moz-range-progress {
+  background: var(--np-fs-vol-color) !important;
+  border-radius: 999px !important;
+}
+
+body.now-playing-fs #np-fs-volume .np-fs-volume-mute {
+  border: none !important;
+  background: transparent !important;
+  color: rgba(255,255,255,0.7) !important;
+  width: 1.3rem !important;
+  height: 1.3rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 0.95rem !important;
+  flex: 0 0 auto !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+body.now-playing-fs #np-fs-volume .np-fs-volume-mute:hover {
+  color: #fff !important;
+}
+
+/* Horizontal centrado: thumb perfectamente alineado al track */
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] {
+  position: relative !important;
+  transform: none !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  margin: 0.55rem auto 0 !important;
+  gap: 0.4rem !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-mute {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 20px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  writing-mode: horizontal-tb !important;
+  direction: ltr !important;
+  width: 220px !important;
+  max-width: min(220px, 70vw) !important;
+  height: 20px !important; /* área de hit = thumb; el track se centra dentro */
+  min-height: 20px !important;
+  flex: 0 0 auto !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+/* Track centrado verticalmente en el input de 20px */
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range::-webkit-slider-runnable-track {
+  width: 100% !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(
+    to right,
+    var(--np-fs-vol-color) 0%,
+    var(--np-fs-vol-color) var(--np-fs-vol, 50%),
+    rgba(255, 255, 255, 0.18) var(--np-fs-vol, 50%),
+    rgba(255, 255, 255, 0.18) 100%
+  ) !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: var(--np-fs-vol-color) !important;
+  border: none !important;
+  /* (track 6px - thumb 12px) / 2 = -3px respecto al track */
+  margin-top: -3px !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25) !important;
+}
+
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range::-moz-range-track {
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: none !important;
+}
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range::-moz-range-progress {
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: var(--np-fs-vol-color) !important;
+  border: none !important;
+}
+body.now-playing-fs #np-fs-volume[data-placement="bottom"] .np-fs-volume-range::-moz-range-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: var(--np-fs-vol-color) !important;
+  border: none !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25) !important;
+}
+
+
+/* Línea activa más grande pero alineada (origen según alineación del texto) */
+.lyric-line-sync {
+  text-align: var(--lyrics-sync-text-align, center);
+  transform-origin: var(--lyrics-sync-transform-origin, center center);
+}
+.lyric-line-original {
+  display: block;
+  width: 100%;
+  text-align: inherit;
+  transform-origin: var(--lyrics-sync-transform-origin, center center) !important;
+}
+.lyric-line-sync.active .lyric-line-original {
+  transform-origin: var(--lyrics-sync-transform-origin, center center) !important;
+}
+/* Evitar que motion "slide" desplace la línea activa fuera de la alineación */
+:root[data-lyrics-motion="slide"][data-lyrics-alignment="left"] .lyric-line-sync.active,
+:root[data-lyrics-motion="slide"][data-lyrics-alignment="right"] .lyric-line-sync.active {
+  transform: none !important;
+}
+:root[data-lyrics-motion="scale"] .lyric-line-sync.active {
+  /* el agrandado lo hace .lyric-line-original { scale }, no un translate */
+  transform: none !important;
+}
+/* Pantalla completa: misma regla */
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active {
+  text-align: var(--np-fs-lyrics-align, var(--lyrics-sync-text-align, center)) !important;
+  transform: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync .lyric-line-original,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active .lyric-line-original {
+  text-align: inherit !important;
+  width: 100% !important;
+  transform-origin: var(--lyrics-sync-transform-origin, center center) !important;
+}
+body.now-playing-fs[data-np-fs-lyrics-align="left"] .lyrics-overlay.open .lyrics-lines-box {
+  --lyrics-sync-transform-origin: left center;
+}
+body.now-playing-fs[data-np-fs-lyrics-align="right"] .lyrics-overlay.open .lyrics-lines-box {
+  --lyrics-sync-transform-origin: right center;
+}
+body.now-playing-fs[data-np-fs-lyrics-align="center"] .lyrics-overlay.open .lyrics-lines-box {
+  --lyrics-sync-transform-origin: center center;
+}
+
+
+
+

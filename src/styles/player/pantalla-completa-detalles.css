@@ -1,0 +1,694 @@
+/* Header origen + posición + menú (solo FS) */
+.lyrics-focus-nowplaying-header {
+  display: none;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-nowplaying-header:not([hidden]) {
+  display: flex !important;
+}
+.lyrics-focus-nowplaying-header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+.lyrics-focus-source-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: default;
+  max-width: 100%;
+  text-align: left;
+}
+.lyrics-focus-source-link span {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lyrics-focus-track-position {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+.lyrics-focus-more-btn {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+.lyrics-focus-more-btn:hover {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 10%, transparent);
+}
+
+/* Cover wrap: en letras normales no debe ocupar todo el ancho (info a la derecha) */
+.lyrics-focus-mini-cover-wrap {
+  position: relative;
+  width: auto;
+  flex: 0 0 auto;
+  display: block;
+  line-height: 0;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 auto !important;
+  line-height: normal;
+}
+/* Header de origen solo en pantalla completa */
+.lyrics-focus-nowplaying-header[hidden],
+.lyrics-overlay:not(.open) .lyrics-focus-nowplaying-header,
+body:not(.now-playing-fs) .lyrics-focus-nowplaying-header {
+  display: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  border: none !important;
+  filter: none !important;
+}
+.lyrics-focus-cover-fav {
+  display: none !important;
+  position: absolute !important;
+  right: 0.75rem !important;
+  bottom: 0.75rem !important;
+  z-index: 20 !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border: none !important;
+  border-radius: 999px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  pointer-events: auto !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
+  display: inline-flex !important;
+}
+.lyrics-focus-cover-fav:hover {
+  transform: scale(1.06);
+  background: rgba(0, 0, 0, 0.62) !important;
+}
+.lyrics-focus-cover-fav.active,
+.lyrics-focus-cover-fav.active-toggle {
+  color: #ff6b8a !important;
+}
+.lyrics-focus-cover-fav i {
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+}
+
+/* Shuffle / repeat activos con color de tema en FS */
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-shuffle.active,
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-shuffle.active-toggle,
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-repeat.active,
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-repeat.active-toggle {
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-btn.active-toggle .ph-fill,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-btn.active .ph-fill {
+  color: inherit !important;
+}
+
+
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-left,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-player,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover-wrap,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-nowplaying-header {
+  pointer-events: auto !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-nowplaying-header {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
+  display: inline-flex !important;
+  pointer-events: auto !important;
+  z-index: 50 !important;
+}
+
+/* Menú de letras normal: fila carátula + título/artista (no columna FS) */
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-track {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-cover-wrap {
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+}
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-cover {
+  width: 64px !important;
+  height: 64px !important;
+  flex: 0 0 64px !important;
+  aspect-ratio: auto !important;
+}
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-info {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+}
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-info strong,
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-info span,
+body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-info small {
+  display: block !important;
+}
+body:not(.now-playing-fs) .lyrics-focus-nowplaying-header {
+  display: none !important;
+}
+body:not(.now-playing-fs) .lyrics-focus-cover-fav {
+  display: none !important;
+}
+
+
+/* Origen de reproducción: color de tema + subrayado; textos un poco más grandes */
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link {
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 0.2em !important;
+  text-decoration-thickness: 1.5px !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link span {
+  color: inherit !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-track-position {
+  font-size: 0.84rem !important;
+  color: var(--text-muted) !important;
+}
+
+/* Flecha volver (letras + pantalla completa): sin fondo, hover agranda e ilumina */
+.lyrics-overlay .btn-back,
+.lyrics-overlay #btn-close-lyrics {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-muted) !important;
+  border-radius: 999px !important;
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.18s ease, color 0.18s ease, opacity 0.18s ease !important;
+}
+.lyrics-overlay .btn-back:hover,
+.lyrics-overlay .btn-back:focus-visible,
+.lyrics-overlay #btn-close-lyrics:hover,
+.lyrics-overlay #btn-close-lyrics:focus-visible {
+  background: transparent !important;
+  color: var(--text-main) !important;
+  transform: scale(1.18) !important;
+  outline: none !important;
+}
+.lyrics-overlay .btn-back:active,
+.lyrics-overlay #btn-close-lyrics:active {
+  transform: scale(1.08) !important;
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+}
+.lyrics-overlay .btn-back i,
+.lyrics-overlay #btn-close-lyrics i {
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
+}
+
+
+
+
+
+
+/* Origen: subrayado del mismo color que el texto */
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link span {
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+  text-decoration: underline !important;
+  text-decoration-color: currentColor !important;
+  text-underline-offset: 0.22em !important;
+  text-decoration-thickness: from-font !important;
+  -webkit-text-decoration-color: currentColor !important;
+}
+
+/* Controles de reproducción: hover ilumina y agranda (FS + menú de letras) */
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease !important;
+  will-change: transform;
+}
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:hover,
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:focus-visible,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:hover,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:focus-visible {
+  color: var(--text-main) !important;
+  transform: scale(1.12) !important;
+  outline: none !important;
+  opacity: 1 !important;
+}
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:active,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn:active {
+  transform: scale(1.05) !important;
+}
+/* Play un poco más de feedback */
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play:hover,
+.lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play:focus-visible,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play:hover,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play:focus-visible {
+  transform: scale(1.14) !important;
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+}
+/* Mantener color de tema en shuffle/repeat activos al hacer hover */
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-shuffle.active-toggle:hover,
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-repeat.active-toggle:hover,
+.lyrics-overlay.open #lyrics-btn-shuffle.active-toggle:hover,
+.lyrics-overlay.open #lyrics-btn-repeat.active-toggle:hover {
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+  filter: brightness(1.15);
+}
+
+
+/* Subrayado fiable del origen (border-bottom, no solo text-decoration de button) */
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link {
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  border-bottom: 1.5px solid currentColor !important;
+  padding-bottom: 0.08em !important;
+  text-decoration: none !important;
+  color: var(--accent-light, var(--accent-purple, var(--accent))) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-source-link span {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  color: inherit !important;
+}
+
+
+/* Layouts guardados de pantalla completa Now Playing */
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open {
+  grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr) !important;
+}
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-dock {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-scroll-container {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+/* Centrado + más grande */
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 1fr !important;
+  justify-items: center !important;
+  align-content: center !important;
+  padding-top: 2.5rem !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: min(520px, 88vw) !important;
+  max-width: min(520px, 88vw) !important;
+  margin: 0 auto !important;
+  justify-self: center !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-scroll-container {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  width: min(720px, 92vw) !important;
+  max-width: min(720px, 92vw) !important;
+  margin: 0 auto !important;
+  padding-top: 0.5rem !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-focus-mini-cover-wrap,
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-focus-mini-cover {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-focus-mini-cover {
+  max-height: min(58vh, 480px) !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  width: 2.6rem !important;
+  height: 2.6rem !important;
+  min-width: 2.6rem !important;
+  font-size: 1.4rem !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play {
+  width: 3.1rem !important;
+  height: 3.1rem !important;
+  min-width: 3.1rem !important;
+  font-size: 1.95rem !important;
+}
+/* Swapped + centered combo still works via both classes if needed - exclusive modes preferred */
+
+body.now-playing-fs #song-details-modal.modal-overlay.open,
+body.now-playing-fs #song-details-modal.open {
+  z-index: 15000 !important;
+}
+body.now-playing-fs #playlist-modal-overlay.open,
+body.now-playing-fs .modal-overlay.open {
+  z-index: 15000 !important;
+}
+
+
+/* Modo centrado: solo carátula/controles, sin letras */
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-scroll-container {
+  display: none !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  align-items: center !important;
+  justify-items: center !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-dock {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+/* Fijar / traducir según lado de las letras */
+body.now-playing-fs .lyrics-overlay.open .lyrics-floating-actions {
+  right: max(1.25rem, env(safe-area-inset-right)) !important;
+  left: auto !important;
+}
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-floating-actions {
+  left: max(1.25rem, env(safe-area-inset-left)) !important;
+  right: auto !important;
+}
+body.now-playing-fs.np-fs-centered .lyrics-overlay.open .lyrics-floating-actions {
+  display: none !important; /* sin letras, no hacen falta */
+}
+
+
+/* Scrollbar a la izquierda cuando las letras están a la izquierda (modo invertido) */
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-scroll-container {
+  direction: rtl; /* mueve el scrollbar al lado izquierdo */
+  scrollbar-gutter: stable;
+}
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-scroll-container > * {
+  direction: ltr; /* el contenido de las letras sigue de izquierda a derecha */
+}
+body.now-playing-fs.np-fs-swapped .lyrics-overlay.open .lyrics-scroll-container {
+  padding-left: 0.75rem !important;
+  padding-right: 1.25rem !important;
+}
+
+
+/* Icono pantalla completa: mismo tamaño que el resto de iconos del player */
+#btn-now-playing-fs {
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+}
+#btn-now-playing-fs .ph.ph-frame-corners {
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 1em !important;
+  overflow: visible !important;
+  flex-shrink: 0 !important;
+}
+#btn-now-playing-fs .ph.ph-frame-corners::before {
+  width: 1em !important;
+  height: 1em !important;
+  -webkit-mask-size: contain !important;
+  mask-size: contain !important;
+  -webkit-mask-repeat: no-repeat !important;
+  mask-repeat: no-repeat !important;
+  -webkit-mask-position: center !important;
+  mask-position: center !important;
+}
+
+/* Tamaño carátula/controles FS: mediano (default) / grande */
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-dock {
+  width: min(480px, 94%) !important;
+  max-width: min(480px, 94%) !important;
+}
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-focus-mini-cover {
+  /* hereda 100% del dock más ancho */
+}
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  width: 2.55rem !important;
+  height: 2.55rem !important;
+  min-width: 2.55rem !important;
+  font-size: 1.4rem !important;
+}
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play {
+  width: 3rem !important;
+  height: 3rem !important;
+  min-width: 3rem !important;
+  font-size: 1.9rem !important;
+}
+body.now-playing-fs.np-fs-cover-large.np-fs-centered .lyrics-overlay.open .lyrics-dock {
+  width: min(580px, 90vw) !important;
+  max-width: min(580px, 90vw) !important;
+}
+
+/* Letras personalizadas solo FS (cuando no sincroniza) */
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box {
+  font-family: var(--np-fs-lyrics-font-family, var(--lyrics-font-family, inherit)) !important;
+  font-style: var(--np-fs-lyrics-font-style, normal) !important;
+  letter-spacing: var(--np-fs-lyrics-letter-spacing, 0px) !important;
+  gap: var(--np-fs-lyrics-line-gap, var(--lyrics-line-gap, 26px)) !important;
+  text-align: var(--np-fs-lyrics-align, center) !important;
+}
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box p {
+  font-size: var(--np-fs-lyrics-inactive-size, 30px) !important;
+  font-style: inherit !important;
+  letter-spacing: inherit !important;
+  text-align: inherit !important;
+}
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line.active {
+  font-size: var(--np-fs-lyrics-active-size, 42px) !important;
+}
+
+.np-fs-lyrics-custom-settings .settings-inline-note,
+.setting-alignment-row .settings-inline-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+
+/* Icono pantalla completa: mismo tamaño que el resto de btn-icon */
+#btn-now-playing-fs {
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+}
+#btn-now-playing-fs .ph.ph-frame-corners {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+  flex-shrink: 0 !important;
+}
+/* Máscara limpia tipo corners-out (proporción Phosphor 256) */
+#btn-now-playing-fs .ph.ph-frame-corners::before,
+.ph.ph-frame-corners::before {
+  content: "" !important;
+  display: block !important;
+  width: 0.92em !important;
+  height: 0.92em !important;
+  background-color: currentColor !important;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='none'%3E%3Cpath fill='black' d='M200 48h24a8 8 0 0 1 8 8v24a8 8 0 0 1-16 0V64h-16a8 8 0 0 1 0-16Zm-168 32V64h16a8 8 0 0 0 0-16H32a8 8 0 0 0-8 8v24a8 8 0 0 0 16 0Zm184 88a8 8 0 0 0-8 8v16h-16a8 8 0 0 0 0 16h24a8 8 0 0 0 8-8v-24a8 8 0 0 0-8-8ZM40 184a8 8 0 0 0-8 8v24a8 8 0 0 0 8 8h24a8 8 0 0 0 0-16H48v-16a8 8 0 0 0-8-8Z'/%3E%3C/svg%3E") !important;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='none'%3E%3Cpath fill='black' d='M200 48h24a8 8 0 0 1 8 8v24a8 8 0 0 1-16 0V64h-16a8 8 0 0 1 0-16Zm-168 32V64h16a8 8 0 0 0 0-16H32a8 8 0 0 0-8 8v24a8 8 0 0 0 16 0Zm184 88a8 8 0 0 0-8 8v16h-16a8 8 0 0 0 0 16h24a8 8 0 0 0 8-8v-24a8 8 0 0 0-8-8ZM40 184a8 8 0 0 0-8 8v24a8 8 0 0 0 8 8h24a8 8 0 0 0 0-16H48v-16a8 8 0 0 0-8-8Z'/%3E%3C/svg%3E") !important;
+  -webkit-mask-size: contain !important;
+  mask-size: contain !important;
+  -webkit-mask-repeat: no-repeat !important;
+  mask-repeat: no-repeat !important;
+  -webkit-mask-position: center !important;
+  mask-position: center !important;
+}
+
+
+/* Botón pantalla completa: mismo tamaño/forma que el resto de iconos de la barra */
+#btn-now-playing-fs {
+  overflow: visible !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#btn-now-playing-fs .ph {
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
+}
+/* Quitar máscara custom deformada del frame-corners si aún aparece */
+#btn-now-playing-fs .ph.ph-frame-corners::before,
+.ph.ph-frame-corners::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+.ph.ph-frame-corners {
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Tamaño grande de carátula/controles */
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-dock {
+  width: min(500px, 96%) !important;
+  max-width: min(500px, 96%) !important;
+}
+body.now-playing-fs.np-fs-cover-large:not(.np-fs-centered) .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  width: 2.65rem !important;
+  height: 2.65rem !important;
+  min-width: 2.65rem !important;
+  font-size: 1.45rem !important;
+}
+body.now-playing-fs.np-fs-cover-large:not(.np-fs-centered) .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play {
+  width: 3.15rem !important;
+  height: 3.15rem !important;
+  min-width: 3.15rem !important;
+  font-size: 2rem !important;
+}
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-focus-mini-info strong {
+  font-size: 1.15rem !important;
+}
+body.now-playing-fs.np-fs-cover-large .lyrics-overlay.open .lyrics-focus-mini-info span {
+  font-size: 0.92rem !important;
+}
+
+/* Letras personalizadas de pantalla completa (sincronizadas y normales) */
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box {
+  font-family: var(--np-fs-lyrics-font-family, inherit) !important;
+  font-style: var(--np-fs-lyrics-font-style, normal) !important;
+  letter-spacing: var(--np-fs-lyrics-letter-spacing, 0px) !important;
+  gap: var(--np-fs-lyrics-line-gap, 28px) !important;
+  text-align: var(--np-fs-lyrics-align, center) !important;
+}
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box p {
+  font-size: var(--np-fs-lyrics-inactive-size, 30px) !important;
+  font-family: inherit !important;
+  font-style: inherit !important;
+  letter-spacing: inherit !important;
+  text-align: inherit !important;
+}
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box .lyric-line.active,
+body.now-playing-fs.np-fs-lyrics-custom .lyrics-overlay.open .lyrics-lines-box p.active {
+  font-size: var(--np-fs-lyrics-active-size, 42px) !important;
+}
+
+
+/* Icono pantalla completa: corners-out (Phosphor) embebido, mismo tamaño que el resto */
+#btn-now-playing-fs {
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: calc(var(--player-icon-size, 20px) * var(--player-right-control-scale, 1)) !important;
+  line-height: 1 !important;
+}
+#btn-now-playing-fs .ph.ph-frame-corners,
+#btn-now-playing-fs .ph.ph-corners-out,
+.ph.ph-frame-corners,
+.ph.ph-corners-out {
+  display: inline-block !important;
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
+  position: relative !important;
+  vertical-align: middle !important;
+}
+#btn-now-playing-fs .ph.ph-frame-corners::before,
+#btn-now-playing-fs .ph.ph-corners-out::before,
+.ph.ph-frame-corners::before,
+.ph.ph-corners-out::before {
+  content: "" !important;
+  display: block !important;
+  width: 1em !important;
+  height: 1em !important;
+  margin: 0 auto !important;
+  background-color: currentColor !important;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22black%22%20viewBox%3D%220%200%20256%20256%22%3E%3Cpath%20d%3D%22M216%2C48V88a8%2C8%2C0%2C0%2C1-16%2C0V56H168a8%2C8%2C0%2C0%2C1%2C0-16h40A8%2C8%2C0%2C0%2C1%2C216%2C48ZM88%2C200H56V168a8%2C8%2C0%2C0%2C0-16%2C0v40a8%2C8%2C0%2C0%2C0%2C8%2C8H88a8%2C8%2C0%2C0%2C0%2C0-16Zm120-40a8%2C8%2C0%2C0%2C0-8%2C8v32H168a8%2C8%2C0%2C0%2C0%2C0%2C16h40a8%2C8%2C0%2C0%2C0%2C8-8V168A8%2C8%2C0%2C0%2C0%2C208%2C160ZM88%2C40H48a8%2C8%2C0%2C0%2C0-8%2C8V88a8%2C8%2C0%2C0%2C0%2C16%2C0V56H88a8%2C8%2C0%2C0%2C0%2C0-16Z%22%3E%3C%2Fpath%3E%3C%2Fsvg%3E") !important;
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22black%22%20viewBox%3D%220%200%20256%20256%22%3E%3Cpath%20d%3D%22M216%2C48V88a8%2C8%2C0%2C0%2C1-16%2C0V56H168a8%2C8%2C0%2C0%2C1%2C0-16h40A8%2C8%2C0%2C0%2C1%2C216%2C48ZM88%2C200H56V168a8%2C8%2C0%2C0%2C0-16%2C0v40a8%2C8%2C0%2C0%2C0%2C8%2C8H88a8%2C8%2C0%2C0%2C0%2C0-16Zm120-40a8%2C8%2C0%2C0%2C0-8%2C8v32H168a8%2C8%2C0%2C0%2C0%2C0%2C16h40a8%2C8%2C0%2C0%2C0%2C8-8V168A8%2C8%2C0%2C0%2C0%2C208%2C160ZM88%2C40H48a8%2C8%2C0%2C0%2C0-8%2C8V88a8%2C8%2C0%2C0%2C0%2C16%2C0V56H88a8%2C8%2C0%2C0%2C0%2C0-16Z%22%3E%3C%2Fpath%3E%3C%2Fsvg%3E") !important;
+  -webkit-mask-size: contain !important;
+  mask-size: contain !important;
+  -webkit-mask-repeat: no-repeat !important;
+  mask-repeat: no-repeat !important;
+  -webkit-mask-position: center !important;
+  mask-position: center !important;
+}
+
+

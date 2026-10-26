@@ -1,0 +1,13 @@
+/* player.css — índice. El contenido vive en player/ y se carga en este mismo orden (la cascada es idéntica). */
+@import url("./player/cola-e-historial.css");
+@import url("./player/letras-overlay.css");
+@import url("./player/caratula-expandida.css");
+@import url("./player/barra-inferior-izquierda-y-centro.css");
+@import url("./player/barra-inferior-derecha-y-volumen.css");
+@import url("./player/m3u-y-ecualizador.css");
+@import url("./player/dock-de-letras.css");
+@import url("./player/pantalla-completa-base.css");
+@import url("./player/pantalla-completa-detalles.css");
+@import url("./player/pantalla-completa-volumen-y-alineacion.css");
+@import url("./player/efecto-vinilo.css");
+@import url("./player/fondo-liquido-visual-plus.css");

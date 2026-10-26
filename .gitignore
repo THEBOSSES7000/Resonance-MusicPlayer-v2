@@ -1,0 +1,29 @@
+# Dependencias de Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compilaciones y dependencias pesadas de Rust / Tauri
+src-tauri/target/
+
+# Salidas de empaquetado y temporales
+dist/
+build/
+*.exe
+*.msi
+*.zip
+
+# Entorno y logs
+.env
+*.log
+
+# Carpetas del editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Datos locales o caché de la aplicación
+data/
+library-cache/

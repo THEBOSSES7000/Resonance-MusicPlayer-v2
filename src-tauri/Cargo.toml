@@ -1,0 +1,58 @@
+[package]
+name = "purple-note"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "purple_note_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
+discord-rich-presence = "0.2.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rfd = "0.15"
+lofty = "0.20"
+rayon = "1.10"
+symphonia = { version = "0.5", features = ["all"] }
+rusty-chromaprint = "0.3"
+ebur128 = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+tokio = { version = "1", features = ["time"] }
+base64 = "0.22"
+notify = "8"
+sysinfo = "0.33"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+sha2 = "0.10"
+rodio = { version = "0.17", default-features = true, features = ["symphonia-all"] }
+# Misma línea que rodio 0.17 — listar/abrir dispositivos WASAPI (modo compartido por defecto)
+cpal = "0.15"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Media",
+    "Media_Playback",
+    "Storage_Streams",
+    "Win32_System_Performance",
+    "Win32_UI_Shell",
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_Foundation",
+] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

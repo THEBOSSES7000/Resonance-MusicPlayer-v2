@@ -1,0 +1,78 @@
+/* CARÁTULA EXPANDIDA ESTILO SPOTIFY */
+.expanded-cover-widget {
+  position: absolute;
+  bottom: max(var(--player-height), 84px);
+  left: 0;
+  width: var(--sidebar-left-width);
+  max-width: 400px;
+  aspect-ratio: 1;
+  background: var(--bg-app);
+  border-top: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  border-top-right-radius: 8px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
+  z-index: 130;
+  overflow: hidden;
+  transform: translateY(105%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expanded-cover-widget.open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.expanded-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.expanded-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 4.5rem;
+  color: var(--accent-light);
+  opacity: 0.55;
+}
+
+.btn-collapse-cover {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: var(--transition);
+  opacity: 0;
+  z-index: 5;
+}
+
+.expanded-cover-widget:hover .btn-collapse-cover {
+  opacity: 1;
+}
+
+.btn-collapse-cover:hover {
+  background: rgba(0, 0, 0, 0.95);
+  transform: scale(1.1);
+  color: var(--accent-light);
+}
+

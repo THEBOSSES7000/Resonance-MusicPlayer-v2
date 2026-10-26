@@ -1,0 +1,13 @@
+
+/* Ocultar columna # cuando el usuario desactiva números (salvo contenido vacío del soundwave) */
+html[data-list-track-numbers="false"] .playlist-table-header .col-index {
+  display: none;
+}
+html[data-list-track-numbers="false"] .playlist-table-row .row-index:empty {
+  display: none;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+/* Álbumes por N° de pista fuerzan números vía JS; no hace falta excepción CSS */

@@ -1,0 +1,10 @@
+/* components.css — índice. El contenido vive en components/ y se carga en este mismo orden (la cascada es idéntica). */
+@import url("./components/sidebar-izquierdo.css");
+@import url("./components/area-central-y-busqueda.css");
+@import url("./components/carpetas-y-hub-de-playlists.css");
+@import url("./components/tarjetas-de-cancion.css");
+@import url("./components/detalle-de-playlist-y-tabla.css");
+@import url("./components/modales-playlist-y-confirmacion.css");
+@import url("./components/modal-detalles-de-cancion.css");
+@import url("./components/menu-contextual.css");
+@import url("./components/listas-seleccion-y-ajustes-finales.css");

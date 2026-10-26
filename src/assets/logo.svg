@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none">
+  <defs>
+    <linearGradient id="resonance-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4A56B9" />
+      <stop offset="100%" stop-color="#764AA4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Círculo exterior centrado, agrandado y con trazo engrosado -->
+  <circle cx="512" cy="512" r="470" stroke="url(#resonance-gradient)" stroke-width="50" />
+
+  <!-- Ondas de sonido (7 barras proporcionadas y legibles) -->
+  <!-- Barra 1 (Extremo izquierdo) -->
+  <rect x="216" y="447" width="52" height="130" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 2 (Izquierda media) -->
+  <rect x="306" y="352" width="52" height="320" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 3 (Izquierda interna) -->
+  <rect x="396" y="267" width="52" height="490" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 4 (Centro - Principal) -->
+  <rect x="486" y="177" width="52" height="670" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 5 (Derecha interna) -->
+  <rect x="576" y="267" width="52" height="490" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 6 (Derecha media) -->
+  <rect x="666" y="352" width="52" height="320" rx="26" fill="url(#resonance-gradient)" />
+
+  <!-- Barra 7 (Extremo derecho) -->
+  <rect x="756" y="447" width="52" height="130" rx="26" fill="url(#resonance-gradient)" />
+</svg>

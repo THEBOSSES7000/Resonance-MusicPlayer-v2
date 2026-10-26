@@ -1,0 +1,413 @@
+/* Modo pantalla completa estilo Now Playing (cover izq + letras der) */
+body.now-playing-fs .lyrics-overlay.open {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 0.88fr) minmax(360px, 1.22fr) !important;
+  grid-template-rows: 1fr !important;
+  gap: 0 4rem !important;
+  padding: 4.5rem 5rem 3rem !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-topbar {
+  position: absolute !important;
+  top: 0.85rem !important;
+  left: 0.85rem !important;
+  right: auto !important;
+  z-index: 6 !important;
+  background: transparent !important;
+  border: none !important;
+  width: auto !important;
+  padding: 0 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-topbar .lyrics-header-info {
+  display: none !important;
+}
+
+/* Columna izquierda: portada + meta + progreso + transporte (sin volumen ni extras) */
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  gap: 0 !important;
+  width: min(360px, 100%) !important;
+  max-width: min(360px, 100%) !important;
+  margin: 0 0 0 auto !important;
+  inset: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: auto !important;
+  z-index: 2 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-left {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-right {
+  display: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-player {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.85rem !important;
+  width: 100% !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-track {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.85rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover {
+  display: grid !important;
+  place-items: center !important;
+  width: min(42vh, 320px) !important;
+  height: min(42vh, 320px) !important;
+  flex: 0 0 auto !important;
+  flex-basis: auto !important;
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55) !important;
+  background: var(--bg-placeholder) !important;
+  font-size: 3rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.12rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 0.1rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info strong {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info span {
+  font-size: 0.8rem !important;
+  color: var(--text-muted) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info small {
+  display: none !important; /* Spotify: álbum no debajo en esa zona */
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress {
+  display: block !important;
+  width: 100% !important;
+  height: 4px !important;
+  min-width: 0 !important;
+  border-radius: 999px !important;
+  margin: 0.15rem 0 0.1rem !important;
+  cursor: pointer !important;
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress #lyrics-focus-mini-progress-fill,
+body.now-playing-fs .lyrics-overlay.open #lyrics-focus-mini-progress-fill {
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: var(--accent-light, var(--accent-purple)) !important;
+}
+/* Transporte: solo shuffle / prev / play / next / repeat (sin fav) */
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 0.15rem !important;
+  padding: 0.2rem 0 0 !important;
+  box-sizing: border-box !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  flex: 0 0 auto !important;
+  width: 2.2rem !important;
+  height: 2.2rem !important;
+  min-width: 2.2rem !important;
+  font-size: 1.25rem !important;
+  padding: 0 !important;
+  color: var(--text-main) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play {
+  width: 2.6rem !important;
+  height: 2.6rem !important;
+  min-width: 2.6rem !important;
+  font-size: 1.65rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open #lyrics-btn-fav {
+  display: none !important;
+}
+
+/* Columna derecha: letras con padding para poder centrar líneas iniciales */
+body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  padding: 0 1.5rem 0 0.5rem !important;
+  display: block !important;
+  align-items: unset !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%) !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box {
+  width: 100% !important;
+  max-width: 34rem !important;
+  margin: 0 !important;
+  /* Espacio arriba/abajo para que la 1ª línea pueda centrarse sin “saltarse” el inicio */
+  padding-top: min(38vh, 280px) !important;
+  padding-bottom: min(42vh, 320px) !important;
+  box-sizing: border-box !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box p {
+  font-size: clamp(1.35rem, 2.5vw, 1.9rem) !important;
+  line-height: 1.32 !important;
+  font-weight: 600 !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-floating-actions {
+  right: max(1.25rem, env(safe-area-inset-right)) !important;
+  bottom: 1.75rem !important;
+  z-index: 4 !important;
+}
+body.now-playing-fs .lyrics-overlay.open #visual-plus-canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock,
+body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container,
+body.now-playing-fs .lyrics-overlay.open .lyrics-topbar {
+  z-index: 2 !important;
+}
+@media (max-width: 960px) {
+  body.now-playing-fs .lyrics-overlay.open {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    gap: 1.25rem !important;
+    padding: 1.5rem 1.25rem 1.25rem !important;
+    align-items: start !important;
+  }
+  body.now-playing-fs .lyrics-overlay.open .lyrics-dock {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+  body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    padding: 0.25rem 0 1rem !important;
+  }
+  body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover {
+    width: min(52vw, 240px) !important;
+    height: min(52vw, 240px) !important;
+  }
+  body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box {
+    padding-top: min(18vh, 120px) !important;
+    padding-bottom: min(22vh, 140px) !important;
+  }
+}
+
+
+
+
+/* Pantalla completa: columna izquierda más a la izquierda y más grande + tiempos */
+body.now-playing-fs .lyrics-overlay.open {
+  grid-template-columns: minmax(380px, 0.95fr) minmax(340px, 1.15fr) !important;
+  gap: 0 2.25rem !important;
+  padding: 3.5rem 3.5rem 2.5rem 3rem !important;
+  justify-items: stretch !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock {
+  width: min(440px, 100%) !important;
+  max-width: min(440px, 100%) !important;
+  margin: 0 auto 0 0 !important; /* pegado a la izquierda de su columna */
+  justify-self: start !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover {
+  width: min(52vh, 400px) !important;
+  height: min(52vh, 400px) !important;
+  border-radius: 10px !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info strong {
+  font-size: 1.05rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-info span {
+  font-size: 0.86rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-btn {
+  width: 2.4rem !important;
+  height: 2.4rem !important;
+  min-width: 2.4rem !important;
+  font-size: 1.35rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport .lyrics-dock-play {
+  width: 2.85rem !important;
+  height: 2.85rem !important;
+  min-width: 2.85rem !important;
+  font-size: 1.8rem !important;
+}
+
+/* Tiempos bajo la barra: ocultos salvo pantalla completa */
+.lyrics-focus-mini-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+.lyrics-focus-mini-times {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0 0.05rem;
+  user-select: none;
+  pointer-events: none;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-times {
+  display: flex !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress-wrap {
+  width: 100% !important;
+  margin-top: 0.1rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress {
+  margin: 0 !important;
+}
+
+
+/* FS: portada alineada, sin borde oscuro, fav en esquina, letras a la derecha */
+body.now-playing-fs .lyrics-overlay.open {
+  grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr) !important;
+  gap: 0 2.5rem !important;
+  padding: 3rem 4rem 2.5rem !important;
+  align-items: center !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock {
+  width: min(420px, 92%) !important;
+  max-width: min(420px, 92%) !important;
+  margin: 0 auto !important; /* centrado dentro de la mitad izquierda */
+  justify-self: center !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+  flex-basis: auto !important;
+  border-radius: 8px !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  background: var(--bg-placeholder) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: inherit !important;
+  box-shadow: none !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-player,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress-wrap,
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-mini-progress,
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock-transport {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+/* Fav solo visible en pantalla completa, esquina inferior derecha de la carátula */
+.lyrics-focus-cover-fav {
+  display: none;
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 3;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: none;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
+  display: inline-flex !important;
+}
+.lyrics-focus-cover-fav:hover {
+  transform: scale(1.06);
+  background: rgba(0, 0, 0, 0.58);
+}
+.lyrics-focus-cover-fav.active,
+.lyrics-focus-cover-fav.active-toggle {
+  color: #ff6b8a;
+  background: rgba(0, 0, 0, 0.5);
+}
+.lyrics-focus-cover-fav i {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+/* Letras ocupan la mitad derecha */
+body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+  padding: 0 1.25rem 0 0.75rem !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box {
+  max-width: min(40rem, 100%) !important;
+  margin: 0 auto 0 0 !important;
+}
+
+

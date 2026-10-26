@@ -1,0 +1,2978 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resonance</title>
+  
+  <link rel="stylesheet" href="./assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="./assets/phosphor-icons/phosphor.css" />
+  
+  <!-- Hojas de estilo modularizadas -->
+  <link rel="stylesheet" href="./styles/main.css" />
+  <link rel="stylesheet" href="./styles/components.css" />
+  <link rel="stylesheet" href="./styles/player.css" />
+  <link rel="stylesheet" href="./styles/settings.css" />
+</head>
+<body>
+  <!-- Selector de carpeta nativo de Windows -->
+  <input type="file" id="native-folder-input" webkitdirectory directory multiple style="display: none;" />
+  <input type="file" id="settings-backup-file-input" accept=".json,application/json" hidden />
+
+  <div class="window-shell">
+    <header class="window-titlebar" id="window-titlebar">
+      <div class="window-app-brand" id="window-app-brand" aria-label="Resonance">
+        <span class="app-brand-logo" role="img" aria-label="Resonance"></span>
+        <span id="window-app-title">Resonance</span>
+      </div>
+      <aside class="performance-overlay" id="performance-overlay" hidden aria-label="Uso de recursos de Resonance">
+        <div class="performance-overlay-heading">
+          <strong><i class="ph ph-gauge"></i> Rendimiento</strong>
+        </div>
+        <div class="performance-overlay-metrics">
+          <span>CPU <strong id="performance-overlay-cpu">--</strong></span>
+          <span>RAM <strong id="performance-overlay-memory">--</strong></span>
+          <span>Disco <strong id="performance-overlay-disk">--</strong></span>
+          <span>GPU <strong id="performance-overlay-gpu">--</strong></span>
+        </div>
+        <span class="performance-overlay-status" id="performance-overlay-status" role="status" aria-live="polite" hidden></span>
+      </aside>
+      <div class="window-titlebar-controls">
+        <button type="button" class="window-control-btn" id="window-minimize" title="Minimizar" aria-label="Minimizar">
+          <i class="ph ph-minus"></i>
+        </button>
+        <button type="button" class="window-control-btn" id="window-maximize" title="Maximizar" aria-label="Maximizar">
+          <i class="ph ph-square"></i>
+        </button>
+        <button type="button" class="window-control-btn window-close-btn" id="window-close" title="Cerrar" aria-label="Cerrar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+    </header>
+
+  <div class="app-layout" id="app-layout">
+    
+    <!-- BARRA LATERAL IZQUIERDA -->
+    <aside class="sidebar-left" id="sidebar-left">
+      <div class="sidebar-app-brand" id="sidebar-app-brand" aria-label="Resonance">
+        <span class="app-brand-logo" role="img" aria-label="Resonance"></span>
+        <span>Resonance</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#" class="nav-item active" id="nav-btn-home">
+          <i class="ph-fill ph-house"></i>
+          <span>Inicio</span>
+          <div class="sidebar-soundwave-wrap" id="home-sidebar-soundwave"></div>
+        </a>
+        <a href="#" class="nav-item" id="nav-btn-music">
+          <i class="ph ph-music-notes"></i>
+          <span>Música</span>
+          <div class="sidebar-soundwave-wrap" id="music-sidebar-soundwave"></div>
+        </a>
+        <a href="#" class="nav-item" id="nav-btn-folders">
+          <i class="ph ph-folder"></i>
+          <span>Carpetas</span>
+          <div class="sidebar-soundwave-wrap" id="folders-sidebar-soundwave"></div>
+        </a>
+        <a href="#" class="nav-item" id="nav-btn-playlists">
+          <i class="ph ph-playlist"></i>
+          <span>Listas de reproducción</span>
+          <div class="sidebar-soundwave-wrap" id="playlists-sidebar-soundwave"></div>
+        </a>
+      </nav>
+      
+      <div class="library-section">
+        <div class="section-label-row">
+          <span class="section-label">ACCESO DIRECTO</span>
+          <div class="sidebar-actions-group">
+            <button class="btn-icon-mini" id="btn-toggle-sidebar-playlist-reorder" title="Activar reordenamiento por arrastre" aria-label="Activar reordenamiento por arrastre" aria-pressed="false" hidden>
+              <i class="ph ph-hand"></i>
+            </button>
+            <button class="btn-icon-mini" id="btn-sort-playlists" title="Ordenar playlists fijadas">
+              <i class="ph ph-arrows-down-up"></i>
+            </button>
+            <button class="btn-icon-mini" id="btn-add-playlist" title="Crear nueva playlist">
+              <i class="ph ph-plus"></i>
+            </button>
+          </div>
+          
+          <div class="sort-dropdown-menu" id="sort-dropdown-menu">
+            <button class="sort-option active" data-sort="custom">Personalizado (Arrastrar)</button>
+            <button class="sort-option" data-sort="recent">Recientes</button>
+            <button class="sort-option" data-sort="alpha">Alfabético (A - Z)</button>
+            <button class="sort-option" data-sort="count">Cantidad de canciones</button>
+          </div>
+        </div>
+
+        <button class="favorites-shortcut" id="btn-open-favorites">
+          <div class="fav-icon-box">
+            <i class="ph-fill ph-heart"></i>
+          </div>
+          <div class="fav-text">
+            <strong id="favorites-shortcut-label">Tus me gusta</strong>
+            <span id="fav-count">0 canciones</span>
+          </div>
+          <div class="sidebar-soundwave-wrap" id="fav-sidebar-soundwave"></div>
+        </button>
+
+        <div class="playlists-scroll" id="playlists-container"></div>
+      </div>
+
+      <div class="resizer resizer-x resizer-left" id="resizer-left"></div>
+    </aside>
+
+    <!-- ÁREA CENTRAL DE CONTENIDO -->
+    <main class="main-content">
+      <header class="top-nav">
+        <div class="top-nav-left">
+          <button class="btn-arrow btn-nav-back" id="btn-nav-back" title="Volver atrás" style="display: none;">
+            <i class="ph ph-caret-left"></i>
+          </button>
+          <div class="search-box">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="search-input" name="resonance-song-search" placeholder="Buscar canciones o artistas..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" data-form-type="other" />
+            <div class="search-suggestions" id="search-suggestions" role="listbox" aria-label="Resultados de canciones" hidden></div>
+          </div>
+        </div>
+
+        <div class="top-nav-right">
+          <button class="btn-icon-circle" id="btn-open-settings" title="Configuración">
+            <i class="ph ph-gear"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- VISTA PRINCIPAL (INICIO) -->
+      <section class="content-body" id="home-view">
+        <section class="music-section">
+          <div class="section-header">
+            <div>
+              <h2>Recién agregadas</h2>
+              <p>Música detectada recientemente en tu almacenamiento local (máx. 25)</p>
+            </div>
+            <div class="section-header-actions">
+              <div class="scan-toolbar" id="home-scan-toolbar">
+                <div class="scan-progress" data-scan-progress hidden role="status" aria-live="polite">
+                  <span class="scan-progress-label">Preparando el escaneo...</span>
+                  <div class="scan-progress-track" role="progressbar" aria-label="Progreso del escaneo">
+                    <span class="scan-progress-fill"></span>
+                  </div>
+                </div>
+                <button class="btn-scan-stop" id="btn-cancel-library-scan" type="button" hidden title="Detener escaneo" aria-label="Detener escaneo">
+                  <i class="ph ph-stop"></i>
+                </button>
+              </div>
+              <div class="slider-arrows">
+                <button class="btn-arrow" id="btn-recent-prev" title="Anterior"><i class="ph ph-caret-left"></i></button>
+                <button class="btn-arrow" id="btn-recent-next" title="Siguiente"><i class="ph ph-caret-right"></i></button>
+              </div>
+              <button class="btn-scan" id="btn-quick-scan" type="button" title="Escanear música">
+                <i class="ph ph-arrows-clockwise"></i> Escanear música
+              </button>
+            </div>
+          </div>
+          <div class="grid-cards horizontal-slider" id="recent-grid"></div>
+        </section>
+
+        <section class="music-section">
+          <div class="section-header">
+            <div>
+              <h2>Artistas</h2>
+              <p>Artistas con más canciones en tu biblioteca</p>
+            </div>
+            <div class="slider-arrows">
+              <button class="btn-arrow" id="btn-artists-prev" title="Anterior"><i class="ph ph-caret-left"></i></button>
+              <button class="btn-arrow" id="btn-artists-next" title="Siguiente"><i class="ph ph-caret-right"></i></button>
+            </div>
+          </div>
+          <div class="grid-cards horizontal-slider" id="artists-grid"></div>
+        </section>
+
+        <!-- SECCIÓN MÁS ESCUCHADAS -->
+        <section class="music-section">
+          <div class="section-header">
+            <div>
+              <h2>Más escuchadas</h2>
+              <p>Tus canciones con mayor número de reproducciones (máx. 25)</p>
+            </div>
+            <div class="section-header-actions">
+              <div class="slider-arrows">
+                <button class="btn-arrow" id="btn-explore-prev" title="Anterior"><i class="ph ph-caret-left"></i></button>
+                <button class="btn-arrow" id="btn-explore-next" title="Siguiente"><i class="ph ph-caret-right"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="grid-cards horizontal-slider" id="explore-grid"></div>
+        </section>
+
+        <section class="music-section">
+          <div class="section-header">
+            <div>
+              <h2>Álbumes</h2>
+              <p>Álbumes con más canciones en tu biblioteca</p>
+            </div>
+            <div class="section-header-actions">
+              <button class="btn-scan" id="btn-open-albums" type="button">
+                <i class="ph ph-squares-four"></i> Ver todos
+              </button>
+              <div class="slider-arrows">
+                <button class="btn-arrow" id="btn-albums-prev" title="Anterior"><i class="ph ph-caret-left"></i></button>
+                <button class="btn-arrow" id="btn-albums-next" title="Siguiente"><i class="ph ph-caret-right"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="grid-cards horizontal-slider" id="albums-grid"></div>
+        </section>
+      </section>
+
+      <!-- VISTA DE BÚSQUEDA (PESTAÑAS ESTILO SPOTIFY) -->
+      <section class="search-view" id="search-view" style="display: none;">
+        <div class="search-header">
+          <div class="search-pills-row">
+            <button class="search-pill active" data-tab="songs">Canciones</button>
+            <button class="search-pill" data-tab="playlists">Playlists</button>
+            <button class="search-pill" data-tab="folders">Carpetas</button>
+            <button class="search-pill" data-tab="artists">Artistas</button>
+            <button class="search-pill" data-tab="albums">Álbumes</button>
+            <button class="search-pill" data-tab="queue">Cola de reproducción</button>
+          </div>
+        </div>
+        <div class="search-results-content" id="search-results-content"></div>
+      </section>
+
+      <!-- VISTA DE CARPETAS (GRID DE CARPETAS) -->
+      <section class="folders-view" id="folders-view" style="display: none;">
+        <div class="folders-view-header">
+          <div>
+            <h2>Carpetas</h2>
+            <p>Directorios locales vinculados a tu biblioteca</p>
+          </div>
+          <div class="playlist-sort-wrapper">
+            <span class="sort-by-label">Ordenar por:</span>
+            <button class="btn-sort-tracks" id="btn-sort-folders" title="Cambiar orden">
+              <span id="current-folder-sort-label">Nombre (A - Z)</span>
+              <i class="ph ph-caret-down"></i>
+            </button>
+            <div class="sort-dropdown-menu track-sort-menu" id="folder-sort-menu">
+              <button class="sort-option active" data-sort="name">Nombre (A - Z)</button>
+              <button class="sort-option" data-sort="count">Cantidad de canciones</button>
+              <button class="sort-option" data-sort="date">Fecha de agregado</button>
+              <button class="sort-option" data-sort="recent">Última reproducción</button>
+            </div>
+          </div>
+        </div>
+        <div class="folders-grid" id="folders-grid"></div>
+      </section>
+
+      <section class="albums-view" id="albums-view" style="display: none;">
+        <div class="albums-view-header">
+          <div>
+            <h2>Álbumes</h2>
+            <p>Todos los álbumes de tu biblioteca, ordenados por cantidad de pistas</p>
+          </div>
+          <div class="dynamic-filter-bar albums-filter-bar" id="albums-filter-bar">
+            <button type="button" class="dynamic-filter-trigger" id="albums-filter-trigger"
+              aria-label="Filtrar álbumes" aria-expanded="false" aria-controls="albums-filter-popover" title="Filtrar álbumes">
+              <i class="ph ph-funnel"></i>
+            </button>
+            <div class="dynamic-filter-popover" id="albums-filter-popover" hidden>
+              <label class="albums-filter-label" for="albums-filter-count">Cantidad de pistas</label>
+              <select class="dynamic-filter-select" id="albums-filter-count" aria-label="Filtrar álbumes por cantidad de pistas">
+                <option value="0">Todos los álbumes</option>
+                <option value="3">Más de 3 pistas</option>
+                <option value="4">Más de 4 pistas</option>
+                <option value="5">Más de 5 pistas</option>
+                <option value="6">Más de 6 pistas</option>
+              </select>
+              <label class="albums-filter-lock">
+                <input type="checkbox" id="albums-filter-lock" />
+                <span>Bloquear álbumes que no cumplen el filtro</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="albums-grid" id="all-albums-grid"></div>
+      </section>
+
+      <!-- VISTA HUB DE LISTAS DE REPRODUCCIÓN (CUADRÍCULA) -->
+      <section class="playlists-view" id="playlists-view" style="display: none;">
+        <div class="playlists-view-header">
+          <div>
+            <h2>Listas de reproducción</h2>
+            <p>Tus colecciones y playlists personalizadas</p>
+          </div>
+          <div class="playlists-header-actions">
+            <button class="btn-primary" id="btn-create-playlist-hub">
+              <i class="ph ph-plus"></i> Crear playlist
+            </button>
+            <!-- SELECTOR DE DISEÑO -->
+            <div class="layout-toggle-group">
+              <button class="btn-icon-layout active" id="btn-layout-standard" title="Diseño estándar (Texto abajo)">
+                <i class="ph ph-squares-four"></i>
+              </button>
+              <button class="btn-icon-layout" id="btn-layout-overlay" title="Diseño con degradado (Texto sobre portada)">
+                <i class="ph ph-cards"></i>
+              </button>
+            </div>
+
+            <!-- SELECTOR DE ORDENAMIENTO DE PLAYLISTS -->
+            <div class="playlist-sort-wrapper">
+              <span class="sort-by-label">Ordenar por:</span>
+              <button class="btn-sort-tracks" id="btn-sort-playlists-view" title="Cambiar orden">
+                <span id="current-playlists-view-sort-label">Nombre (A - Z)</span>
+                <i class="ph ph-caret-down"></i>
+              </button>
+              <div class="sort-dropdown-menu track-sort-menu" id="playlists-view-sort-menu">
+                <button class="sort-option active" data-sort="name">Nombre (A - Z)</button>
+                <button class="sort-option" data-sort="count">Cantidad de canciones</button>
+                <button class="sort-option" data-sort="date">Fecha de creación</button>
+                <button class="sort-option" data-sort="pinned">Fijadas primero</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="playlists-grid" id="playlists-grid"></div>
+      </section>
+
+      <!-- VISTA SPOTIFY: DETALLE DE PLAYLIST / TUS ME GUSTA / MÚSICA / CARPETA -->
+      <section class="playlist-view" id="playlist-view" style="display: none;">
+        <div class="collection-options-wrap" id="collection-options-wrap" hidden>
+          <div class="dynamic-filter-bar track-dynamic-filter-bar" id="tracks-filter-bar">
+            <label class="list-local-search" for="list-local-search-input">
+              <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+              <input type="search" id="list-local-search-input" name="resonance-list-local-search"
+                placeholder="Buscar en esta lista..." autocomplete="off" autocorrect="off"
+                autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true"
+                aria-label="Buscar en la lista actual" />
+            </label>
+            <button type="button" class="dynamic-filter-trigger" id="tracks-filter-trigger" aria-label="Abrir filtros de canciones" aria-expanded="false" aria-controls="tracks-filter-popover" title="Filtros">
+              <i class="ph ph-funnel"></i>
+            </button>
+            <div class="dynamic-filter-popover" id="tracks-filter-popover" hidden>
+              <select class="dynamic-filter-select" id="tracks-filter-field" aria-label="Tipo de filtro de canciones">
+                <option value="all">Todas las canciones</option>
+                <option value="date">Fecha: últimos 30 días</option>
+                <option value="quality-lossless">Calidad: sin pérdida</option>
+                <option value="quality-hires">Calidad: alta resolución</option>
+                <option value="quality-lossy">Calidad: comprimida</option>
+                <option value="duration-short">Duración: menos de 3 min</option>
+                <option value="duration-medium">Duración: 3 a 6 min</option>
+                <option value="duration-long">Duración: más de 6 min</option>
+                <option value="lyrics-synced">Letra sincronizada</option>
+                <option value="artist">Artista</option>
+              </select>
+              <input class="dynamic-filter-search" id="tracks-filter-artist" type="search" placeholder="Nombre del artista..." aria-label="Filtrar por artista" hidden>
+              <button type="button" class="btn-clear-dynamic-filter" id="tracks-filter-clear">Quitar filtro</button>
+            </div>
+          </div>
+          <button class="btn-icon-hero collection-options-trigger" id="btn-collection-options"
+            type="button" title="Más opciones" aria-label="Más opciones" aria-haspopup="menu" aria-expanded="false">
+            <i class="ph ph-dots-three"></i>
+          </button>
+          <div class="collection-options-menu" id="collection-options-menu" role="menu" hidden>
+            <button type="button" role="menuitem" data-collection-action="export">
+              <i class="ph ph-export"></i><span>Exportar lista (.m3u8)</span>
+            </button>
+            <button type="button" role="menuitem" data-collection-action="find-missing" hidden>
+              <i class="ph ph-magnifying-glass"></i><span>Buscar canciones no ubicadas</span>
+            </button>
+            <button type="button" role="menuitem" data-collection-action="refresh-profile" hidden>
+              <i class="ph ph-arrow-clockwise"></i><span>Actualizar información</span>
+            </button>
+            <button type="button" role="menuitem" data-collection-action="edit-profile" hidden>
+              <i class="ph ph-pencil-simple"></i><span>Editar información y foto</span>
+            </button>
+            <button type="button" role="menuitem" data-collection-action="shuffle">
+              <i class="ph ph-shuffle"></i><span>Reproducir aleatoriamente</span>
+            </button>
+            <button type="button" role="menuitem" data-collection-action="queue">
+              <i class="ph ph-queue"></i><span>Agregar todo a la cola</span>
+            </button>
+          </div>
+        </div>
+        <header class="playlist-hero-banner" id="playlist-hero-banner">
+          <div class="playlist-big-cover" id="playlist-hero-cover">
+            <i class="ph-fill ph-heart"></i>
+          </div>
+          <div class="playlist-hero-info">
+            <span class="playlist-badge-type">Playlist</span>
+            <h1 class="playlist-hero-title" id="playlist-hero-title">Tus me gusta</h1>
+            <p class="artist-disambiguation" id="artist-disambiguation" hidden></p>
+            <div class="artist-facts" id="artist-facts" hidden></div>
+            <div class="artist-tags" id="artist-tags" aria-label="Géneros del artista" hidden></div>
+            <p class="playlist-hero-desc" id="playlist-hero-desc" style="display: none;"></p>
+            <button type="button" class="artist-bio-toggle" id="artist-bio-toggle" hidden>Leer más</button>
+            <div class="playlist-hero-meta">
+              <button type="button" id="playlist-hero-author" class="playlist-hero-author-link">Resonance</button>
+              <span class="meta-dot">•</span>
+              <span id="playlist-hero-count">0 canciones</span>
+              <span class="meta-dot">•</span>
+              <span id="playlist-hero-duration">0 min</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="playlist-action-bar">
+          <div class="playlist-actions-left">
+            <button class="btn-play-hero" id="btn-play-all-favorites" title="Reproducir todo">
+              <i class="ph-fill ph-play"></i>
+            </button>
+            <button class="btn-icon-hero" id="btn-shuffle-favorites" title="Aleatorio">
+              <i class="ph ph-shuffle"></i>
+            </button>
+          </div>
+          <!-- SELECTOR DE ORDENAMIENTO DE PISTAS DE LA PLAYLIST -->
+          <div class="playlist-sort-wrapper">
+            <span class="sort-by-label">Ordenar por:</span>
+            <div class="track-sort-controls">
+              <button class="btn-sort-tracks" id="btn-sort-tracks" title="Cambiar orden">
+                <span id="current-track-sort-label">Personalizado</span>
+                <i class="ph ph-caret-down"></i>
+              </button>
+              <button class="btn-icon-mini" id="btn-toggle-track-reorder" title="Desactivar reordenamiento por arrastre" aria-label="Desactivar reordenamiento por arrastre" aria-pressed="true" hidden>
+                <i class="ph ph-hand-grabbing"></i>
+              </button>
+              <button class="btn-icon-mini" id="btn-toggle-queue-history" title="Mostrar reproducidas" aria-label="Mostrar reproducidas en la cola" aria-pressed="false" hidden>
+                <i class="ph ph-clock-counter-clockwise"></i>
+              </button>
+            </div>
+            <div class="sort-dropdown-menu track-sort-menu" id="track-sort-menu">
+              <button class="sort-option active" data-sort="custom">Personalizado</button>
+              <button class="sort-option" data-sort="plays">Más escuchadas</button>
+              <button class="sort-option" data-sort="title">Nombre de la canción</button>
+              <button class="sort-option" data-sort="date">Fecha en que se agregó</button>
+              <button class="sort-option" data-sort="track">N.º de pista</button>
+              <button class="sort-option" data-sort="duration">Duración</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="playlist-table-container">
+          <div class="playlist-table-header">
+            <div class="col-index">#</div>
+            <div class="col-title">Título</div>
+            <div class="col-album">Álbum</div>
+            <div class="col-date">Fecha en que se agregó</div>
+            <div class="col-duration"><i class="ph ph-clock"></i></div>
+          </div>
+          <div class="playlist-table-body" id="playlist-tracks-body"></div>
+          <div class="artist-load-more-wrap" id="artist-load-more-wrap" hidden>
+            <button type="button" class="btn-load-more-queue" id="artist-load-more">Cargar más canciones</button>
+          </div>
+        </div>
+        <section class="artist-albums-section" id="artist-albums-section" hidden>
+          <div class="artist-section-heading">
+            <h2>Álbumes</h2>
+          </div>
+          <div class="artist-albums-grid horizontal-slider" id="artist-albums-grid"></div>
+        </section>
+        <section class="artist-related-section" id="artist-related-section" hidden>
+          <h2>Artistas relacionados en tu biblioteca</h2>
+          <div class="artist-related-grid" id="artist-related-grid"></div>
+        </section>
+      </section>
+    </main>
+
+    <!-- BARRA DERECHA: COLA -->
+    <aside class="sidebar-right" id="sidebar-right">
+      <div class="resizer resizer-x resizer-right" id="resizer-right"></div>
+
+      <div class="queue-header">
+        <div class="queue-title">
+          <i class="ph ph-queue"></i>
+          <button type="button" class="queue-header-title-btn" id="queue-header-title" title="Ver cola completa">
+            Cola de reproducción
+          </button>
+        </div>
+        <button class="btn-icon" id="btn-close-queue" title="Ocultar cola">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div class="queue-content">
+        <div class="queue-history-section">
+          <button class="queue-history-toggle" id="btn-toggle-history" title="Mostrar u ocultar reproducidas">
+            <div class="queue-history-toggle-left">
+              <i class="ph ph-clock-counter-clockwise"></i>
+              <span>Reproducidas</span>
+              <span class="queue-badge-count" id="history-count">0</span>
+            </div>
+            <i class="ph ph-caret-right" id="history-caret"></i>
+          </button>
+          <div class="queue-history-list" id="queue-history-list"></div>
+        </div>
+
+        <div class="queue-subhead">Sonando ahora</div>
+        <div class="now-playing-card" id="queue-now-playing">
+          <div class="empty-queue-msg">Ninguna canción en reproducción</div>
+        </div>
+
+        <div class="queue-subhead">A continuación</div>
+        <div class="queue-list" id="queue-items-container">
+          <div class="empty-queue-msg">La cola está vacía</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- PANTALLA DE LETRAS ESTILO SPOTIFY -->
+    <div class="lyrics-overlay" id="lyrics-overlay">
+      <div id="visual-plus-liquid-bg" aria-hidden="true">
+        <div class="liquid-orbs">
+          <div class="liquid-orb liquid-orb-1"></div>
+          <div class="liquid-orb liquid-orb-2"></div>
+          <div class="liquid-orb liquid-orb-3"></div>
+          <div class="liquid-orb liquid-orb-4"></div>
+          <div class="liquid-orb liquid-orb-5"></div>
+        </div>
+        <div class="liquid-dim"></div>
+      </div>
+      <div class="lyrics-topbar lyrics-chrome">
+        <button class="btn-back" id="btn-close-lyrics" title="Volver al reproductor">
+          <i class="ph ph-arrow-left"></i>
+        </button>
+        <div class="lyrics-header-info">
+          <h4 id="lyrics-song-title">Letras</h4>
+          <span id="lyrics-song-artist"></span>
+        </div>
+      </div>
+      <div class="lyrics-scroll-container" id="lyrics-scroll-container">
+        <div class="lyrics-lines-box" id="lyrics-lines-box"></div>
+      </div>
+      <div class="lyrics-dock" id="lyrics-dock" aria-label="Controles de letras">
+        <div class="lyrics-dock-left">
+          <div class="lyrics-focus-mini-player" id="lyrics-focus-mini-player" aria-label="Reproducción actual">
+            <div class="lyrics-focus-nowplaying-header" id="lyrics-focus-nowplaying-header" hidden>
+              <div class="lyrics-focus-nowplaying-header-text">
+                <button type="button" class="lyrics-focus-source-link" id="lyrics-focus-source-link">
+                  <span id="lyrics-focus-source-name">Reproduciendo</span>
+                </button>
+                <span class="lyrics-focus-track-position" id="lyrics-focus-track-position">Canción 0 de 0</span>
+              </div>
+              <button type="button" class="lyrics-focus-more-btn" id="lyrics-focus-more-btn" title="Más opciones" aria-label="Más opciones">
+                <i class="ph ph-dots-three" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="lyrics-focus-mini-track">
+              <div class="lyrics-focus-cover-row" id="lyrics-focus-cover-row">
+              <div class="np-fs-volume" id="np-fs-volume" hidden data-placement="off" aria-label="Volumen">
+                <button type="button" class="np-fs-volume-mute" id="np-fs-volume-mute" title="Silenciar" aria-label="Silenciar">
+                  <i class="ph ph-speaker-high" id="np-fs-volume-mute-icon"></i>
+                </button>
+                <input type="range" class="np-fs-volume-range" id="np-fs-volume-range" min="0" max="100" step="1" value="80" orient="vertical" aria-label="Nivel de volumen">
+              </div>
+                <div class="lyrics-focus-mini-cover-wrap" id="lyrics-focus-mini-cover-wrap">
+
+                  <div class="np-fs-vinyl" id="np-fs-vinyl" aria-hidden="true">
+                    <div class="np-fs-vinyl-spin">
+                      <svg class="np-fs-vinyl-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="np-fs-vinyl-sheen" x1="18%" y1="10%" x2="82%" y2="90%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+                            <stop offset="42%" stop-color="rgba(255,255,255,0)"/>
+                            <stop offset="48%" stop-color="rgba(255,255,255,0.07)"/>
+                            <stop offset="50%" stop-color="rgba(255,255,255,0.12)"/>
+                            <stop offset="52%" stop-color="rgba(255,255,255,0.07)"/>
+                            <stop offset="58%" stop-color="rgba(255,255,255,0)"/>
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                          </linearGradient>
+                          <mask id="np-fs-vinyl-mask">
+                            <rect width="200" height="200" fill="white"/>
+                            <circle cx="100" cy="100" r="6.5" fill="black"/>
+                          </mask>
+                        </defs>
+                        <g mask="url(#np-fs-vinyl-mask)">
+                          <circle cx="100" cy="100" r="99" fill="#0c0c0c"/>
+                          <!-- Surcos suaves -->
+                          <circle cx="100" cy="100" r="93" fill="none" stroke="rgba(255,255,255,0.035)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="87" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="75" fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="69" fill="none" stroke="rgba(255,255,255,0.028)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="63" fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="57" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="51" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="0.8"/>
+                          <circle cx="100" cy="100" r="46" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="0.8"/>
+                          <!-- Brillo suave -->
+                          <circle cx="100" cy="100" r="99" fill="url(#np-fs-vinyl-sheen)"/>
+                          <!-- Etiqueta (color de carátula vía CSS variable / imagen) -->
+                          <circle class="np-fs-vinyl-label" cx="100" cy="100" r="30" fill="var(--cover-accent-color, #2a2a2a)"/>
+                          <circle cx="100" cy="100" r="30" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                        </g>
+                      </svg>
+                      <div class="np-fs-vinyl-label-art" id="np-fs-vinyl-label-art" aria-hidden="true"></div>
+                    </div>
+                  </div>
+
+                  <div class="lyrics-focus-mini-cover" id="lyrics-focus-mini-cover">
+                    <i class="ph ph-music-note" aria-hidden="true"></i>
+                  </div>
+                  <button type="button" class="lyrics-focus-cover-fav" id="lyrics-focus-cover-fav" title="Me gusta" aria-label="Me gusta">
+                    <i class="ph ph-heart" id="lyrics-focus-cover-fav-icon"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="lyrics-focus-mini-info">
+                <strong id="lyrics-focus-mini-title"></strong>
+                <span id="lyrics-focus-mini-artist"></span>
+                <small id="lyrics-focus-mini-album"></small>
+              </div>
+            </div>
+            <div class="lyrics-focus-mini-progress-wrap" id="lyrics-focus-mini-progress-wrap">
+              <div class="lyrics-focus-mini-progress" id="lyrics-focus-mini-progress"
+                role="progressbar" aria-label="Progreso de la canción" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span id="lyrics-focus-mini-progress-fill"></span>
+              </div>
+              <div class="lyrics-focus-mini-times" id="lyrics-focus-mini-times" aria-hidden="true">
+                <span id="lyrics-focus-mini-time-current">0:00</span>
+                <span id="lyrics-focus-mini-time-remaining">-0:00</span>
+              </div>
+            </div>
+          </div>
+          <div class="lyrics-dock-transport lyrics-chrome" id="lyrics-dock-transport">
+            <button type="button" class="lyrics-dock-btn" id="lyrics-btn-shuffle" title="Aleatorio" aria-label="Aleatorio">
+              <i class="ph ph-shuffle"></i>
+            </button>
+            <button type="button" class="lyrics-dock-btn" id="lyrics-btn-prev" title="Anterior" aria-label="Anterior">
+              <i class="ph-fill ph-skip-back"></i>
+            </button>
+            <button type="button" class="lyrics-dock-btn lyrics-dock-play" id="lyrics-btn-play" title="Reproducir / Pausar" aria-label="Reproducir o pausar">
+              <i class="ph-fill ph-play" id="lyrics-play-icon"></i>
+            </button>
+            <button type="button" class="lyrics-dock-btn" id="lyrics-btn-next" title="Siguiente" aria-label="Siguiente">
+              <i class="ph-fill ph-skip-forward"></i>
+            </button>
+            <button type="button" class="lyrics-dock-btn" id="lyrics-btn-repeat" title="Repetir" aria-label="Repetir">
+              <i class="ph ph-repeat"></i>
+            </button>
+            <button type="button" class="lyrics-dock-btn" id="lyrics-btn-fav" title="Me gusta" aria-label="Me gusta">
+              <i class="ph ph-heart" id="lyrics-fav-icon"></i>
+            </button>
+          </div>
+</div>
+        <div class="lyrics-dock-right lyrics-chrome" id="lyrics-dock-right">
+          <button type="button" class="lyrics-dock-btn lyrics-dock-extra" id="lyrics-btn-sleep" title="Temporizador" aria-label="Temporizador" data-lyrics-mirror="sleep">
+            <i class="ph ph-timer"></i>
+          </button>
+          <button type="button" class="lyrics-dock-btn lyrics-dock-extra" id="lyrics-btn-speed" title="Velocidad" aria-label="Velocidad" data-lyrics-mirror="speed">
+            <i class="ph ph-gauge"></i>
+          </button>
+          <button type="button" class="lyrics-dock-btn lyrics-dock-extra" id="lyrics-btn-queue" title="Cola" aria-label="Cola" data-lyrics-mirror="queue">
+            <i class="ph ph-queue"></i>
+          </button>
+          <div class="lyrics-dock-volume" id="lyrics-dock-volume">
+            <i class="ph ph-speaker-high" id="lyrics-vol-icon" aria-hidden="true"></i>
+            <input type="range" min="0" max="100" value="80" class="lyrics-volume-slider" id="lyrics-volume-range" aria-label="Volumen" />
+            <span class="lyrics-volume-pct" id="lyrics-volume-pct">80%</span>
+          </div>
+        </div>
+      </div>
+      <div class="lyrics-floating-actions lyrics-chrome" id="lyrics-floating-actions" hidden>
+        <button type="button" class="lyrics-floating-button" id="lyrics-translation-toggle"
+          title="Alternar traducción" aria-label="Alternar traducción" aria-pressed="false">
+          <i class="ph ph-translate"></i>
+        </button>
+        <button type="button" class="lyrics-floating-button" id="lyrics-resync"
+          title="Volver a la línea activa" aria-label="Volver a la línea activa">
+          <i class="ph ph-target"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- CARÁTULA EXPANDIDA ESTILO SPOTIFY -->
+    <div class="expanded-cover-widget" id="expanded-cover-widget">
+      <button class="btn-collapse-cover" id="btn-collapse-cover" title="Ocultar carátula">
+        <i class="ph ph-caret-down"></i>
+      </button>
+      <img src="" id="expanded-cover-img" class="expanded-cover-img" alt="Carátula expandida" style="display: none;" />
+      <div id="expanded-cover-placeholder" class="expanded-cover-placeholder">
+        <i class="ph ph-waveform"></i>
+      </div>
+    </div>
+
+    <!-- MODAL EMERGENTE: CREAR / EDITAR PLAYLIST -->
+    <div class="modal-overlay" id="playlist-modal-overlay">
+      <div class="playlist-modal-card">
+        <div class="modal-card-header">
+          <h3 id="playlist-modal-heading">Editar datos</h3>
+          <button class="btn-modal-close" id="btn-close-playlist-modal"><i class="ph ph-x"></i></button>
+        </div>
+
+        <div class="modal-card-body">
+          <input type="file" id="playlist-image-input" accept="image/*" style="display: none;" />
+          <input type="file" id="playlist-file-import-input" accept=".m3u,.m3u8,.pls" style="display: none;" />
+          
+          <div class="modal-cover-picker" id="modal-cover-picker" title="Elegir foto">
+            <div class="modal-cover-preview" id="modal-cover-preview">
+              <i class="ph ph-music-notes"></i>
+            </div>
+            <div class="modal-cover-hover-text">
+              <i class="ph ph-camera"></i>
+              <span>Elegir foto</span>
+            </div>
+          </div>
+
+          <div class="modal-inputs-col">
+            <input type="text" class="modal-text-input" id="playlist-title-input" placeholder="Nombre de la playlist" autocomplete="off" />
+            <textarea class="modal-textarea-input" id="playlist-desc-input" placeholder="Agrega una descripción opcional" autocomplete="off"></textarea>
+
+            <button type="button" class="btn-secondary smart-playlist-toggle" id="smart-playlist-toggle" aria-pressed="false">
+              <i class="ph ph-lightning"></i> Playlist dinámica
+            </button>
+            
+            <div class="playlist-import-actions">
+              <div class="modal-import-row" id="modal-import-row-container">
+                <button type="button" class="btn-import-m3u" id="btn-import-playlist-file">
+                  <i class="ph ph-file-arrow-up"></i> Cargar lista (.m3u, .m3u8)
+                </button>
+                <span class="import-status-badge" id="m3u-import-status"></span>
+              </div>
+              <button type="button" class="btn-import-m3u missing-songs-trigger" id="btn-find-imported-songs" hidden>
+                <i class="ph ph-magnifying-glass"></i> Buscar canciones no ubicadas
+              </button>
+            </div>
+            <div class="smart-playlist-settings" id="smart-playlist-settings" hidden>
+              <strong>Regla dinámica</strong>
+              <p>Agrega filtros y elige si deben coincidir todos (Y) o cualquiera (O).</p>
+              <div class="smart-playlist-filter-controls">
+                <button type="button" class="smart-playlist-logic-button" id="smart-playlist-logic" data-operator="and" aria-label="Cambiar cómo se combinan los filtros" title="Cambiar cómo se combinan los filtros">Coincidir todos (Y)</button>
+              </div>
+              <div class="smart-playlist-filter-list" id="smart-playlist-filters"></div>
+              <button type="button" class="smart-playlist-add-filter" id="smart-playlist-add-filter">
+                <i class="ph ph-plus"></i> Agregar filtro
+              </button>
+              <template id="smart-playlist-filter-template">
+                <div class="smart-playlist-filter-row">
+                  <select class="dynamic-filter-select smart-playlist-filter-field" aria-label="Filtro de playlist dinámica">
+                    <option value="all">Todas las canciones</option>
+                    <option value="date">Agregadas en los últimos 30 días</option>
+                    <option value="folder">En una carpeta de la biblioteca</option>
+                    <option value="quality-lossless">Calidad sin pérdida</option>
+                    <option value="quality-hires">Alta resolución</option>
+                    <option value="quality-lossy">Audio comprimido</option>
+                    <option value="duration-short">Menos de 3 minutos</option>
+                    <option value="duration-medium">Entre 3 y 6 minutos</option>
+                    <option value="duration-long">Más de 6 minutos</option>
+                    <option value="lyrics-synced">Tiene letra sincronizada</option>
+                    <option value="artist">Artista</option>
+                    <option value="genre">Género</option>
+                  </select>
+                  <input class="dynamic-filter-search smart-playlist-filter-artist" type="search" placeholder="Nombre del artista..." aria-label="Filtrar por artista" hidden>
+                  <select class="dynamic-filter-select smart-playlist-filter-folder" aria-label="Carpeta de la biblioteca" hidden>
+                    <option value="">Elegir carpeta...</option>
+                  </select>
+                  <button type="button" class="smart-playlist-remove-filter" aria-label="Quitar este filtro" title="Quitar este filtro"><i class="ph ph-x"></i></button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-card-footer">
+          <span class="modal-note-text">Solo visible y guardado en tu Resonance local.</span>
+          <button class="btn-pill-save" id="btn-save-playlist">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="multi-playlist-modal">
+      <div class="playlist-modal-card multi-playlist-card">
+        <div class="modal-card-header">
+          <h3 id="multi-playlist-title">Agregar a playlist</h3>
+          <button class="btn-modal-close" id="multi-playlist-close" title="Cerrar">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <div class="playlist-picker-description-row">
+          <p class="multi-playlist-description" id="multi-playlist-description"></p>
+          <button class="playlist-picker-mode-toggle" id="multi-playlist-toggle" type="button"
+            title="Elegir varias playlists" aria-label="Elegir varias playlists" aria-pressed="false">
+            <i class="ph ph-list-checks"></i>
+          </button>
+        </div>
+        <div class="multi-playlist-options" id="multi-playlist-options"></div>
+        <div class="modal-card-footer">
+          <button class="btn-pill-save secondary" id="multi-playlist-cancel" type="button">Cancelar</button>
+          <button class="btn-pill-save" id="multi-playlist-apply" type="button">Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="playlist-export-modal">
+      <div class="playlist-modal-card multi-playlist-card">
+        <div class="modal-card-header">
+          <h3>Exportar playlists</h3>
+          <button class="btn-modal-close" id="playlist-export-close" title="Cerrar">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <p class="multi-playlist-description">Selecciona las playlists que quieres exportar como archivos M3U8.</p>
+        <div class="multi-playlist-options" id="playlist-export-options"></div>
+        <div class="modal-card-footer playlist-export-footer">
+          <button class="btn-pill-save secondary" id="playlist-export-select-all" type="button">Seleccionar todas</button>
+          <button class="btn-pill-save secondary" id="playlist-export-cancel" type="button">Cancelar</button>
+          <button class="btn-pill-save" id="playlist-export-confirm" type="button" disabled>Exportar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="missing-songs-modal">
+      <div class="playlist-modal-card missing-songs-card missing-songs-card--table">
+        <div class="modal-card-header">
+          <h3 id="missing-songs-title">Archivos sueltos</h3>
+          <button class="btn-modal-close" id="missing-songs-close" title="Cerrar">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <p class="multi-playlist-description" id="missing-songs-description"></p>
+        <div class="missing-songs-table-wrap">
+          <table class="missing-songs-table" id="missing-songs-table" role="grid" aria-label="Archivos sueltos de la playlist">
+            <thead>
+              <tr>
+                <th class="missing-col-check" scope="col">
+                  <input type="checkbox" id="missing-songs-select-all" title="Seleccionar todo" aria-label="Seleccionar todo">
+                </th>
+                <th class="missing-col-orphan" scope="col">Archivo suelto</th>
+                <th class="missing-col-replace" scope="col">Reemplazo sugerido</th>
+                <th class="missing-col-match" scope="col">Grado de compatibilidad</th>
+              </tr>
+            </thead>
+            <tbody id="missing-songs-list"></tbody>
+          </table>
+        </div>
+        <p class="missing-songs-hint" id="missing-songs-auto-status" role="status" aria-live="polite"></p>
+        <div class="modal-card-footer missing-songs-footer">
+          <button class="btn-pill-save" id="missing-songs-apply" type="button" disabled>
+            <i class="ph ph-check"></i> Aplicar a lo seleccionado
+          </button>
+          <button class="btn-pill-save secondary" id="missing-songs-auto-find" type="button">
+            <i class="ph ph-magnifying-glass"></i> Buscar…
+          </button>
+          <button class="btn-pill-save secondary" id="missing-songs-cancel" type="button">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL EMERGENTE: EDITAR DESCRIPCIÓN DE CARPETA -->
+    <div class="modal-overlay" id="folder-desc-modal">
+      <div class="playlist-modal-card" style="width: 440px;">
+        <div class="modal-card-header">
+          <h3>Editar descripción de carpeta</h3>
+          <button class="btn-modal-close" id="btn-close-folder-modal"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-card-body" style="flex-direction: column;">
+          <strong id="folder-modal-name" style="font-size: 0.95rem; color: var(--accent-light);"></strong>
+          <textarea class="modal-textarea-input" id="folder-desc-input" placeholder="Agrega una descripción para esta carpeta" autocomplete="off"></textarea>
+        </div>
+        <div class="modal-card-footer" style="justify-content: flex-end;">
+          <button class="btn-pill-save" id="btn-save-folder-desc">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE DETALLES DE CANCIÓN EXPANDIDO -->
+    <div class="modal-overlay" id="song-details-modal">
+      <div class="playlist-modal-card song-details-card">
+        <div class="modal-card-header">
+          <h3>Detalles de la pista</h3>
+          <button class="btn-modal-close" id="btn-close-song-details"><i class="ph ph-x"></i></button>
+        </div>
+
+        <div class="modal-card-body details-modal-layout">
+          <div class="details-top-section">
+            <div class="details-cover-box" id="details-cover-box">
+              <i class="ph ph-waveform"></i>
+            </div>
+            <div class="details-main-meta" id="details-main-meta"></div>
+            <div class="metadata-search-wrap">
+              <button class="btn-search-metadata" id="btn-fetch-track-metadata" type="button" aria-expanded="false" aria-controls="track-metadata-search-menu">
+                <i class="ph ph-magnifying-glass"></i> Buscar metadata
+              </button>
+              <div class="metadata-search-menu" id="track-metadata-search-menu" hidden>
+                <button type="button" data-metadata-search="text">Por información actual (Texto)</button>
+                <button type="button" data-metadata-search="fingerprint">Por audio (Huella acústica)</button>
+              </div>
+              <span class="metadata-search-status" id="track-metadata-search-status" role="status" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div class="details-tech-grid" id="details-tech-grid"></div>
+
+          <div class="details-lyrics-section">
+            <div class="details-lyrics-header">
+              <span>Letras registradas</span>
+              <span class="badge-tech" id="details-lyrics-badge">No disponible</span>
+            </div>
+            <div class="details-lyrics-content" id="details-lyrics-content"></div>
+          </div>
+        </div>
+
+        <div class="modal-card-footer details-modal-footer">
+          <div class="details-modal-actions">
+            <button class="btn-pill-save" id="btn-details-search-lyrics" type="button">
+              <i class="ph ph-magnifying-glass"></i> Buscar letras
+            </button>
+            <button class="btn-pill-save" id="btn-details-edit-track" type="button">
+              <i class="ph ph-pencil-simple"></i> Editar metadata y portada
+            </button>
+          </div>
+          <button class="btn-pill-save" id="btn-close-details-btn">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="metadata-match-modal">
+      <div class="playlist-modal-card metadata-match-card">
+        <div class="modal-card-header">
+          <h3>Coincidencias de metadata</h3>
+          <button class="btn-modal-close" id="metadata-match-close" type="button" aria-label="Cerrar"><i class="ph ph-x"></i></button>
+        </div>
+        <p class="metadata-match-help">Selecciona la coincidencia que corresponde a esta pista. Los cambios se abrirán en el editor para que puedas revisarlos antes de guardar.</p>
+        <div class="metadata-match-list" id="metadata-match-list"></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="metadata-text-search-modal">
+      <div class="playlist-modal-card lyrics-search-card metadata-text-search-card">
+        <div class="modal-card-header">
+          <h3>Buscar metadata en MusicBrainz</h3>
+          <button class="btn-modal-close" id="metadata-text-search-close" type="button" aria-label="Cerrar">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <p class="modal-note-text" id="metadata-text-search-context">Buscar metadata para: —</p>
+        <div class="lyrics-search-form">
+          <label class="lyrics-search-field" for="metadata-search-title">
+            <span>Título de la canción</span>
+            <input type="text" class="modal-text-input" id="metadata-search-title" placeholder="Escribe el título" maxlength="200" autocomplete="off" />
+          </label>
+          <label class="lyrics-search-field" for="metadata-search-artist">
+            <span>Artista</span>
+            <input type="text" class="modal-text-input" id="metadata-search-artist" placeholder="Escribe el artista" maxlength="200" autocomplete="off" />
+          </label>
+          <label class="lyrics-search-field metadata-search-album-field" for="metadata-search-album">
+            <span>Álbum (opcional)</span>
+            <input type="text" class="modal-text-input" id="metadata-search-album" placeholder="Ayuda a precisar la búsqueda" maxlength="200" autocomplete="off" />
+          </label>
+          <button class="btn-pill-save metadata-search-submit" id="metadata-search-submit" type="button">
+            <i class="ph ph-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+        <p class="lyrics-search-status" id="metadata-text-search-status" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN / MENSAJE PERSONALIZADO -->
+    <div class="modal-overlay" id="confirm-modal-overlay">
+      <div class="confirm-modal-card">
+        <button type="button" class="btn-modal-close confirm-modal-close" id="btn-confirm-close" aria-label="Cerrar">
+          <i class="ph ph-x"></i>
+        </button>
+        <h3 id="confirm-modal-title">¿Estás seguro?</h3>
+        <p id="confirm-modal-message">Mensaje del sistema</p>
+        <div class="confirm-modal-actions">
+          <button class="btn-confirm-cancel" id="btn-confirm-no">Cancelar</button>
+          <button class="btn-confirm-cancel" id="btn-confirm-alternate" style="display: none;"></button>
+          <button class="btn-confirm-primary" id="btn-confirm-yes">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="profile-editor-modal">
+      <div class="playlist-modal-card profile-editor-card">
+        <div class="modal-card-header">
+          <h3 id="profile-editor-heading">Editar información</h3>
+          <button class="btn-modal-close" id="profile-editor-close" type="button" aria-label="Cerrar">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <p class="modal-note-text" id="profile-editor-note"></p>
+        <div class="profile-editor-photo-row">
+          <div class="profile-editor-photo" id="profile-editor-photo-preview">
+            <i class="ph ph-image"></i>
+          </div>
+          <div class="profile-editor-photo-actions">
+            <button class="btn-import-m3u" id="profile-editor-photo-pick" type="button">
+              <i class="ph ph-camera"></i> Elegir foto
+            </button>
+            <button class="btn-import-m3u" id="profile-editor-photo-remove" type="button">
+              <i class="ph ph-arrow-counter-clockwise"></i> Usar foto de la base
+            </button>
+            <input type="file" id="profile-editor-photo-input" accept="image/*" hidden>
+          </div>
+        </div>
+        <div class="profile-editor-fields" id="profile-editor-artist-fields">
+          <label class="track-edit-field" for="profile-editor-description"><span>Descripción</span>
+            <textarea class="modal-textarea-input" id="profile-editor-description" maxlength="3000" autocomplete="off"></textarea>
+          </label>
+          <label class="track-edit-field" for="profile-editor-origin"><span>Origen / país</span>
+            <input class="modal-text-input" id="profile-editor-origin" maxlength="200">
+          </label>
+          <label class="track-edit-field" for="profile-editor-activity"><span>Años de actividad</span>
+            <input class="modal-text-input" id="profile-editor-activity" maxlength="200">
+          </label>
+          <label class="track-edit-field" for="profile-editor-type"><span>Tipo de artista</span>
+            <input class="modal-text-input" id="profile-editor-type" maxlength="100">
+          </label>
+          <label class="track-edit-field" for="profile-editor-genres"><span>Géneros (separados por coma)</span>
+            <input class="modal-text-input" id="profile-editor-genres" maxlength="500">
+          </label>
+          <label class="track-edit-field" for="profile-editor-context"><span>Contexto / desambiguación</span>
+            <input class="modal-text-input" id="profile-editor-context" maxlength="500">
+          </label>
+        </div>
+        <div class="profile-editor-fields" id="profile-editor-album-fields" hidden>
+          <label class="track-edit-field" for="profile-editor-album-description"><span>Descripción</span>
+            <textarea class="modal-textarea-input" id="profile-editor-album-description" maxlength="3000" autocomplete="off"></textarea>
+          </label>
+          <label class="track-edit-field" for="profile-editor-album-year"><span>Año de publicación</span>
+            <input class="modal-text-input" id="profile-editor-album-year" maxlength="20">
+          </label>
+          <label class="track-edit-field" for="profile-editor-album-label"><span>Sello discográfico</span>
+            <input class="modal-text-input" id="profile-editor-album-label" maxlength="200">
+          </label>
+        </div>
+        <p class="lyrics-search-status" id="profile-editor-status" role="status" hidden></p>
+        <div class="modal-card-footer profile-editor-footer">
+          <button class="btn-pill-save" id="profile-editor-cancel" type="button">Cancelar</button>
+          <button class="btn-pill-save" id="profile-editor-save" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENÚ CONTEXTUAL NATIVO PERSONALIZADO -->
+    <div class="custom-context-menu" id="custom-context-menu"></div>
+    <section class="discord-rpc-context-menu" id="discord-rpc-context-menu" aria-label="Accesos rápidos de ajustes" hidden>
+      <div class="discord-rpc-menu-options">
+        <div class="discord-rpc-menu-toggle">
+          <div><strong>Discord Rich Presence</strong><span>Compartir la reproducción en Discord</span></div>
+          <label class="switch" aria-label="Activar Discord Rich Presence">
+            <input type="checkbox" id="toggle-discord-rpc-menu">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="discord-rpc-menu-toggle">
+          <div><strong>Visual+</strong><span>Activar o desactivar los efectos visuales de fondo</span></div>
+          <label class="switch" aria-label="Activar Visual+">
+            <input type="checkbox" id="toggle-visual-plus-menu">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="discord-rpc-menu-toggle">
+          <div><strong>Ecualizador</strong><span>Activar o desactivar el ecualizador de 20 bandas</span></div>
+          <label class="switch" aria-label="Activar ecualizador">
+            <input type="checkbox" id="toggle-equalizer-menu">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+      <button type="button" class="discord-rpc-open-settings" id="discord-rpc-open-settings">
+        <i class="ph ph-sliders-horizontal"></i> Abrir ajustes
+      </button>
+    </section>
+
+    <!-- MODAL: BUSCAR LETRAS EN LRCLIB -->
+    <div class="modal-overlay" id="lyrics-search-modal">
+      <div class="playlist-modal-card lyrics-search-card">
+        <div class="modal-card-header">
+          <h3>Buscar letra en LRCLIB</h3>
+          <button class="btn-modal-close" id="lyrics-search-close"><i class="ph ph-x"></i></button>
+        </div>
+        <p class="modal-note-text" id="lyrics-search-context">Aplicar a: —</p>
+        <div class="lyrics-search-form">
+          <label class="lyrics-search-field" for="lyrics-search-title">
+            <span>Título de la canción</span>
+            <input type="text" class="modal-text-input" id="lyrics-search-title" placeholder="Escribe el título" autocomplete="off" />
+          </label>
+          <label class="lyrics-search-field" for="lyrics-search-artist">
+            <span>Artista</span>
+            <input type="text" class="modal-text-input" id="lyrics-search-artist" placeholder="Escribe el artista" autocomplete="off" />
+          </label>
+          <p class="lyrics-search-track-duration">
+            <i class="ph ph-clock" aria-hidden="true"></i>
+            Duración de la canción: <strong id="lyrics-search-duration">—</strong>
+          </p>
+          <button class="btn-pill-save" id="lyrics-search-btn" type="button">
+            <i class="ph ph-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+        <div class="lyrics-search-meta">
+          <div class="lyrics-search-filter">
+            <button type="button" id="lyrics-search-filter-toggle" class="lyrics-search-filter-toggle" aria-expanded="false" aria-haspopup="true">
+              <i class="ph ph-funnel" aria-hidden="true"></i>
+              <span id="lyrics-search-filter-label">Todas las letras</span>
+              <i class="ph ph-caret-down" aria-hidden="true"></i>
+            </button>
+            <div class="lyrics-search-filter-menu" id="lyrics-search-filter-menu" hidden>
+              <button type="button" data-lyrics-filter="all">Todas las letras</button>
+              <button type="button" data-lyrics-filter="synced">Solo sincronizadas</button>
+              <button type="button" data-lyrics-filter="plain">Solo planas</button>
+            </div>
+          </div>
+          <span id="lyrics-search-count"></span>
+        </div>
+        <p class="lyrics-search-status" id="lyrics-search-status" style="display: none;"></p>
+        <div class="lyrics-search-results" id="lyrics-search-results"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITAR METADATOS Y PORTADA -->
+    <div class="modal-overlay" id="track-edit-modal">
+      <div class="playlist-modal-card track-edit-card">
+        <div class="modal-card-header">
+          <h3>Editar pista</h3>
+          <button class="btn-modal-close" id="track-edit-close"><i class="ph ph-x"></i></button>
+        </div>
+        <p class="modal-note-text" id="track-edit-filename">Archivo desconocido</p>
+        <div class="modal-card-body track-edit-layout">
+          <div class="track-edit-cover-col">
+            <div class="modal-cover-picker" id="track-edit-cover-pick" title="Elegir portada">
+              <div class="modal-cover-preview" id="track-edit-cover-preview">
+                <i class="ph ph-music-notes"></i>
+              </div>
+              <div class="modal-cover-hover-text">
+                <i class="ph ph-camera"></i>
+                <span>Elegir foto</span>
+              </div>
+            </div>
+            <input type="file" id="track-edit-cover-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png" style="display: none;" />
+            <button type="button" class="btn-import-m3u" id="btn-track-edit-cover-remove">
+              <i class="ph ph-trash"></i> Quitar portada
+            </button>
+          </div>
+          <div class="modal-inputs-col">
+            <label class="track-edit-field" for="track-edit-title">
+              <span>Título</span>
+              <input type="text" class="modal-text-input" id="track-edit-title" placeholder="Título de la canción" maxlength="200" autocomplete="off" />
+            </label>
+            <label class="track-edit-field" for="track-edit-artist">
+              <span>Artista</span>
+              <input type="text" class="modal-text-input" id="track-edit-artist" placeholder="Nombre del artista" maxlength="200" autocomplete="off" />
+            </label>
+            <label class="track-edit-field" for="track-edit-album">
+              <span>Álbum</span>
+              <input type="text" class="modal-text-input" id="track-edit-album" placeholder="Nombre del álbum" maxlength="200" autocomplete="off" />
+            </label>
+            <button type="button" class="track-edit-more-toggle" id="track-edit-more-toggle" aria-expanded="false">
+              <i class="ph ph-caret-down"></i> Mostrar más
+            </button>
+            <div class="track-edit-more-fields" id="track-edit-more-fields" hidden>
+              <label class="track-edit-field" for="track-edit-year">
+                <span>Año</span>
+                <input type="text" class="modal-text-input" id="track-edit-year" placeholder="Año de publicación" maxlength="10" inputmode="numeric" autocomplete="off" />
+              </label>
+              <label class="track-edit-field" for="track-edit-track-number">
+                <span>Número de pista</span>
+                <input type="text" class="modal-text-input" id="track-edit-track-number" placeholder="Número de pista" maxlength="20" inputmode="numeric" autocomplete="off" />
+              </label>
+              <label class="track-edit-field" for="track-edit-disc-number">
+                <span>Número de disco</span>
+                <input type="text" class="modal-text-input" id="track-edit-disc-number" placeholder="Número de disco" maxlength="20" inputmode="numeric" autocomplete="off" />
+              </label>
+              <label class="track-edit-field" for="track-edit-genre">
+                <span>Género</span>
+                <input type="text" class="modal-text-input" id="track-edit-genre" placeholder="Género musical" maxlength="200" autocomplete="off" />
+              </label>
+            </div>
+            <label class="track-edit-field" for="track-edit-lyrics">
+              <span>Letra</span>
+              <textarea class="modal-textarea-input track-edit-lyrics" id="track-edit-lyrics" placeholder="Texto plano o formato LRC con [mm:ss.xx]" autocomplete="off"></textarea>
+            </label>
+          </div>
+        </div>
+        <p class="lyrics-search-status" id="track-edit-status" style="display: none;"></p>
+        <div class="modal-card-footer" style="justify-content: flex-end;">
+          <button class="btn-pill-save" id="track-edit-save">Guardar en archivo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIGURACIÓN OVERLAY -->
+    <div class="settings-overlay" id="settings-overlay">
+      <aside class="settings-sidebar">
+        <div class="settings-brand">
+          <button class="btn-back" id="btn-close-settings" title="Volver al reproductor">
+            <i class="ph ph-arrow-left"></i>
+          </button>
+          <h3>Configuración</h3>
+        </div>
+
+        <nav class="settings-nav">
+          <button class="settings-tab-btn active" data-tab="tab-directories">
+            <i class="ph ph-database"></i>
+            <span>Biblioteca & Datos</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-playback">
+            <i class="ph ph-sliders"></i>
+            <span>Reproducción</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-audio">
+            <i class="ph ph-speaker-high"></i>
+            <span>Audio y Calidad</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-appearance">
+            <i class="ph ph-palette"></i>
+            <span>Apariencia</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-behavior">
+            <i class="ph ph-gear-six"></i>
+            <span>Comportamiento</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-visual-plus">
+            <i class="ph ph-sparkle"></i>
+            <span>Visual+</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-shortcuts">
+            <i class="ph ph-keyboard"></i>
+            <span>Atajos de teclado</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-performance">
+            <i class="ph ph-chart-line-up"></i>
+            <span>Rendimiento</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-about">
+            <i class="ph ph-info"></i>
+            <span>Acerca de Resonance</span>
+          </button>
+        </nav>
+      </aside>
+
+      <div class="settings-view-container">
+        <section class="settings-tab-content active" id="tab-directories">
+          <div class="settings-header">
+            <h2>Biblioteca y Gestión de Datos</h2>
+            <p>Administra tus carpetas de música, la caché local, la ubicación de los archivos y las copias de seguridad de tus ajustes.</p>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div>
+                <div class="settings-card-title">Carpetas vinculadas</div>
+                <p>Haz clic en "Agregar carpeta" para abrir el explorador y seleccionar tu música.</p>
+              </div>
+              <button class="btn-primary" id="btn-add-directory">
+                <i class="ph ph-folder-plus"></i> Agregar carpeta
+              </button>
+            </div>
+            <div class="scan-progress settings-scan-progress" data-scan-progress hidden role="status" aria-live="polite">
+              <span class="scan-progress-label">Preparando el escaneo...</span>
+              <div class="scan-progress-track" role="progressbar" aria-label="Progreso del escaneo">
+                <span class="scan-progress-fill"></span>
+              </div>
+            </div>
+            <div class="directory-list" id="directories-list-container"></div>
+          </div>
+
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Escanear música al iniciar la aplicación</strong>
+                <p>Busca cambios en las carpetas vinculadas al abrir Resonance. Si se desactiva, se carga la biblioteca guardada en caché.</p>
+              </div>
+              <label class="switch" aria-label="Escanear música al iniciar la aplicación">
+                <input id="scan-music-on-startup" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Monitoreo de carpetas en tiempo real</strong>
+                <p>Actualiza la biblioteca cuando Windows detecta archivos de música añadidos o borrados en las carpetas vinculadas.</p>
+              </div>
+              <label class="switch" aria-label="Monitoreo de carpetas en tiempo real">
+                <input id="watch-music-directories" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Escanear solo canciones nuevas</strong>
+                <p>En los escaneos al iniciar y en tiempo real, lee los metadatos solo de canciones nuevas o modificadas. Desactívalo para volver a escanear toda la biblioteca.</p>
+              </div>
+              <label class="switch" aria-label="Escanear solo canciones nuevas">
+                <input id="scan-only-new-music" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+
+          
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div>
+                <div class="settings-card-title">Ubicación de datos y caché</div>
+                <p>Elige si guardar la caché, los metadatos, las portadas y los datos de la biblioteca en AppData del sistema o junto a la aplicación en modo portable.</p>
+              </div>
+              <select id="storage-location-select" class="settings-select" aria-label="Ubicación de datos y caché" disabled>
+                <option value="appdata">Estándar (AppData)</option>
+                <option value="portable">Portable (Junto a la aplicación)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <strong>Ruta actual</strong>
+              <div class="storage-location-actions">
+                <span class="badge-tech storage-location-path" id="current-storage-path">Consultando...</span>
+                <button class="btn-primary" id="btn-open-storage-folder" type="button" disabled>
+                  <i class="ph ph-folder-open"></i> Abrir carpeta
+                </button>
+              </div>
+            </div>
+            <p class="audio-setting-status" id="storage-location-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div>
+                <div class="settings-card-title">Copia de seguridad y configuración</div>
+                <p>Exporta o restaura tus preferencias, atajos y carpetas en un archivo .json de respaldo.</p>
+              </div>
+              <div class="settings-card-actions">
+                <button class="btn-primary" id="btn-export-settings-modal" type="button">
+                  <i class="ph ph-export"></i> Exportar configuración...
+                </button>
+                <button class="btn-primary" id="btn-import-settings-trigger" type="button">
+                  <i class="ph ph-file-arrow-down"></i> Importar configuración...
+                </button>
+              </div>
+            </div>
+            <p class="audio-setting-status" id="backup-settings-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Caché de biblioteca</div>
+              <p>Guarda el catálogo, metadatos e imágenes de portada para acelerar la carga de la biblioteca.</p>
+            </div>
+            <div class="settings-row library-cache-summary">
+              <strong>Tamaño en disco</strong>
+              <span class="badge-tech" id="library-cache-size">Calculando...</span>
+            </div>
+            <p class="audio-setting-status" id="library-cache-status" role="status" aria-live="polite"></p>
+            <div class="settings-card-actions">
+              <button class="btn-pill-save" id="btn-clear-library-cache" type="button">
+                <i class="ph ph-trash"></i> Limpiar caché
+              </button>
+              <button class="btn-primary" id="btn-refresh-library-metadata" type="button">
+                <i class="ph ph-arrows-clockwise"></i> Refrescar carátulas y metadatos
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Exportar playlists</div>
+              <p>Elige una o varias listas y descárgalas en formato M3U8 compatible con texto UTF-8.</p>
+            </div>
+            <div class="settings-card-actions">
+              <button class="btn-primary" id="btn-export-playlists" type="button">
+                <i class="ph ph-export"></i> Seleccionar playlists para exportar
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Formatos compatibles</div>
+            <div class="settings-row">
+              <div>
+                <strong>Archivos soportados</strong>
+                <p>Resonance detecta y reproduce los formatos más comunes de alta fidelidad.</p>
+              </div>
+              <span class="badge-tech">.MP3, .FLAC, .WAV, .M4A, .OGG</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-playback">
+          <div class="settings-header">
+            <h2>Reproducción</h2>
+            <p>Personaliza las preferencias de reproducción y fundidos de pista.</p>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">General</div>
+            <div class="settings-row">
+              <div>
+                <strong>Reproducción continua</strong>
+                <p>Pasa a la siguiente canción al terminar el tema actual.</p>
+              </div>
+              <label class="switch">
+                <input id="playback-continuous" type="checkbox" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-row">
+              <div>
+                <strong>Contar reproducción al alcanzar</strong>
+                <p>Porcentaje mínimo de la pista para sumar una reproducción (listas de más escuchados).</p>
+              </div>
+              <div class="audio-setting-control" style="min-width: 140px;">
+                <label class="setting-range-row" for="play-count-threshold" style="gap: 0.5rem;">
+                  <input type="range" id="play-count-threshold" min="85" max="100" step="1" value="90" aria-label="Umbral de reproducción" />
+                  <output id="play-count-threshold-value">90%</output>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Al cambiar de colección</div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mantener aleatorio</strong>
+                <p>Al iniciar otra playlist, carpeta, favoritos o biblioteca, la cola comenzará en orden aleatorio. Puedes desactivarlo desde el botón Aleatorio del reproductor.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch" aria-label="Mantener aleatorio al cambiar de colección">
+                  <input id="playback-keep-shuffle" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </span>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mantener repetición</strong>
+                <p>Repite la playlist, carpeta u otra cola completa al llegar al final. Puedes cambiar o desactivar la repetición desde el reproductor.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch" aria-label="Mantener repetición al cambiar de colección">
+                  <input id="playback-keep-repeat" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </span>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Botones de navegación</div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Ir directo a la canción anterior</strong>
+                <p>Si se activa, el botón Anterior pasa directamente a la canción anterior de la cola o del historial, sin reiniciar la canción actual aunque hayan pasado varios segundos.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch" aria-label="Ir directo a la canción anterior">
+                  <input id="behavior-prev-direct" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el botón anterior">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Con esta opción desactivada, si la canción lleva más de 3 segundos sonando, el botón Anterior reinicia la canción actual. Con esta opción activada, siempre salta a la canción anterior.</span>
+                </span>
+              </span>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mantener la pausa al cambiar de canción</strong>
+                <p>Si la canción actual está pausada, al pulsar Siguiente o Anterior la otra canción también quedará pausada.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch" aria-label="Mantener la pausa al cambiar de canción">
+                  <input id="behavior-next-while-paused" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el cambio manual de canción">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Esta opción solo afecta a los botones Siguiente y Anterior; el avance automático seguirá reproduciendo la siguiente canción.</span>
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Fundidos de pista</div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Fundido al iniciar</strong>
+                <p>Sube gradualmente el volumen al comenzar cada canción.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch">
+                  <input id="playback-fade-in-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el fundido al iniciar">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Controla cuánto tarda el volumen en subir al inicio de cada canción. No afecta el fundido cruzado entre canciones.</span>
+                </span>
+              </span>
+            </div>
+            <div class="setting-dependent" id="playback-fade-in-options" hidden>
+              <label class="setting-range-row" for="playback-fade-in-duration">
+                <span><strong>Duración del fundido de entrada</strong><output id="playback-fade-in-duration-value">2 s</output></span>
+                <input id="playback-fade-in-duration" type="range" min="1" max="5" step="1" value="2">
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Fundido al terminar</strong>
+                <p>Baja gradualmente el volumen al final de la canción.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch">
+                  <input id="playback-fade-out-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el fundido al terminar">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Controla cuánto tarda el volumen en bajar al final. Si hay un fundido cruzado activo hacia la siguiente canción, este tiene prioridad.</span>
+                </span>
+              </span>
+            </div>
+            <div class="setting-dependent" id="playback-fade-out-options" hidden>
+              <label class="setting-range-row" for="playback-fade-out-duration">
+                <span><strong>Duración del fundido de salida</strong><output id="playback-fade-out-duration-value">2 s</output></span>
+                <input id="playback-fade-out-duration" type="range" min="1" max="5" step="1" value="2">
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Fundido al pausar</strong>
+                <p>Baja y sube el volumen al pausar y reanudar. Independiente del fundido de inicio y fin de canción.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch">
+                  <input id="playback-pause-fade-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el fundido al pausar">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Al activarlo podés definir cuánto tarda el volumen en bajar al pausar y en subir al reanudar. No afecta el inicio ni el final de cada pista.</span>
+                </span>
+              </span>
+            </div>
+            <div id="playback-pause-fade-options" class="setting-dependent playback-pause-fade-options" hidden>
+              <label class="setting-range-row" for="playback-pause-fade-out-duration">
+                <span><strong>Duración al pausar</strong><output id="playback-pause-fade-out-duration-value">1 s</output></span>
+                <input id="playback-pause-fade-out-duration" type="range" min="0.5" max="5" step="0.5" value="1">
+              </label>
+              <label class="setting-range-row" for="playback-pause-fade-in-duration">
+                <span><strong>Duración al reanudar</strong><output id="playback-pause-fade-in-duration-value">1 s</output></span>
+                <input id="playback-pause-fade-in-duration" type="range" min="0.5" max="5" step="0.5" value="1">
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-audio">
+          <div class="settings-header">
+            <h2>Audio y Calidad</h2>
+            <p>Dispositivo de salida, ecualizador, normalización y fundido cruzado.</p>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Salida</div>
+            <div class="settings-row audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Dispositivo de salida</strong>
+                <p>Selecciona dónde reproducir el audio (WASAPI compartido).</p>
+              </div>
+              <div class="audio-setting-control">
+                <select id="audio-output-device" class="settings-select" aria-label="Dispositivo de salida">
+                  <option value="">Sistema predeterminado</option>
+                </select>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre el dispositivo de salida">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">La lista se obtiene del sistema. El modo es compartido para no bloquear otras aplicaciones.</span>
+                </span>
+              </div>
+            </div>
+            <p id="audio-device-status" class="audio-setting-status" role="status" aria-live="polite">Se usa el dispositivo de salida predeterminado del sistema.</p>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Ecualizador de 20 bandas</div>
+            <p class="settings-card-lead">Procesado en el motor nativo de Rust (sin sesión extra en el mezclador de Windows). Rango ±15 dB.</p>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Activar ecualizador</strong>
+                <p>Se aplica en la cadena de audio nativa mientras suena la música.</p>
+              </div>
+              <label class="switch">
+                <input id="audio-equalizer-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-dependent" id="equalizer-dependent-options" hidden>
+              <div class="equalizer-preset-row">
+                <label class="equalizer-preset-label" for="audio-equalizer-preset">
+                  <strong>Preajuste</strong>
+                </label>
+                <select id="audio-equalizer-preset" class="settings-select" aria-label="Preajuste del ecualizador"></select>
+                <button type="button" class="eq-preset-btn" id="audio-equalizer-preset-add" title="Crear perfil a partir del actual">
+                  <i class="ph ph-plus"></i>
+                </button>
+                <button type="button" class="eq-preset-btn" id="audio-equalizer-preset-rename" title="Renombrar perfil personalizado">
+                  <i class="ph ph-pencil-simple"></i>
+                </button>
+                <button type="button" class="eq-preset-btn eq-preset-btn-danger" id="audio-equalizer-preset-delete" title="Eliminar perfil personalizado" hidden>
+                  <i class="ph ph-trash"></i>
+                </button>
+              </div>
+              <div class="equalizer-graphic is-disabled" id="audio-equalizer-controls" aria-label="Bandas del ecualizador"></div>
+              <p class="equalizer-preamp-hint" id="audio-equalizer-hint" hidden></p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Normalización</div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>ReplayGain</strong>
+                <p>Iguala el volumen de canciones que incluyen etiquetas ReplayGain.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch">
+                  <input id="audio-replaygain-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre ReplayGain">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">ReplayGain usa una corrección guardada en los metadatos del archivo. No modifica el audio y solo funciona con archivos que incluyan esa etiqueta.</span>
+                </span>
+              </span>
+            </div>
+            <div class="setting-dependent" id="replaygain-dependent-options" hidden>
+              <div class="replaygain-scan-controls">
+                <div class="replaygain-scan-action">
+                  <p>Completa las etiquetas de ganancia que falten en tu biblioteca.</p>
+                  <button class="replaygain-scan-button" id="btn-scan-missing-replaygain" type="button">
+                  <i class="ph ph-waveform"></i> Calcular ReplayGain faltante
+                  </button>
+                </div>
+                <div class="scan-progress settings-scan-progress" id="rg-scan-progress" hidden role="status" aria-live="polite">
+                  <span class="scan-progress-label" id="rg-scan-status">Preparando análisis...</span>
+                  <div class="scan-progress-track" id="rg-scan-progress-track" role="progressbar" aria-label="Progreso de ReplayGain" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <span class="scan-progress-fill" id="rg-scan-progress-fill"></span>
+                  </div>
+                  <button class="btn-secondary replaygain-scan-cancel" id="btn-cancel-replaygain-scan" type="button">
+                    Cancelar
+                  </button>
+                </div>
+                <p class="audio-setting-status" id="rg-scan-notice" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">Fundido cruzado</div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Fundido cruzado entre canciones</strong>
+                <p>Superpone brevemente el final de una canción con el comienzo de la siguiente.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch">
+                  <input id="audio-crossfade-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre fundido cruzado">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Durante el cruce se reproducen dos canciones al mismo tiempo. Esto mejora la continuidad, pero puede cortar intros o finales silenciosos.</span>
+                </span>
+              </span>
+            </div>
+            <div class="setting-dependent" id="crossfade-dependent-options" hidden>
+              <div class="audio-setting-row" id="crossfade-natural-only-setting">
+                <div class="audio-setting-description">
+                  <strong>Solo en el cambio automático</strong>
+                  <p>Aplica el fundido cuando una canción termina y comienza la siguiente; al pulsar Siguiente, el cambio será inmediato.</p>
+                </div>
+                <label class="switch" aria-label="Usar fundido cruzado solo en cambios automáticos">
+                  <input id="audio-crossfade-natural-only" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <label class="setting-range-row" for="audio-crossfade-duration">
+                <span><strong>Duración del fundido cruzado</strong><output id="audio-crossfade-duration-value">4 s</output></span>
+                <input id="audio-crossfade-duration" type="range" min="1" max="12" step="1" value="4">
+              </label>
+              <div class="audio-setting-row" id="crossfade-indicator-setting">
+                <div class="audio-setting-description">
+                  <strong>Indicador de fundido cruzado</strong>
+                  <p>Muestra un ícono animado al final del progreso mientras dos canciones se mezclan.</p>
+                </div>
+                <label class="switch" id="crossfade-indicator-switch" aria-label="Mostrar indicador de fundido cruzado">
+                  <input id="audio-crossfade-indicator-enabled" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-appearance">
+          <div class="settings-header">
+            <h2>Apariencia</h2>
+            <p>Personaliza la escala, el comportamiento adaptable, los colores y la forma en que se muestran las letras.</p>
+          </div>
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Ubicar logo y nombre en la barra superior</strong>
+                <p>Activa esta opción para mover la identidad de Resonance junto a los controles de la ventana.</p>
+              </div>
+              <label class="switch" aria-label="Ubicar logo y nombre en la barra superior">
+                <input id="show-sidebar-brand" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar número de canción en listas</strong>
+                <p>Muestra el índice a la izquierda de la carátula en listas de música, playlists, carpetas, cola y búsqueda. No afecta álbumes ordenados por número de pista.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar número de canción en listas">
+                <input id="show-list-track-numbers" type="checkbox" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Escala de la interfaz</div>
+              <p>Ajusta el tamaño general de textos, controles y espacios.</p>
+            </div>
+            <label class="interface-setting-row" for="interface-scale">
+              <strong>Tamaño de la interfaz</strong>
+              <select id="interface-scale" class="settings-select" aria-label="Escala de la interfaz">
+                <option value="75">75 %</option>
+                <option value="85">85 %</option>
+                <option value="100">100 %</option>
+                <option value="110">110 %</option>
+                <option value="125">125 %</option>
+              </select>
+            </label>
+            <div class="interface-setting-row interface-fit-row">
+              <div>
+                <strong>Al reducir la ventana</strong>
+                <p>Elige cómo ajustar el diseño cuando hay menos espacio.</p>
+              </div>
+              <div class="setting-alignment-options" id="interface-fit-options" role="group" aria-label="Comportamiento al reducir la ventana">
+                <button type="button" data-fit-mode="adapt" aria-pressed="true">Adaptar</button>
+                <button type="button" data-fit-mode="shrink" aria-pressed="false">Compactar</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Bloquear ajuste de las barras</strong>
+                <p>Impide arrastrar los separadores de la barra izquierda, la cola y el reproductor inferior.</p>
+              </div>
+              <label class="switch" aria-label="Bloquear ajuste de las barras">
+                <input id="lock-panel-resizing" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Bloquear ajuste de columnas en música</strong>
+                <p>Impide cambiar el ancho de las columnas (título, álbum, fecha, etc.) en las listas de canciones. Desactivá esta opción para arrastrar los bordes de las columnas.</p>
+              </div>
+              <label class="switch" aria-label="Bloquear ajuste de columnas en música">
+                <input id="lock-music-columns" type="checkbox" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Barra inferior</div>
+              <p>Personaliza los controles adicionales del reproductor.</p>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Ocultar la cola de reproducción</strong>
+                <p>Oculta el botón de cola del reproductor y el panel derecho. La reproducción y la cola siguen funcionando en segundo plano.</p>
+              </div>
+              <label class="switch" aria-label="Ocultar cola de reproducción">
+                <input id="hide-queue-ui" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar calidad del audio</strong>
+                <p>Muestra una etiqueta sencilla debajo del artista en el reproductor.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar calidad del audio">
+                <input id="show-player-audio-quality" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar origen de reproducción</strong>
+                <p>Muestra en el lado derecho de la barra inferior el nombre de la playlist, carpeta, álbum u origen actual.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar origen de reproducción">
+                <input id="show-player-source" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar temporizador de apagado</strong>
+                <p>Muestra el botón de temporizador en los controles del reproductor.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar temporizador de apagado">
+                <input id="show-player-sleep-timer" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar velocidad de reproducción</strong>
+                <p>Muestra los controles para ajustar la velocidad y conservar el tono.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar velocidad de reproducción">
+                <input id="show-player-speed-control" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar barra de tono</strong>
+                <p>Muestra el control para subir o bajar el tono desde el menú de velocidad.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar barra de tono">
+                <input id="show-player-pitch-control" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Usar “Favoritos” en lugar de “Tus me gusta”</strong>
+                <p>Cambia el nombre visible de la colección y las acciones relacionadas, sin modificar el icono del corazón.</p>
+              </div>
+              <label class="switch" aria-label="Usar Favoritos en lugar de Tus me gusta">
+                <input id="rename-favorites-label" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="interface-setting-row" for="player-right-controls-size">
+              <strong>Tamaño de botones derechos</strong>
+              <select id="player-right-controls-size" class="settings-select" aria-label="Tamaño de botones derechos">
+                <option value="small">Pequeño</option>
+                <option value="normal">Normal</option>
+                <option value="large">Grande</option>
+              </select>
+            </label>
+            <label class="interface-setting-row" for="player-volume-length">
+              <strong>Longitud de la barra de volumen</strong>
+              <select id="player-volume-length" class="settings-select" aria-label="Longitud de la barra de volumen">
+                <option value="small">Pequeño</option>
+                <option value="medium">Medio</option>
+              </select>
+            </label>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar porcentaje de volumen</strong>
+                <p>Muestra el nivel junto a la barra y desactiva el aviso emergente al pasar el cursor.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar porcentaje de volumen">
+                <input id="show-volume-percentage" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Tema de color</div>
+              <p>Elige una paleta oscura para toda la aplicación.</p>
+            </div>
+            <div class="theme-options" id="theme-options" role="group" aria-label="Tema de color">
+              <button class="theme-option" type="button" data-theme="purple" aria-pressed="true">
+                <span class="theme-swatch theme-swatch-purple"></span>
+                <span><strong>Morado clásico</strong><small>Morado con acentos rosados y dorados</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+              <button class="theme-option" type="button" data-theme="purple-aurora" aria-pressed="false">
+                <span class="theme-swatch theme-swatch-purple-aurora"></span>
+                <span><strong>Negro</strong><small>Oscuro estilo Spotify, sin acentos de color</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+              <button class="theme-option" type="button" data-theme="blue" aria-pressed="false">
+                <span class="theme-swatch theme-swatch-blue"></span>
+                <span><strong>Azul noche</strong><small>Azul con reflejos cian y lavanda</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+              <button class="theme-option" type="button" data-theme="blue-boreal" aria-pressed="false">
+                <span class="theme-swatch theme-swatch-blue-boreal"></span>
+                <span><strong>Blanco azulado</strong><small>Fondos claros con acento #14397d</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+              <button class="theme-option" type="button" data-theme="teal" aria-pressed="false">
+                <span class="theme-swatch theme-swatch-teal"></span>
+                <span><strong>Negro boreal</strong><small>Negro grafito con acentos azul hielo y cian</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+              <button class="theme-option" type="button" data-theme="teal-jade" aria-pressed="false">
+                <span class="theme-swatch theme-swatch-teal-jade"></span>
+                <span><strong>Negro cobre</strong><small>Negro cálido con detalles cobre y ámbar</small></span>
+                <i class="ph ph-check-circle"></i>
+              </button>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Acentos vibrantes y contraste enriquecido</strong>
+                <p>Añade variedad de color y mayor separación visual en filas activas, badges de audio y elementos destacados manteniendo la identidad de cada tema.</p>
+              </div>
+              <label class="switch" aria-label="Acentos vibrantes y contraste enriquecido">
+                <input id="vibrant-accents-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Barra de progreso</div>
+              <p>Elige cómo visualizar y controlar el avance de la canción.</p>
+            </div>
+            <div class="progress-style-options" id="progress-style-options" role="group" aria-label="Estilo de barra de progreso">
+              <button class="progress-style-option" type="button" data-progress-style="solid" aria-pressed="true">
+                <span class="progress-style-preview progress-style-preview-solid" aria-hidden="true"><span></span></span>
+                <strong>Clásica</strong>
+              </button>
+              <button class="progress-style-option" type="button" data-progress-style="waveform" aria-pressed="false">
+                <span class="progress-style-preview progress-style-preview-waveform" aria-hidden="true"></span>
+                <strong>Waveform</strong>
+              </button>
+            </div>
+            <label class="waveform-times-option progress-at-top-option" for="progress-at-top">
+              <input id="progress-at-top" type="checkbox">
+              <span>Mostrar una línea recta de progreso en el borde superior del reproductor, en vez de la onda</span>
+            </label>
+            <div class="waveform-settings" id="waveform-settings">
+              <div class="setting-alignment-row">
+                <strong>Forma de onda</strong>
+                <div class="setting-alignment-options" id="waveform-mode-options" role="group" aria-label="Forma de la onda">
+                  <button type="button" data-waveform-mode="bars" aria-pressed="true">Barras</button>
+                  <button type="button" data-waveform-mode="smooth" aria-pressed="false">Continua</button>
+                </div>
+              </div>
+              <label class="waveform-times-option" for="waveform-times-below">
+                <input id="waveform-times-below" type="checkbox">
+                <span>Mostrar el tiempo transcurrido y restante debajo de la onda</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="settings-card" id="now-playing-fs-settings-card">
+            <div>
+              <div class="settings-card-title">Pantalla completa</div>
+              <p>Personaliza la vista de pantalla completa del reproductor (carátula, controles y letras).</p>
+            </div>
+            <label class="setting-row-select" for="np-fs-cover-size">
+              <span><strong>Tamaño de carátula y controles</strong></span>
+              <select id="np-fs-cover-size" class="settings-select" aria-label="Tamaño de carátula y controles en pantalla completa">
+                <option value="medium" selected>Mediano</option>
+                <option value="large">Grande</option>
+              </select>
+            </label>
+            <div class="audio-setting-row np-fs-volume-setting-row">
+              <div class="audio-setting-description">
+                <strong>Barra de volumen</strong>
+                <p>Mostrar una barra de volumen en pantalla completa. En automático se ubica según la posición de la carátula.</p>
+              </div>
+              <select id="np-fs-volume-bar" class="settings-select" aria-label="Barra de volumen en pantalla completa">
+                <option value="off" selected>Desactivada</option>
+                <option value="auto">Automática</option>
+                <option value="left">Vertical izquierda</option>
+                <option value="right">Vertical derecha</option>
+                <option value="bottom">Horizontal debajo de controles</option>
+              </select>
+            </div>
+
+            
+            <div class="audio-setting-row np-fs-vinyl-setting-row" id="np-fs-vinyl-setting-row">
+              <div class="audio-setting-description">
+                <strong>Efecto vinilo en carátula</strong>
+                <p>Muestra un disco de vinilo girando detrás de la carátula en pantalla completa.</p>
+                <p class="np-fs-vinyl-conflict-hint" id="np-fs-vinyl-conflict-hint" hidden>No disponible mientras la barra de volumen esté a la derecha.</p>
+              </div>
+              <label class="switch" aria-label="Efecto vinilo en pantalla completa">
+                <input id="np-fs-vinyl-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+<div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Sincronizar opciones de letras con el menú de letras</strong>
+                <p>Si está activo, la pantalla completa usa los mismos tamaños, tipografía y estilo que las letras del menú completo (sincronizadas y normales).</p>
+              </div>
+              <label class="switch" aria-label="Sincronizar opciones de letras con el menú de letras">
+                <input id="np-fs-sync-lyrics" type="checkbox" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div id="np-fs-lyrics-custom-settings" class="np-fs-lyrics-custom-settings" hidden>
+              <div class="settings-divider"></div>
+              <p class="settings-inline-note">Personalización solo para pantalla completa (letras sincronizadas y normales).</p>
+              <label class="setting-range-row" for="np-fs-active-size">
+                <span><strong>Tamaño del renglón activo</strong><output id="np-fs-active-size-value"></output></span>
+                <input id="np-fs-active-size" type="range" min="24" max="72" step="1" value="42">
+              </label>
+              <label class="setting-range-row" for="np-fs-inactive-size">
+                <span><strong>Tamaño de los otros renglones</strong><output id="np-fs-inactive-size-value"></output></span>
+                <input id="np-fs-inactive-size" type="range" min="16" max="52" step="1" value="30">
+              </label>
+              <label class="setting-range-row" for="np-fs-line-gap">
+                <span><strong>Distancia entre renglones</strong><output id="np-fs-line-gap-value"></output></span>
+                <input id="np-fs-line-gap" type="range" min="8" max="72" step="1" value="28">
+              </label>
+              <label class="setting-range-row" for="np-fs-letter-spacing">
+                <span><strong>Distancia entre letras</strong><output id="np-fs-letter-spacing-value"></output></span>
+                <input id="np-fs-letter-spacing" type="range" min="0" max="8" step="1" value="0">
+              </label>
+              <label class="setting-row-select" for="np-fs-font-family">
+                <span><strong>Tipografía</strong></span>
+                <select id="np-fs-font-family" class="settings-select" aria-label="Fuente de letras en pantalla completa">
+                  <option value="jakarta">Plus Jakarta Sans</option>
+                  <option value="arial">Arial</option>
+                  <option value="trebuchet">Trebuchet MS</option>
+                  <option value="georgia">Georgia</option>
+                  <option value="verdana">Verdana</option>
+                  <option value="courier">Courier New</option>
+                </select>
+              </label>
+              <div class="audio-setting-row">
+                <div class="audio-setting-description">
+                  <strong>Cursiva</strong>
+                  <p>Muestra las letras en estilo itálico.</p>
+                </div>
+                <label class="switch" aria-label="Cursiva en letras de pantalla completa">
+                  <input id="np-fs-italic" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="setting-alignment-row">
+                <strong>Alineación del texto</strong>
+                <p class="settings-inline-note">Alinea el texto según el lado donde estén las letras; no cambia de columna la vista.</p>
+                <div class="setting-alignment-options" id="np-fs-alignment" role="group" aria-label="Alineación de letras en pantalla completa">
+                  <button type="button" data-alignment="left" aria-pressed="false">Izquierda</button>
+                  <button type="button" data-alignment="center" aria-pressed="true">Centro</button>
+                  <button type="button" data-alignment="right" aria-pressed="false">Derecha</button>
+                </div>
+              </div>
+            </div>
+          </div>
+<div class="settings-card lyrics-settings-card">
+            <div>
+              <div class="settings-card-title">Traducción de letras</div>
+              <p>Traduce letras sincronizadas y guarda las traducciones en este dispositivo para volver a usarlas sin conexión.</p>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Habilitar traducción de letras</strong>
+                <p>Muestra los controles para alternar entre la letra original y su traducción.</p>
+              </div>
+              <label class="switch" aria-label="Habilitar traducción de letras">
+                <input id="lyrics-translation-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="setting-range-row lyrics-language-row" for="lyrics-translation-language">
+              <span><strong>Idioma de traducción</strong></span>
+              <select id="lyrics-translation-language" class="settings-select" aria-label="Idioma de traducción">
+                <option value="es">Español</option>
+                <option value="en">Inglés</option>
+                <option value="pt">Portugués</option>
+                <option value="fr">Francés</option>
+                <option value="de">Alemán</option>
+                <option value="it">Italiano</option>
+              </select>
+            </label>
+          </div>
+          <div class="settings-card lyrics-settings-card">
+            <div>
+              <div class="settings-card-title">Fuente de las letras</div>
+              <p>Elige una fuente para las letras sincronizadas y normales.</p>
+            </div>
+            <label class="setting-range-row" for="lyrics-font-family">
+              <span><strong>Tipografía</strong></span>
+              <select id="lyrics-font-family" class="settings-select" aria-label="Fuente de las letras">
+                <option value="jakarta">Plus Jakarta Sans</option>
+                <option value="arial">Arial</option>
+                <option value="trebuchet">Trebuchet MS</option>
+                <option value="georgia">Georgia</option>
+                <option value="verdana">Verdana</option>
+                <option value="courier">Courier New</option>
+              </select>
+            </label>
+          </div>
+          <div class="settings-card lyrics-settings-card">
+            <div>
+              <div class="settings-card-title">Letras sincronizadas</div>
+              <p>Personaliza el renglón activo y el ritmo visual de las letras que siguen la canción.</p>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Texto en cursiva</strong>
+                <p>Muestra las letras sincronizadas y normales en cursiva.</p>
+              </div>
+              <label class="switch" aria-label="Texto de letras en cursiva">
+                <input id="lyrics-italic-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Ocultar botones en menú de letras</strong>
+                <p>Tras un tiempo sin mover el mouse, oculta suavemente los botones y textos del menú de letras, dejando solo carátula, info de la canción y barra de progreso.</p>
+              </div>
+              <label class="switch" aria-label="Ocultar botones en menú de letras">
+                <input id="lyrics-hide-chrome-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="setting-range-row lyrics-hide-chrome-timeout-row" for="lyrics-hide-chrome-timeout" id="lyrics-hide-chrome-timeout-row" class="setting-dependent">
+              <span><strong>Ocultar botones después de</strong></span>
+              <select id="lyrics-hide-chrome-timeout" class="settings-select" aria-label="Tiempo antes de ocultar botones en letras">
+                <option value="5">5 segundos</option>
+                <option value="10">10 segundos</option>
+                <option value="15">15 segundos</option>
+              </select>
+            </label>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Cerrar letras si la canción no tiene</strong>
+                <p>Cierra automáticamente la pantalla de letras al cambiar a una canción sin letra.</p>
+              </div>
+              <label class="switch" aria-label="Cerrar letras automáticamente si la canción no tiene letra">
+                <input id="lyrics-auto-close-empty-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-alignment-row">
+              <strong>Alineación del texto</strong>
+              <div class="setting-alignment-options" id="lyrics-sync-alignment" role="group" aria-label="Alineación de letras sincronizadas">
+                <button type="button" data-alignment="left" aria-pressed="false">Izquierda</button>
+                <button type="button" data-alignment="center" aria-pressed="true">Centro</button>
+                <button type="button" data-alignment="right" aria-pressed="false">Derecha</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Animación de renglón activo</strong>
+                <p>Rellena el renglón activo durante el tiempo que permanece sincronizado.</p>
+              </div>
+              <label class="switch" aria-label="Animación de renglón activo">
+                <input id="lyrics-active-row-animation-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="setting-range-row lyrics-fill-direction-settings" id="lyrics-fill-direction-settings" for="lyrics-active-row-fill-direction" hidden>
+              <span><strong>Dirección de llenado</strong></span>
+              <select id="lyrics-active-row-fill-direction" class="settings-select" aria-label="Dirección de llenado">
+                <option value="horizontal">Horizontal (izquierda a derecha)</option>
+                <option value="vertical">Vertical (arriba hacia abajo)</option>
+                <option value="letters">Letra por letra</option>
+                <option value="words">Palabra por palabra</option>
+              </select>
+            </label>
+            <div class="audio-setting-row lyrics-word-timing-setting" id="lyrics-word-timing-setting" hidden>
+              <div class="audio-setting-description">
+                <strong>Usar sincronización por palabra de la metadata</strong>
+                <p>Cuando la letra incluya tiempos por palabra, anima cada palabra según su sincronización en vez de usar la dirección seleccionada.</p>
+              </div>
+              <label class="switch" aria-label="Usar sincronización por palabra de la metadata">
+                <input id="lyrics-word-timing-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="setting-range-row" for="lyrics-sync-motion">
+              <span><strong>Movimiento del renglón activo</strong></span>
+              <select id="lyrics-sync-motion" class="settings-select" aria-label="Movimiento del renglón activo">
+                <option value="scale">Zoom suave</option>
+                <option value="slide">Deslizamiento lateral</option>
+                <option value="continuous-slide">Deslizamiento constante</option>
+                <option value="none">Sin movimiento</option>
+              </select>
+            </label>
+            <label class="setting-range-row" for="lyrics-sync-transition">
+              <span><strong>Suavidad entre renglones</strong></span>
+              <select id="lyrics-sync-transition" class="settings-select" aria-label="Suavidad de transición entre renglones">
+                <option value="very-smooth">Muy suave</option>
+                <option value="intermediate">Intermedio</option>
+                <option value="fast">Rápido</option>
+              </select>
+            </label>
+            <label class="setting-range-row" for="lyrics-active-size">
+              <span><strong>Tamaño del renglón activo</strong><output id="lyrics-active-size-value"></output></span>
+              <input id="lyrics-active-size" type="range" min="24" max="64" step="1" value="38">
+            </label>
+            <label class="setting-range-row" for="lyrics-inactive-size">
+              <span><strong>Tamaño de los otros renglones</strong><output id="lyrics-inactive-size-value"></output></span>
+              <input id="lyrics-inactive-size" type="range" min="16" max="48" step="1" value="31">
+            </label>
+            <label class="setting-range-row" for="lyrics-line-gap">
+              <span><strong>Distancia entre renglones</strong><output id="lyrics-line-gap-value"></output></span>
+              <input id="lyrics-line-gap" type="range" min="8" max="64" step="1" value="26">
+            </label>
+            <label class="setting-range-row" for="lyrics-sync-letter-spacing">
+              <span><strong>Distancia entre letras</strong><output id="lyrics-sync-letter-spacing-value"></output></span>
+              <input id="lyrics-sync-letter-spacing" type="range" min="-1" max="8" step="0.1" value="0">
+            </label>
+          </div>
+          <div class="settings-card lyrics-settings-card">
+            <div>
+              <div class="settings-card-title">Letras normales</div>
+              <p>Estos ajustes se aplican a letras sin sincronización con la canción.</p>
+            </div>
+            <label class="setting-range-row" for="lyrics-plain-size">
+              <span><strong>Tamaño del texto</strong><output id="lyrics-plain-size-value"></output></span>
+              <input id="lyrics-plain-size" type="range" min="14" max="40" step="1" value="21">
+            </label>
+            <label class="setting-range-row" for="lyrics-plain-line-height">
+              <span><strong>Distancia entre renglones</strong><output id="lyrics-plain-line-height-value"></output></span>
+              <input id="lyrics-plain-line-height" type="range" min="12" max="36" step="1" value="28">
+            </label>
+            <label class="setting-range-row" for="lyrics-plain-letter-spacing">
+              <span><strong>Distancia entre letras</strong><output id="lyrics-plain-letter-spacing-value"></output></span>
+              <input id="lyrics-plain-letter-spacing" type="range" min="-1" max="8" step="0.1" value="0">
+            </label>
+            <div class="settings-card-actions">
+              <button class="btn-primary btn-settings-reset" id="btn-reset-lyrics-settings" type="button">
+                <i class="ph ph-arrow-counter-clockwise"></i> Restablecer letras
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-behavior">
+          <div class="settings-header">
+            <h2>Comportamiento</h2>
+            <p>Configura la vista inicial y el comportamiento general de la aplicación.</p>
+          </div>
+          <div class="settings-card discord-rpc-setting-card">
+            <div class="settings-card-header">
+              <div>
+                <div class="settings-card-title">Discord Rich Presence</div>
+                <p>Muestra en tu perfil de Discord la canción en reproducción, el artista y la barra de tiempo.</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="toggle-discord-rpc">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <label class="interface-setting-row discord-rpc-artwork-setting setting-dependent" id="discord-rpc-artwork-setting" hidden>
+              <div>
+                <strong>Imagen de la canción en Discord</strong>
+                <p>La opción local sube la portada a Catbox para alojarla; su URL se guarda en la caché de Resonance.</p>
+              </div>
+              <select class="settings-select" id="discord-rpc-artwork-mode">
+                <option value="artwork">Carátula de la canción</option>
+                <option value="local">Carátula local del archivo (alojada/subida)</option>
+                <option value="default">Icono predeterminado</option>
+              </select>
+            </label>
+            <p class="discord-rpc-setting-status" id="discord-rpc-setting-status" role="status"></p>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Inicio de la aplicación</div>
+              <p>Elige qué vista se abre al iniciar Resonance.</p>
+            </div>
+            <label class="interface-setting-row" for="startup-view">
+              <strong>Vista inicial</strong>
+              <select id="startup-view" class="settings-select" aria-label="Vista inicial de la aplicación">
+                <option value="home">Inicio</option>
+                <option value="all-music">Música</option>
+              </select>
+            </label>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Restaurar canción y cola al iniciar</strong>
+                <p>Al volver a abrir Resonance, restaura la canción, su posición y la cola. Desactívalo para iniciar sin reproducción ni canciones en cola.</p>
+              </div>
+              <label class="switch" aria-label="Restaurar canción y cola al iniciar">
+                <input id="restore-playback-session" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Comportamiento de búsqueda</div>
+              <p>Define qué ocurre al elegir una canción en el menú completo de búsqueda (sección Canciones). La búsqueda rápida del recuadro superior siempre reemplaza solo la canción actual.</p>
+            </div>
+            <label class="interface-setting-row" for="search-play-behavior">
+              <strong>Al elegir una canción</strong>
+              <select id="search-play-behavior" class="settings-select" aria-label="Comportamiento de búsqueda">
+                <option value="replace_current">Reemplazar canción actual</option>
+                <option value="replace_queue">Reemplazar cola entera</option>
+              </select>
+            </label>
+          </div>
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Recordar “Ordenar por”</strong>
+                <p>Guarda el criterio de orden elegido. También conserva el modo Personalizado.</p>
+              </div>
+              <span class="audio-setting-control">
+                <select id="behavior-sort-persist-mode" class="settings-select" aria-label="Recordar ordenar por">
+                  <option value="none">No guardar</option>
+                  <option value="global">Global (mismo para todo)</option>
+                  <option value="per_view">Individual por vista</option>
+                  <option value="per_item">Individual por playlist y carpeta</option>
+                </select>
+                <span class="setting-help" tabindex="0" aria-label="Ayuda sobre recordar el orden">
+                  <i class="ph ph-question"></i>
+                  <span class="setting-tooltip">Por vista separa Música, Favoritos, el listado de playlists y carpetas. La opción por playlist y carpeta recuerda además el orden de cada una por separado. Artistas y álbumes comparten su criterio entre todos los artistas o álbumes, respectivamente.</span>
+                </span>
+              </span>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div>
+              <div class="settings-card-title">Bandeja del sistema</div>
+              <p>Mantiene Resonance activo en segundo plano y permite controlarlo desde el icono de la bandeja.</p>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Minimizar a la bandeja del sistema al cerrar o minimizar</strong>
+                <p>Oculta la ventana en lugar de cerrar la aplicación o minimizarla a la barra de tareas.</p>
+              </div>
+              <label class="switch" aria-label="Minimizar a la bandeja del sistema al cerrar o minimizar">
+                <input id="minimize-to-tray" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-visual-plus">
+          <div class="settings-header">
+            <h2>Visual+</h2>
+            <p>Añade efectos visuales temáticos a la pantalla de letras.</p>
+          </div>
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div>
+                <div class="settings-card-title">Activar Visual+</div>
+                <p>Añade efectos visuales y fondos dinámicos temáticos al reproductor</p>
+              </div>
+              <label class="switch" aria-label="Activar Visual+">
+                <input type="checkbox" id="toggle-visual-plus">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <label class="interface-setting-row" for="visual-plus-theme">
+              <strong>Efecto visual</strong>
+              <select id="visual-plus-theme" class="settings-select" aria-label="Efecto visual">
+                <option value="shooting_stars">Estrellas fugaces</option>
+                <option value="reactive_particles">Partículas Reactivas</option>
+                <option value="atmospheric">Atmosférico</option>
+                <option value="liquid_gradient">Fondo líquido</option>
+              </select>
+            </label>
+            <div class="visual-plus-options setting-dependent" id="visual-plus-options">
+              <div class="audio-setting-row">
+                <div class="audio-setting-description">
+                  <strong>Animación de renglón activo</strong>
+                  <p>Rellena el renglón activo durante el tiempo que permanece sincronizado. Este ajuste también se aplica en Apariencia.</p>
+                </div>
+                <label class="switch" aria-label="Animación de renglón activo en Visual Plus">
+                  <input id="visual-plus-active-row-animation-enabled" type="checkbox">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+                <div class="audio-setting-description">
+                  <strong>Letras sofisticadas</strong>
+                  <p>Añade un rebote suave y un efecto de iluminación al relleno de letras sincronizadas.</p>
+                </div>
+                <label class="switch" aria-label="Letras sofisticadas">
+                  <input id="visual-plus-sophisticated-lyrics" type="checkbox">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <label class="interface-setting-row" id="visual-plus-lyrics-fill-direction-settings" for="visual-plus-lyrics-fill-direction" hidden>
+                <strong>Dirección de llenado de letras</strong>
+                <select id="visual-plus-lyrics-fill-direction" class="settings-select" aria-label="Dirección de llenado de letras">
+                  <option value="horizontal">Horizontal (izquierda a derecha)</option>
+                  <option value="vertical">Vertical (arriba hacia abajo)</option>
+                  <option value="letters">Letra por letra</option>
+                  <option value="words">Palabra por palabra</option>
+                </select>
+              </label>
+              <div class="visual-plus-effect-options" id="visual-plus-stars-settings">
+                <label class="visual-plus-range-row" for="visual-plus-star-count">
+                  <span><strong>Estrellas de fondo</strong><output id="visual-plus-star-count-value">120</output></span>
+                  <input id="visual-plus-star-count" type="range" min="20" max="200" step="10" value="120">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-star-brightness">
+                  <span><strong>Brillo máximo de las estrellas</strong><output id="visual-plus-star-brightness-value">100%</output></span>
+                  <input id="visual-plus-star-brightness" type="range" min="10" max="100" step="5" value="100">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-shooting-count">
+                  <span><strong>Estrellas fugaces simultáneas</strong><output id="visual-plus-shooting-count-value">2</output></span>
+                  <input id="visual-plus-shooting-count" type="range" min="1" max="8" step="1" value="2">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-shooting-interval">
+                  <span><strong>Frecuencia de estrellas fugaces</strong><output id="visual-plus-shooting-interval-value">4 s</output></span>
+                  <input id="visual-plus-shooting-interval" type="range" min="1" max="10" step="1" value="4">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-shooting-speed">
+                  <span><strong>Velocidad de estrellas fugaces</strong><output id="visual-plus-shooting-speed-value">100%</output></span>
+                  <input id="visual-plus-shooting-speed" type="range" min="50" max="200" step="10" value="100">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-trail-length">
+                  <span><strong>Longitud de la estela</strong><output id="visual-plus-trail-length-value">170 px</output></span>
+                  <input id="visual-plus-trail-length" type="range" min="80" max="260" step="10" value="170">
+                </label>
+              </div>
+              <div class="visual-plus-effect-options" id="visual-plus-particles-settings" hidden>
+                <label class="visual-plus-range-row" for="visual-plus-particle-count">
+                  <span><strong>Cantidad de partículas</strong><output id="visual-plus-particle-count-value">60</output></span>
+                  <input id="visual-plus-particle-count" type="range" min="20" max="150" step="10" value="60">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-particle-speed">
+                  <span><strong>Velocidad base</strong><output id="visual-plus-particle-speed-value">30 px/s</output></span>
+                  <input id="visual-plus-particle-speed" type="range" min="10" max="80" step="5" value="30">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-particle-intensity">
+                  <span><strong>Reacción al audio</strong><output id="visual-plus-particle-intensity-value">2</output></span>
+                  <input id="visual-plus-particle-intensity" type="range" min="0" max="3" step="0.1" value="2">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-particle-min-size">
+                  <span><strong>Tamaño mínimo</strong><output id="visual-plus-particle-min-size-value">2 px</output></span>
+                  <input id="visual-plus-particle-min-size" type="range" min="1" max="8" step="1" value="2">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-particle-max-size">
+                  <span><strong>Tamaño máximo</strong><output id="visual-plus-particle-max-size-value">6 px</output></span>
+                  <input id="visual-plus-particle-max-size" type="range" min="1" max="12" step="1" value="6">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-particle-opacity">
+                  <span><strong>Opacidad</strong><output id="visual-plus-particle-opacity-value">55%</output></span>
+                  <input id="visual-plus-particle-opacity" type="range" min="10" max="100" step="5" value="55">
+                </label>
+                <label class="interface-setting-row" for="visual-plus-particle-color-mode">
+                  <strong>Color de las partículas</strong>
+                  <select id="visual-plus-particle-color-mode" class="settings-select" aria-label="Color de las partículas">
+                    <option value="theme">Color del tema</option>
+                    <option value="artwork">Color de la carátula</option>
+                    <option value="custom">Color personalizado</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" id="visual-plus-particle-custom-color-row" for="visual-plus-particle-color">
+                  <strong>Color personalizado</strong>
+                  <input id="visual-plus-particle-color" class="settings-color-input" type="color" value="#c084fc" aria-label="Color personalizado de las partículas">
+                </label>
+                <label class="interface-setting-row" for="visual-plus-particle-spawn-width">
+                  <strong>Zona de aparición</strong>
+                  <select id="visual-plus-particle-spawn-width" class="settings-select" aria-label="Zona de aparición de las partículas">
+                    <option value="full">Todo el ancho</option>
+                    <option value="center">Zona central</option>
+                  </select>
+                </label>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Brillo suave</strong>
+                    <p>Añade un resplandor sutil alrededor de las partículas.</p>
+                  </div>
+                  <label class="switch" aria-label="Brillo suave de las partículas">
+                    <input id="visual-plus-particle-glow" type="checkbox" checked>
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="visual-plus-effect-options" id="visual-plus-atmospheric-settings" hidden>
+                <strong class="visual-plus-section-title">Luciérnagas</strong>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Activar luciérnagas</strong>
+                    <p>Luciérnagas verdes que flotan suavemente en la parte inferior de las letras.</p>
+                  </div>
+                  <label class="switch" aria-label="Activar luciérnagas">
+                    <input id="visual-plus-fireflies-enabled" type="checkbox" checked>
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <label class="visual-plus-range-row" for="visual-plus-fireflies-count">
+                  <span><strong>Cantidad de luciérnagas</strong><output id="visual-plus-fireflies-count-value">25</output></span>
+                  <input id="visual-plus-fireflies-count" type="range" min="5" max="80" step="5" value="25">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-fireflies-size">
+                  <span><strong>Tamaño de luciérnagas</strong><output id="visual-plus-fireflies-size-value">5 px</output></span>
+                  <input id="visual-plus-fireflies-size" type="range" min="2" max="8" step="1" value="5">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-fireflies-brightness">
+                  <span><strong>Brillo de luciérnagas</strong><output id="visual-plus-fireflies-brightness-value">70%</output></span>
+                  <input id="visual-plus-fireflies-brightness" type="range" min="0" max="100" step="5" value="70">
+                </label>
+
+                <strong class="visual-plus-section-title">Lluvia</strong>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Activar lluvia</strong>
+                    <p>Añade gotas suaves detrás de las letras sincronizadas.</p>
+                  </div>
+                  <label class="switch" aria-label="Activar lluvia">
+                    <input id="visual-plus-rain-enabled" type="checkbox" checked>
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <label class="visual-plus-range-row" for="visual-plus-rain-count">
+                  <span><strong>Cantidad de gotas</strong><output id="visual-plus-rain-count-value">80</output></span>
+                  <input id="visual-plus-rain-count" type="range" min="20" max="200" step="10" value="80">
+                </label>
+                <label class="interface-setting-row" for="visual-plus-rain-direction">
+                  <strong>Dirección de la lluvia</strong>
+                  <select id="visual-plus-rain-direction" class="settings-select" aria-label="Dirección de la lluvia">
+                    <option value="vertical">Vertical</option>
+                    <option value="diagonal-left">Diagonal izquierda</option>
+                    <option value="diagonal-right">Diagonal derecha</option>
+                  </select>
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-rain-speed">
+                  <span><strong>Velocidad base</strong><output id="visual-plus-rain-speed-value">180 px/s</output></span>
+                  <input id="visual-plus-rain-speed" type="range" min="60" max="500" step="20" value="180">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-rain-opacity">
+                  <span><strong>Opacidad de la lluvia</strong><output id="visual-plus-rain-opacity-value">45%</output></span>
+                  <input id="visual-plus-rain-opacity" type="range" min="10" max="100" step="5" value="45">
+                </label>
+                <div id="visual-plus-rain-dynamic-toggle-row">
+                  <div class="audio-setting-row">
+                    <div class="audio-setting-description">
+                      <strong>Lluvia dinámica</strong>
+                      <p>Hace que la lluvia gane velocidad y densidad con la intensidad de la música.</p>
+                    </div>
+                    <label class="switch" aria-label="Lluvia dinámica">
+                      <input id="visual-plus-rain-dynamic-enabled" type="checkbox">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                  <div id="visual-plus-rain-dynamic-settings" class="visual-plus-effect-options" hidden>
+                    <label class="visual-plus-range-row" for="visual-plus-rain-intensity">
+                      <span><strong>Intensidad al volumen</strong><output id="visual-plus-rain-intensity-value">1.5</output></span>
+                      <input id="visual-plus-rain-intensity" type="range" min="0.5" max="3" step="0.1" value="1.5">
+                    </label>
+                    <label class="visual-plus-range-row" for="visual-plus-rain-min-density">
+                      <span><strong>Densidad mínima</strong><output id="visual-plus-rain-min-density-value">40%</output></span>
+                      <input id="visual-plus-rain-min-density" type="range" min="0.2" max="1" step="0.05" value="0.4">
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="visual-plus-effect-options" id="visual-plus-liquid-settings" hidden>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Fondo líquido estático</strong>
+                    <p>Mantiene los colores de la carátula sin animar el fondo.</p>
+                  </div>
+                  <label class="switch" aria-label="Fondo líquido estático">
+                    <input id="visual-plus-liquid-static" type="checkbox">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <div class="settings-divider"></div>
+                <label class="visual-plus-range-row" for="visual-plus-liquid-speed" id="visual-plus-liquid-speed-row">
+                  <span><strong>Velocidad del fondo líquido</strong><output id="visual-plus-liquid-speed-value">100%</output></span>
+                  <input id="visual-plus-liquid-speed" type="range" min="25" max="200" step="5" value="100">
+                </label>
+                <p class="settings-hint" style="margin:0.25rem 0 0;opacity:0.75;font-size:0.82rem;">Más bajo = más lento y suave. Más alto = movimiento más rápido.</p>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content shortcuts-settings" id="tab-shortcuts">
+          <div class="settings-header">
+            <h2>Atajos de teclado</h2>
+            <p>Configura combinaciones de teclas locales y globales para controlar la reproducción.</p>
+          </div>
+
+          <div class="shortcuts-toolbar">
+            <button class="shortcuts-action-button shortcuts-clear-all" id="btn-clear-all-shortcuts" type="button">
+              <i class="ph ph-trash"></i> Borrar todos los atajos
+            </button>
+            <button class="shortcuts-action-button" id="btn-reset-shortcuts" type="button">
+              <i class="ph ph-arrow-counter-clockwise"></i> Restablecer predeterminados
+            </button>
+          </div>
+
+          <p class="shortcuts-status" id="shortcuts-status" role="status" aria-live="polite"></p>
+
+          <div class="shortcuts-list" role="table" aria-label="Atajos de teclado">
+            <div class="shortcuts-row shortcuts-table-header" role="row">
+              <span role="columnheader">Acción</span>
+              <span role="columnheader">Atajo local</span>
+              <span role="columnheader">Atajo global</span>
+            </div>
+            
+            <div class="shortcuts-row" role="row" data-shortcut-action="playPause">
+              <strong role="rowheader">Reproducir / Pausar</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="nextTrack">
+              <strong role="rowheader">Siguiente canción</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="prevTrack">
+              <strong role="rowheader">Canción anterior</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="toggleCurrentFavorite">
+              <strong role="rowheader">Agregar / quitar canción actual de favoritos</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="addCurrentSongToPlaylist">
+              <strong role="rowheader">Agregar canción actual a una playlist</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="seekForward10">
+              <strong role="rowheader">Adelantar 10 segundos</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="seekBackward10">
+              <strong role="rowheader">Retroceder 10 segundos</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="volumeUp">
+              <strong role="rowheader">Subir volumen</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="volumeDown">
+              <strong role="rowheader">Bajar volumen</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="mute">
+              <strong role="rowheader">Silenciar / Activar sonido</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="shuffle">
+              <strong role="rowheader">Alternar aleatorio</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="repeat">
+              <strong role="rowheader">Cambiar modo de repetición</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="queue">
+              <strong role="rowheader">Abrir / Cerrar cola</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-section-divider" role="separator">
+              <span>Letras y pantalla completa</span>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="lyrics">
+              <strong role="rowheader">Abrir / Cerrar letras</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="lyricsCompactPlayer">
+              <strong role="rowheader">Ocultar interfaz (letras / pantalla completa)</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="nowPlayingFullscreen">
+              <strong role="rowheader">Abrir / cerrar pantalla completa</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="cycleFsLayout">
+              <strong role="rowheader">Cambiar diseño de pantalla completa</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="pinLyricsLine">
+              <strong role="rowheader">Fijar línea activa de la letra</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="toggleLyricsTranslation">
+              <strong role="rowheader">Activar / desactivar letras traducidas</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-performance">
+          <div class="settings-header">
+            <h2>Rendimiento</h2>
+            <p>Monitorea los recursos que utilizan Resonance y sus procesos vinculados.</p>
+          </div>
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Administrador de tareas de Resonance</strong>
+                <p>Muestra procesos relacionados y su uso de CPU, memoria, disco y GPU. El sondeo se realiza una vez por segundo mientras esté activado.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar administrador de tareas de Resonance">
+                <input id="performance-monitor-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="performance-monitor" id="performance-monitor" hidden>
+              <div class="performance-process-list" id="performance-process-list" role="table" aria-label="Procesos vinculados a Resonance"></div>
+              <div class="performance-totals" id="performance-totals" role="status" aria-live="polite">
+                <span>Total</span>
+                <span>CPU <strong id="performance-total-cpu">--</strong></span>
+                <span>RAM <strong id="performance-total-memory">--</strong></span>
+                <span>Disco <strong id="performance-total-disk">--</strong></span>
+                <span>GPU <strong id="performance-total-gpu">--</strong></span>
+              </div>
+              <p class="audio-setting-status" id="performance-monitor-status" role="status" aria-live="polite">Esperando datos de rendimiento...</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Overlay de rendimiento</strong>
+                <p>Mantiene un resumen compacto por encima de las pantallas de Resonance. No se mostrará sobre otras aplicaciones.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar overlay de rendimiento">
+                <input id="performance-overlay-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Transiciones fluidas entre menús</strong>
+                <p>Suaviza el cambio entre Inicio, Música, Carpetas, Configuración y otras vistas.</p>
+              </div>
+              <label class="switch" aria-label="Transiciones fluidas entre menús">
+                <input id="performance-smooth-transitions" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Desactivar animaciones</strong>
+                <p>Desactiva las animaciones de la interfaz para reducir efectos visuales y priorizar el rendimiento.</p>
+              </div>
+              <label class="switch" aria-label="Desactivar animaciones">
+                <input id="performance-disable-animations" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Modo de carátula</strong>
+                <p>Cómo se muestran las carátulas en listas de canciones (música, carpetas, playlists, cola, búsqueda, álbumes y artistas). No afecta el reproductor inferior, el inicio ni la portada principal de un álbum.</p>
+              </div>
+              <select id="list-cover-mode" class="settings-select" aria-label="Modo de carátula">
+                <option value="individual">Mostrar carátula individual</option>
+                <option value="album">Mostrar carátula por álbum</option>
+                <option value="icon">Mostrar icono de música</option>
+                <option value="none">Solo texto (sin carátula)</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-tab-content" id="tab-about">
+          <div class="settings-header">
+            <h2>Acerca de Resonance</h2>
+            <p>Reproductor local nativo de alto rendimiento.</p>
+          </div>
+          <div class="settings-card">
+            <p><strong>Resonance</strong> v0.1.0 — Sin conexión obligatoria, enfocado en tu privacidad y velocidad.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="modal-overlay settings-backup-overlay" id="settings-backup-modal" role="dialog" aria-modal="true" aria-labelledby="settings-backup-title">
+      <div class="playlist-modal-card settings-backup-card">
+        <div>
+          <h3 id="settings-backup-title">Copia de seguridad y configuración</h3>
+          <p id="settings-backup-description">Selecciona las categorías que quieres incluir.</p>
+        </div>
+        <div class="settings-backup-category-list">
+          <label class="multi-playlist-option"><input type="checkbox" data-backup-category="preferences" checked><span>Preferencias de la aplicación</span></label>
+          <label class="multi-playlist-option"><input type="checkbox" data-backup-category="shortcuts" checked><span>Atajos de teclado</span></label>
+          <label class="multi-playlist-option"><input type="checkbox" data-backup-category="folders" checked><span>Carpetas y descripciones</span></label>
+          <label class="multi-playlist-option"><input type="checkbox" data-backup-category="playlists" checked><span>Playlists</span></label>
+          <label class="multi-playlist-option"><input type="checkbox" data-backup-category="favorites" checked><span>Favoritos</span></label>
+        </div>
+        <div class="settings-backup-actions">
+          <button class="btn-pill-save secondary" id="btn-cancel-settings-backup" type="button">Cancelar</button>
+          <button class="btn-primary" id="btn-confirm-settings-backup" type="button">Exportar configuración</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPRODUCTOR INFERIOR FIJO -->
+    <footer class="bottom-player" id="bottom-player">
+      <div class="resizer resizer-y resizer-top" id="resizer-bottom"></div>
+      
+      <div class="player-left" id="player-left-panel">
+        <div class="track-cover-box" id="player-cover-box" title="Expandir carátula">
+          <div class="track-cover-art" id="player-cover-art">
+            <i class="ph ph-music-note"></i>
+          </div>
+          <button class="cover-expand-btn" id="btn-expand-cover" title="Expandir carátula">
+            <i class="ph ph-caret-up"></i>
+          </button>
+        </div>
+        <div class="track-meta" id="player-track-meta">
+          <div class="track-title-row">
+            <div class="marquee-box" id="title-marquee-box">
+              <h4 id="current-title" class="marquee-text"><span id="current-title-text">Sin reproducción activa</span><span class="player-album-separator" id="current-album-separator" hidden> - </span><button type="button" id="current-album" class="player-album-link" hidden></button></h4>
+            </div>
+            <button class="btn-icon fav-btn" id="player-fav-btn" title="Me gusta">
+              <i class="ph ph-heart" id="fav-icon"></i>
+            </button>
+          </div>
+          <button type="button" id="current-artist" class="player-artist-link">Selecciona una canción</button>
+          <span id="player-audio-quality" class="player-audio-quality" aria-label="Calidad del audio">          </span>
+        </div>
+      </div>
+      <div class="player-center">
+        <div class="controls-row">
+          <button class="btn-icon" id="btn-shuffle" title="Aleatorio"><i class="ph ph-shuffle"></i></button>
+          <button class="btn-icon" id="btn-prev" title="Anterior"><i class="ph-fill ph-skip-back"></i></button>
+          <button class="btn-play" id="play-pause-btn" title="Reproducir / Pausar">
+            <i class="ph-fill ph-play" id="play-icon"></i>
+          </button>
+          <button class="btn-icon" id="btn-next" title="Siguiente"><i class="ph-fill ph-skip-forward"></i></button>
+          <button class="btn-icon" id="btn-repeat" title="Repetir"><i class="ph ph-repeat"></i></button>
+        </div>
+        
+        <div class="playback-row">
+          <div class="playback-bar">
+            <span class="time" id="time-current">0:00</span>
+            <div class="progress-container" id="progress-container">
+              <div class="progress-waveform progress-waveform-track" id="progress-wave-track" aria-hidden="true"></div>
+              <div class="progress-bar" id="progress-fill">
+                <div class="progress-waveform progress-waveform-played" id="progress-wave-played" aria-hidden="true"></div>
+              </div>
+            </div>
+            <span class="time" id="time-total">0:00</span>
+          </div>
+          <span class="crossfade-indicator" id="crossfade-indicator" role="status" aria-live="polite" title="Fundido cruzado activo" aria-label="Fundido cruzado activo" aria-hidden="true">
+            <i class="ph ph-arrows-left-right"></i>
+          </span>
+        </div>
+      </div>
+
+      <div class="player-right">
+        <div class="player-right-controls">
+          <button class="btn-icon" id="btn-lyrics" title="Letras">
+            <i class="ph ph-text-align-left"></i>
+          </button>
+          <div class="player-popover-wrap" data-player-control-container="sleep-timer">
+            <button class="btn-icon" id="btn-sleep-timer" title="Temporizador de apagado" aria-expanded="false" aria-controls="sleep-timer-popover">
+              <i class="ph ph-timer"></i>
+            </button>
+            <div class="player-popover sleep-timer-popover" id="sleep-timer-popover" hidden>
+              <h4>Temporizador de apagado</h4>
+              <label for="sleep-timer-mode">Pausar</label>
+              <select id="sleep-timer-mode" class="settings-select">
+                <option value="time">Después de un tiempo</option>
+                <option value="tracks">Después de varias pistas</option>
+                <option value="end">Al terminar la lista actual</option>
+              </select>
+              <div class="sleep-timer-value-row" id="sleep-timer-value-row">
+                <input type="number" id="sleep-timer-value" min="1" max="999" value="30" aria-label="Cantidad de tiempo o pistas">
+                <select id="sleep-timer-unit" class="settings-select" aria-label="Unidad de tiempo">
+                  <option value="minutes">minutos</option>
+                  <option value="hours">horas</option>
+                  <option value="tracks">pistas</option>
+                </select>
+              </div>
+              <p id="sleep-timer-status" role="status" aria-live="polite">Temporizador desactivado</p>
+              <div class="player-popover-actions">
+                <button class="btn-pill-save" id="btn-cancel-sleep-timer" type="button">Cancelar</button>
+                <button class="btn-primary" id="btn-start-sleep-timer" type="button">Iniciar</button>
+              </div>
+            </div>
+          </div>
+          <div class="player-popover-wrap" data-player-control-container="speed">
+            <button class="btn-icon" id="btn-playback-speed" title="Velocidad de reproducción" aria-expanded="false" aria-controls="playback-speed-popover">
+              <i class="ph ph-gauge"></i>
+            </button>
+            <div class="player-popover playback-speed-popover" id="playback-speed-popover" hidden>
+              <h4>Velocidad de reproducción</h4>
+              <label for="playback-speed">Velocidad <output id="playback-speed-value">1.00x</output></label>
+              <input type="range" id="playback-speed" min="0.5" max="2" step="0.05" value="1">
+              <div class="playback-pitch-control">
+                <label for="playback-pitch">Tono <output id="playback-pitch-value">0 st</output></label>
+                <input type="range" id="playback-pitch" min="-12" max="12" step="1" value="0" aria-describedby="playback-pitch-hint">
+                <small id="playback-pitch-hint">El cambio de tono también modifica ligeramente la velocidad.</small>
+              </div>
+              <label class="playback-pitch-option" for="playback-preserve-pitch">
+                <input type="checkbox" id="playback-preserve-pitch" checked>
+                <span>Mantener tono original</span>
+              </label>
+            </div>
+          </div>
+          <button class="btn-icon active-toggle" id="btn-toggle-queue" title="Cola de reproducción">
+            <i class="ph ph-queue"></i>
+          </button>
+          <div class="volume-box" id="volume-box">
+            <i class="ph ph-speaker-high" id="vol-icon" title="Silenciar / Activar sonido"></i>
+            <div class="volume-slider-wrapper">
+              <input type="range" min="0" max="100" value="80" class="volume-slider" id="volume-range" />
+              <div class="volume-tooltip" id="volume-tooltip">80%</div>
+            </div>
+            <span class="volume-percentage" id="volume-percentage" aria-label="Nivel de volumen">80%</span>
+          </div>
+          <button type="button" class="btn-icon" id="btn-now-playing-fs" title="Pantalla completa" aria-label="Pantalla completa" aria-pressed="false">
+            <i class="ph ph-corners-out" aria-hidden="true"></i>
+          </button>
+        </div>
+        <span class="player-source-label" id="player-source-label" title="" aria-label="Origen de reproducción">
+          <i class="ph ph-queue" aria-hidden="true"></i>
+          <span class="player-source-text"></span>
+        </span>
+      </div>
+    </footer>
+
+  </div>
+  </div>
+
+  <script type="module" src="./js/bootstrap.js"></script>
+</body>
+</html>
