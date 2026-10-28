@@ -286,8 +286,17 @@ function applySettings(settings) {
   if (lyricsOverlay) {
     lyricsOverlay.classList.toggle('visual-plus-active', vp.enabled);
   }
-  if (!vp.enabled && vp.canvas && vp.context) {
-    vp.context.clearRect(0, 0, vp.width, vp.height);
+  if (vp.canvas) {
+    if (!vp.enabled) {
+      if (vp.context) {
+        try { vp.context.clearRect(0, 0, vp.canvas.width, vp.canvas.height); } catch (_) {}
+      }
+      vp.canvas.style.opacity = '0';
+      vp.canvas.style.visibility = 'hidden';
+    } else {
+      vp.canvas.style.opacity = '';
+      vp.canvas.style.visibility = '';
+    }
   }
   syncVisualPlusSurface();
   syncAnimation();

@@ -17,6 +17,8 @@ import {
   cycleNowPlayingFsLayout
 } from './ui.js';
 import { toggleLyricsTranslation } from './lyrics.js';
+import { refreshImmersiveBackgroundState, syncImmersiveBackgroundFromCover } from '../visual_plus/liquid_background.js';
+import { refreshLiquidBackgroundState, syncLiquidBackgroundFromCover } from '../visual_plus/blurred_background.js';
 
 const STORAGE_KEY = 'pn_shortcuts';
 const SHORTCUT_ACTIONS = {
@@ -38,7 +40,9 @@ const SHORTCUT_ACTIONS = {
   nowPlayingFullscreen: { label: 'Abrir / cerrar pantalla completa', local: 'Ctrl+Shift+F', global: null },
   cycleFsLayout: { label: 'Cambiar diseño de pantalla completa', local: 'Ctrl+Shift+D', global: null },
   pinLyricsLine: { label: 'Fijar línea activa de la letra', local: 'Ctrl+Shift+J', global: null },
-  toggleLyricsTranslation: { label: 'Activar / desactivar letras traducidas', local: 'Ctrl+Shift+T', global: null }
+  toggleLyricsTranslation: { label: 'Activar / desactivar letras traducidas', local: 'Ctrl+Shift+T', global: null },
+  cycleVisualPlusTheme: { label: 'Cambiar modo de Visual+', local: 'Ctrl+Shift+E', global: null },
+  toggleVisualPlus: { label: 'Activar / desactivar Visual+', local: 'Ctrl+Shift+O', global: null }
 };
 const MODIFIER_KEYS = new Set(['Alt', 'AltGraph', 'Control', 'Meta', 'Shift']);
 const MEDIA_KEYS = new Set([
@@ -248,6 +252,139 @@ function isEditableTarget(target) {
     (Boolean(target.closest('input, textarea, select')) || target.isContentEditable);
 }
 
+
+const VISUAL_PLUS_THEME_ORDER = [
+  'shooting_stars',
+  'reactive_particles',
+  'atmospheric',
+  'liquid',
+  'blurred',
+];
+
+const VISUAL_PLUS_THEME_LABELS = {
+  shooting_stars: 'Estrellas fugaces',
+  reactive_particles: 'Partículas reactivas',
+  atmospheric: 'Atmosférico',
+  liquid: 'Fondo líquido',
+  blurred: 'Fondo difuminado',
+  liquid_gradient: 'Fondo difuminado',
+  liquid_immersive: 'Fondo líquido',
+};
+
+function migrateVisualPlusThemeId(theme) {
+  if (theme === 'liquid_immersive') return 'liquid';
+  if (theme === 'liquid_gradient') return 'blurred';
+  return theme;
+}
+
+function readVisualPlusConfig() {
+  try {
+    const raw = localStorage.getItem('pn_visual_plus');
+    if (!raw) return { enabled: false, theme: 'shooting_stars' };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { enabled: false, theme: 'shooting_stars' };
+    return {
+      ...parsed,
+      enabled: Boolean(parsed.enabled),
+      theme: migrateVisualPlusThemeId(parsed.theme) || 'shooting_stars',
+    };
+  } catch (_) {
+    return { enabled: false, theme: 'shooting_stars' };
+  }
+}
+
+function resolveCoverSrcForVisualPlus() {
+  const candidates = [
+    document.querySelector('#player-cover img'),
+    document.querySelector('.player-cover img'),
+    document.querySelector('#lyrics-focus-mini-cover img'),
+    document.querySelector('#expanded-cover-img'),
+  ];
+  for (const img of candidates) {
+    const src = img?.currentSrc || img?.src;
+    if (src && !src.endsWith('.svg') && src.length > 8) return src;
+  }
+  return null;
+}
+
+function syncVisualPlusUiControls(settings) {
+  const enabledToggle = document.getElementById('toggle-visual-plus');
+  const themeSelect = document.getElementById('visual-plus-theme');
+  const menuToggle = document.getElementById('toggle-visual-plus-menu');
+  if (enabledToggle) enabledToggle.checked = Boolean(settings.enabled);
+  if (menuToggle) menuToggle.checked = Boolean(settings.enabled);
+  if (themeSelect && settings.theme) {
+    const option = [...themeSelect.options].find((o) => o.value === settings.theme);
+    if (option) themeSelect.value = settings.theme;
+    themeSelect.disabled = !settings.enabled;
+  }
+  // Mostrar/ocultar paneles de opciones de efecto si existen
+  try {
+    document.dispatchEvent(new CustomEvent('pn-visual-plus-ui-sync', { detail: settings }));
+  } catch (_) {}
+}
+
+function writeVisualPlusConfig(settings) {
+  const normalized = {
+    ...settings,
+    theme: migrateVisualPlusThemeId(settings.theme) || 'shooting_stars',
+    enabled: Boolean(settings.enabled),
+  };
+  localStorage.setItem('pn_visual_plus', JSON.stringify(normalized));
+  // 1) Canvas themes (estrellas / partículas / atmosférico)
+  document.dispatchEvent(new CustomEvent('pn-visual-plus-settings-changed', { detail: normalized }));
+  // 2) Fondos fuera del canvas: apagar/encender de forma exclusiva
+  try { refreshImmersiveBackgroundState(); } catch (_) {}
+  try { refreshLiquidBackgroundState(); } catch (_) {}
+  const cover = resolveCoverSrcForVisualPlus();
+  if (cover && normalized.enabled) {
+    if (normalized.theme === 'liquid') {
+      void syncImmersiveBackgroundFromCover(cover).catch(() => {});
+    } else if (normalized.theme === 'blurred') {
+      void syncLiquidBackgroundFromCover(cover).catch(() => {});
+    }
+  }
+  syncVisualPlusUiControls(normalized);
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function withVisualPlusCrossfade(applyFn) {
+  document.body.classList.add('visual-plus-theme-fading');
+  await delay(320);
+  try {
+    applyFn();
+  } finally {
+    // Dejar un frame para que el nuevo tema monte antes del fade-in
+    await delay(40);
+    document.body.classList.remove('visual-plus-theme-fading');
+  }
+}
+
+async function cycleVisualPlusTheme() {
+  const settings = readVisualPlusConfig();
+  const current = migrateVisualPlusThemeId(settings.theme);
+  const idx = VISUAL_PLUS_THEME_ORDER.indexOf(current);
+  const next = VISUAL_PLUS_THEME_ORDER[(idx >= 0 ? idx + 1 : 0) % VISUAL_PLUS_THEME_ORDER.length];
+  const nextSettings = {
+    ...settings,
+    enabled: true, // al ciclar modos, asegurar Visual+ activo
+    theme: next,
+  };
+  await withVisualPlusCrossfade(() => writeVisualPlusConfig(nextSettings));
+  setStatus(`Visual+: ${VISUAL_PLUS_THEME_LABELS[next] || next}`);
+}
+
+async function toggleVisualPlusEnabled() {
+  const settings = readVisualPlusConfig();
+  const nextEnabled = !settings.enabled;
+  const nextSettings = { ...settings, enabled: nextEnabled };
+  await withVisualPlusCrossfade(() => writeVisualPlusConfig(nextSettings));
+  setStatus(nextEnabled ? 'Visual+ activado' : 'Visual+ desactivado');
+}
+
 function dispatchShortcut(action) {
   switch (action) {
     case 'playPause':
@@ -317,6 +454,12 @@ function dispatchShortcut(action) {
       break;
     case 'cycleFsLayout':
       cycleNowPlayingFsLayout();
+      break;
+    case 'cycleVisualPlusTheme':
+      void cycleVisualPlusTheme();
+      break;
+    case 'toggleVisualPlus':
+      void toggleVisualPlusEnabled();
       break;
     default:
       console.error(`Acción de atajo desconocida: ${action}`);

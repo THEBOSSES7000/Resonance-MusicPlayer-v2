@@ -81,16 +81,23 @@ export function setLiquidBackgroundActive(active) {
   const settings = readVisualPlusSettings();
   // No activar orbes si el tema inmersivo está activo
   const show = Boolean(active) && settings.theme === 'blurred';
-  root.classList.toggle('is-active', show);
-  root.classList.toggle('is-static', Boolean(settings.blurredStatic));
   root.classList.toggle('is-blurred-theme', show);
-  // Asegurar que el canvas inmersivo no tape el difuminado
+  root.classList.toggle('is-static', Boolean(settings.blurredStatic));
   if (show) {
     root.classList.remove('is-active-immersive');
+    root.classList.add('is-active');
+    // Ocultar canvas de Kawarp si quedó en el DOM
+    const kawarpCanvas = root.querySelector('canvas.liquid-immersive-canvas');
+    if (kawarpCanvas) kawarpCanvas.style.display = 'none';
     applyLiquidSpeed(settings.blurredSpeed ?? 100);
     syncLiquidAnimationPlayState();
-  } else if (settings.theme !== 'liquid') {
+  } else {
     root.classList.remove('is-animating');
+    // Solo quitar is-active si no es el tema líquido (él lo gestiona)
+    if (settings.theme !== 'liquid') {
+      root.classList.remove('is-active');
+      root.classList.remove('is-active-immersive');
+    }
   }
 }
 

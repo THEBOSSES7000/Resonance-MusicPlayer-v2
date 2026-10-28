@@ -511,3 +511,15 @@ body.lyrics-focus-mode .lyrics-floating-actions {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* Transición suave al cambiar modo / on-off de Visual+ */
+#visual-plus-canvas,
+#visual-plus-liquid-bg {
+  transition: opacity 0.45s ease;
+}
+body.visual-plus-theme-fading #visual-plus-canvas,
+body.visual-plus-theme-fading #visual-plus-liquid-bg {
+  opacity: 0 !important;
+  transition: opacity 0.32s ease;
+}
