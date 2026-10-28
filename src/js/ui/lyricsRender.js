@@ -4,7 +4,8 @@ import { formatTime, state } from '../state.js';
 import { ensureSongLyrics, parseInlineLyricWords, resolveCoverUrl } from '../scanner.js';
 import { clearContainerCovers } from './covers.js';
 import { syncNpFsVinylLabelArt } from './playback.js';
-import { initLiquidGradientBackground, syncLiquidBackgroundFromCover } from '../../visual_plus/liquid_gradient.js';
+import { initLiquidGradientBackground, syncLiquidBackgroundFromCover } from '../../visual_plus/blurred_background.js';
+import { initLiquidImmersiveBackground, syncImmersiveBackgroundFromCover } from '../../visual_plus/liquid_background.js';
 import { lyricsLinesBox, lyricsSongArtist, lyricsSongTitle } from './dom.js';
 import { getPlaybackDuration, getPlaybackPosition, isPlaybackPaused, seekPlayback } from '../audioPlayer.js';
 import { fitLyricLineToViewport, lyricsProgressSeeking, refitActiveLyricLine, removeStylePropCached, setStylePropIfChanged } from './lyricsDock.js';
@@ -38,6 +39,7 @@ export function updateLyricsUI() {
     const coverSrc = current ? resolveCoverUrl(current) : null;
     try { syncNpFsVinylLabelArt(coverSrc); } catch (_) {}
     try { syncLiquidBackgroundFromCover(coverSrc || null); } catch (_) {}
+    try { syncImmersiveBackgroundFromCover(coverSrc || null); } catch (_) {}
     try {
       document.dispatchEvent(new CustomEvent('pn-track-cover-changed', { detail: { coverSrc: coverSrc || null, track: current || null } }));
     } catch (_) {}
@@ -707,6 +709,7 @@ document.addEventListener('pn-lyrics-active-row-animation-changed', () => {
 });
 
 try { initLiquidGradientBackground(); } catch (_) {}
+try { initLiquidImmersiveBackground(); } catch (_) {}
 
 document.addEventListener('pn-visual-plus-settings-changed', event => {
   if (typeof event.detail?.sophisticatedLyrics !== 'boolean') return;

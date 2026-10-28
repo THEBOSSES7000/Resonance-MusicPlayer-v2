@@ -8,7 +8,8 @@ import { extractMetadata, resolveCoverUrl, trackLoadedLyricsInRam } from '../sca
 import { bindLazyCover } from './covers.js';
 import { renderPlaylistDetailView } from './playlistDetail.js';
 import { renderSearchResultsContent } from './search.js';
-import { syncLiquidAnimationPlayState } from '../../visual_plus/liquid_gradient.js';
+import { syncLiquidAnimationPlayState } from '../../visual_plus/blurred_background.js';
+import { syncImmersiveAnimationPlayState } from '../../visual_plus/liquid_background.js';
 import { syncLyricsDockButtonStates, syncLyricsDockPlayIcon } from './lyricsDock.js';
 import { albumContextId, artistContextId, syncPlayerAlbumLinkState } from './libraryEntities.js';
 import { getSoundWaveHTML } from './uiUtils.js';
@@ -220,6 +221,7 @@ export function syncNpFsVinylLabelArt(coverSrc) {
 export function syncPlayingUI(isPlaying) {
   document.body.classList.toggle('np-fs-audio-playing', Boolean(isPlaying));
   try { syncLiquidAnimationPlayState(); } catch (_) {}
+  try { syncImmersiveAnimationPlayState(); } catch (_) {}
   try { syncLyricsDockPlayIcon(); syncLyricsDockButtonStates(); } catch (_) {}
   const playPauseButton = document.getElementById('play-pause-btn');
   const playPauseIcon = document.getElementById('play-icon');

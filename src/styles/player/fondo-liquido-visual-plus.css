@@ -8,7 +8,8 @@
   z-index: 0;
   --liquid-speed: 1;
 }
-#visual-plus-liquid-bg.is-active {
+#visual-plus-liquid-bg.is-active,
+#visual-plus-liquid-bg.is-active-immersive {
   display: block;
 }
 #visual-plus-liquid-bg .liquid-orbs {
@@ -125,4 +126,41 @@
   #visual-plus-liquid-bg .liquid-orb {
     animation: none !important;
   }
+}
+
+
+/* Kawarp / inmersivo (estilo Spicy Lyrics) */
+#visual-plus-liquid-bg .liquid-immersive-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  z-index: 0;
+  pointer-events: none;
+}
+#visual-plus-liquid-bg.is-active-immersive .liquid-immersive-canvas {
+  display: block;
+}
+#visual-plus-liquid-bg.is-active-immersive .liquid-orbs {
+  display: none;
+}
+#visual-plus-liquid-bg.is-active-immersive {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: none;
+}
+#visual-plus-liquid-bg.is-active-immersive .liquid-immersive-canvas {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+#visual-plus-liquid-bg.is-active-immersive .liquid-dim {
+  z-index: 1;
+  opacity: 0.28;
+  background: rgba(0, 0, 0, 0.28);
 }

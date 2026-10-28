@@ -2,7 +2,8 @@
 
 import { initShootingStars } from '../../visual_plus/engine.js';
 import { configureAudioAnalysis, getAudioLevel } from '../audioPlayer.js';
-import { initLiquidGradientBackground } from '../../visual_plus/liquid_gradient.js';
+import { initLiquidGradientBackground } from '../../visual_plus/blurred_background.js';
+import { initLiquidImmersiveBackground } from '../../visual_plus/liquid_background.js';
 import { handleLyricsTranslationSettingsChanged, handleLyricsViewUpdated, toggleLyricsTranslation, updateLyricsTranslationControls } from './translation.js';
 import { lyricsVars } from './sharedState.js';
 import { markLyricsPointerMovement, updateLyricsResyncVisibility } from './scrollResync.js';
@@ -14,6 +15,7 @@ import { saveTrackEdits } from './saveTrackEdits.js';
 export function initLyricsFeatures() {
   initShootingStars(getAudioLevel, configureAudioAnalysis);
   try { initLiquidGradientBackground(); } catch (_) {}
+  try { initLiquidImmersiveBackground(); } catch (_) {}
   document.getElementById('track-edit-more-toggle')?.addEventListener('click', event => {
     const button = event.currentTarget;
     const fields = document.getElementById('track-edit-more-fields');

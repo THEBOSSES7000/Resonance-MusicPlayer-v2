@@ -7,6 +7,9 @@ export const MAX_TRAIL_LENGTH = 260;
 export const DEFAULT_SETTINGS = {
   enabled: false,
   theme: 'shooting_stars',
+  liquidSpeed: 100,
+  liquidStatic: false,
+  colorDiversity: 55,
   starCount: 120,
   starBrightness: 100,
   shootingStarCount: 2,

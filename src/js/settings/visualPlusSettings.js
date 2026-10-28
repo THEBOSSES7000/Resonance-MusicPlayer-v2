@@ -2,12 +2,17 @@
 
 import { readStoredBoolean } from './appearance.js';
 import { LYRIC_FILL_DIRECTIONS, applyActiveRowAnimation, applyActiveRowFillDirection } from './lyricsSettings.js';
+import { refreshLiquidBackgroundState } from '../../visual_plus/blurred_background.js';
+import { refreshImmersiveBackgroundState } from '../../visual_plus/liquid_background.js';
 
 const DEFAULT_VISUAL_PLUS_SETTINGS = {
   enabled: false,
   theme: 'shooting_stars',
   liquidSpeed: 100,
   liquidStatic: false,
+  blurredSpeed: 100,
+  blurredStatic: false,
+  colorDiversity: 55,
   sophisticatedLyrics: false,
   starCount: 120,
   starBrightness: 100,
@@ -39,13 +44,25 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
   rainMinDensity: 0.4
 };
 
+function migrateVisualPlusTheme(theme) {
+  if (theme === 'liquid_immersive') return 'liquid';
+  if (theme === 'liquid_gradient') return 'blurred';
+  return theme;
+}
+
 function readVisualPlusSettings() {
   const storedValue = localStorage.getItem('pn_visual_plus');
   if (storedValue === null) return { ...DEFAULT_VISUAL_PLUS_SETTINGS };
   const saved = JSON.parse(storedValue);
   const settings = { ...DEFAULT_VISUAL_PLUS_SETTINGS, ...saved };
+  settings.theme = migrateVisualPlusTheme(settings.theme);
+  if (settings.liquidSpeed != null) settings.liquidSpeed = Math.round(Number(settings.liquidSpeed)) || 100;
+  if (settings.blurredSpeed != null) settings.blurredSpeed = Math.round(Number(settings.blurredSpeed)) || 100;
+  if (settings.colorDiversity != null) settings.colorDiversity = Math.round(Number(settings.colorDiversity));
+  if (typeof settings.blurredStatic !== 'boolean') settings.blurredStatic = false;
+  if (typeof settings.liquidStatic !== 'boolean') settings.liquidStatic = false;
   if (typeof settings.enabled !== 'boolean' ||
-      !['shooting_stars', 'reactive_particles', 'atmospheric', 'liquid_gradient'].includes(settings.theme) ||
+      !['shooting_stars', 'reactive_particles', 'atmospheric', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme) ||
       typeof settings.sophisticatedLyrics !== 'boolean' ||
       !Number.isInteger(settings.starCount) || settings.starCount < 20 || settings.starCount > 200 ||
       !Number.isInteger(settings.starBrightness) || settings.starBrightness < 10 || settings.starBrightness > 100 ||
@@ -54,6 +71,9 @@ function readVisualPlusSettings() {
       !Number.isInteger(settings.shootingSpeed) || settings.shootingSpeed < 50 || settings.shootingSpeed > 200 ||
       !Number.isInteger(settings.liquidSpeed) || settings.liquidSpeed < 25 || settings.liquidSpeed > 200 ||
       typeof settings.liquidStatic !== 'boolean' ||
+      typeof settings.blurredStatic !== 'boolean' ||
+      !Number.isInteger(settings.blurredSpeed) || settings.blurredSpeed < 25 || settings.blurredSpeed > 200 ||
+      (settings.colorDiversity != null && (!Number.isFinite(Number(settings.colorDiversity)) || Number(settings.colorDiversity) < 0 || Number(settings.colorDiversity) > 100)) ||
       !Number.isInteger(settings.trailLength) || settings.trailLength < 80 || settings.trailLength > 260 ||
       !Number.isInteger(settings.particleCount) || settings.particleCount < 20 || settings.particleCount > 150 ||
       !Number.isInteger(settings.particleSpeed) || settings.particleSpeed < 10 || settings.particleSpeed > 80 ||
@@ -86,6 +106,8 @@ function readVisualPlusSettings() {
 function persistVisualPlusSettings(settings) {
   delete settings.needsUpgrade;
   localStorage.setItem('pn_visual_plus', JSON.stringify(settings));
+  try { refreshLiquidBackgroundState(); } catch (_) {}
+  try { refreshImmersiveBackgroundState(); } catch (_) {}
   document.dispatchEvent(new CustomEvent('pn-visual-plus-settings-changed', {
     detail: settings
   }));
@@ -103,6 +125,7 @@ export function initVisualPlusSettings() {
   if (!enabledToggle || !themeSelect) return;
   const sophisticatedLyricsToggle = document.getElementById('visual-plus-sophisticated-lyrics');
   const liquidStaticToggle = document.getElementById('visual-plus-liquid-static');
+  const blurredStaticToggle = document.getElementById('visual-plus-blurred-static');
   const visualPlusActiveRowToggle = document.getElementById('visual-plus-active-row-animation-enabled');
   const lyricsFillDirectionSelect = document.getElementById('visual-plus-lyrics-fill-direction');
   const visualPlusFillDirectionSettings = document.getElementById('visual-plus-lyrics-fill-direction-settings');
@@ -139,7 +162,9 @@ export function initVisualPlusSettings() {
     shouldSave = true;
   }
   enabledToggle.checked = settings.enabled;
-  themeSelect.value = settings.theme;
+  const normalizedTheme = settings.theme === 'liquid_immersive' ? 'liquid' : settings.theme === 'liquid_gradient' ? 'blurred' : settings.theme;
+  settings.theme = normalizedTheme;
+  themeSelect.value = normalizedTheme;
   themeSelect.disabled = !settings.enabled;
   const activeRowAnimationEnabled = readStoredBoolean('pn_lyrics_active_row_animation_enabled');
   if (visualPlusActiveRowToggle) visualPlusActiveRowToggle.checked = activeRowAnimationEnabled;
@@ -182,6 +207,11 @@ export function initVisualPlusSettings() {
     syncEffectOptions();
     persistVisualPlusSettings(settings);
   });
+  blurredStaticToggle?.addEventListener('change', () => {
+    settings = { ...settings, blurredStatic: Boolean(blurredStaticToggle.checked) };
+    syncEffectOptions();
+    persistVisualPlusSettings(settings);
+  });
   sophisticatedLyricsToggle?.addEventListener('change', () => {
     if (!readStoredBoolean('pn_lyrics_active_row_animation_enabled')) {
       sophisticatedLyricsToggle.checked = false;
@@ -217,6 +247,8 @@ export function initVisualPlusSettings() {
     ['visual-plus-shooting-interval', 'visual-plus-shooting-interval-value', 'shootingInterval', value => `${value} s`],
     ['visual-plus-shooting-speed', 'visual-plus-shooting-speed-value', 'shootingSpeed', value => `${value}%`],
     ['visual-plus-liquid-speed', 'visual-plus-liquid-speed-value', 'liquidSpeed', value => `${value}%`],
+    ['visual-plus-blurred-speed', 'visual-plus-blurred-speed-value', 'blurredSpeed', value => `${value}%`],
+    ['visual-plus-color-diversity', 'visual-plus-color-diversity-value', 'colorDiversity', value => `${value}%`],
     ['visual-plus-trail-length', 'visual-plus-trail-length-value', 'trailLength', value => `${value} px`],
     ['visual-plus-particle-count', 'visual-plus-particle-count-value', 'particleCount', value => String(value)],
     ['visual-plus-particle-speed', 'visual-plus-particle-speed-value', 'particleSpeed', value => `${value} px/s`],
@@ -238,13 +270,18 @@ export function initVisualPlusSettings() {
     const isParticleSetting = key.startsWith('particle');
     const isFireflySetting = key.startsWith('fireflies');
     const isRainSetting = key.startsWith('rain');
-    const isLiquidSetting = key === 'liquidSpeed' || key === 'liquidStatic';
+    const isLiquidSetting = key === 'liquidSpeed' || key === 'liquidStatic' || key === 'blurredSpeed' || key === 'blurredStatic' || key === 'colorDiversity';
     input.disabled = !settings.enabled ||
       (isParticleSetting && settings.theme !== 'reactive_particles') ||
       (isFireflySetting && (settings.theme !== 'atmospheric' || !settings.firefliesEnabled)) ||
       (isRainSetting && (settings.theme !== 'atmospheric' || !settings.rainEnabled ||
         (key.startsWith('rainIntensity') || key.startsWith('rainMinDensity')) && !settings.rainDynamicEnabled)) ||
-      (isLiquidSetting && (settings.theme !== 'liquid_gradient' || (key === 'liquidSpeed' && settings.liquidStatic))) ||
+      (isLiquidSetting && (
+        ((key === 'liquidSpeed' || key === 'liquidStatic') && settings.theme !== 'liquid' && settings.theme !== 'liquid_immersive') ||
+        ((key === 'blurredSpeed' || key === 'blurredStatic' || key === 'colorDiversity') && settings.theme !== 'blurred' && settings.theme !== 'liquid_gradient') ||
+        (key === 'liquidSpeed' && settings.liquidStatic) ||
+        (key === 'blurredSpeed' && settings.blurredStatic)
+      )) ||
       (!isParticleSetting && !isFireflySetting && !isRainSetting && !isLiquidSetting && settings.theme !== 'shooting_stars');
     output.value = formatValue(settings[key]);
     output.textContent = formatValue(settings[key]);
@@ -257,12 +294,21 @@ export function initVisualPlusSettings() {
     if (themeSelect) themeSelect.disabled = !settings.enabled;
     // Ocultar paneles de efecto si Visual+ está apagado
     if (starsSettings) starsSettings.hidden = !settings.enabled || settings.theme !== 'shooting_stars';
+    const themeId = settings.theme === 'liquid_immersive' ? 'liquid' : settings.theme === 'liquid_gradient' ? 'blurred' : settings.theme;
+    const isLiquidOnly = themeId === 'liquid';
+    const isBlurredOnly = themeId === 'blurred';
     const liquidSettings = document.getElementById('visual-plus-liquid-settings');
-    if (liquidSettings) liquidSettings.hidden = !settings.enabled || settings.theme !== 'liquid_gradient';
+    if (liquidSettings) liquidSettings.hidden = !settings.enabled || !isLiquidOnly;
+    const blurredSettings = document.getElementById('visual-plus-blurred-settings');
+    if (blurredSettings) blurredSettings.hidden = !settings.enabled || !isBlurredOnly;
     const liquidSpeedRow = document.getElementById('visual-plus-liquid-speed-row');
     if (liquidSpeedRow) liquidSpeedRow.hidden = Boolean(settings.liquidStatic);
+    const blurredSpeedRow = document.getElementById('visual-plus-blurred-speed-row');
+    if (blurredSpeedRow) blurredSpeedRow.hidden = Boolean(settings.blurredStatic);
+    const diversityRow = document.getElementById('visual-plus-color-diversity-row');
+    if (diversityRow) diversityRow.hidden = !settings.enabled || !isBlurredOnly;
     if (liquidStaticToggle) {
-      liquidStaticToggle.disabled = !settings.enabled || settings.theme !== 'liquid_gradient';
+      liquidStaticToggle.disabled = !settings.enabled || !isLiquidOnly;
     }
     if (particlesSettings) particlesSettings.hidden = !settings.enabled || !particlesSelected;
     if (atmosphericSettings) atmosphericSettings.hidden = !settings.enabled || !atmosphericSelected;
