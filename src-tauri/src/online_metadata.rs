@@ -540,3 +540,277 @@ pub async fn search_lrclib_lyrics(request: LrclibSearchRequest) -> Result<serde_
         .await
         .map_err(|error| format!("Respuesta inválida de LRCLIB: {error}"))
 }
+
+// ─── Multi-provider lyrics (LyricsPlus + Deezer) ─────────────────────────────
+
+fn ms_to_lrc_timestamp(ms: u64) -> String {
+    let total_cs = ms / 10; // centiseconds
+    let minutes = total_cs / 6000;
+    let seconds = (total_cs % 6000) / 100;
+    let cs = total_cs % 100;
+    format!("[{:02}:{:02}.{:02}]", minutes, seconds, cs)
+}
+
+/// Convert LyricsPlus word/line JSON into plain LRC text.
+fn lyricsplus_json_to_lrc(value: &serde_json::Value) -> Option<String> {
+    let lines = value.get("lyrics")?.as_array()?;
+    if lines.is_empty() {
+        return None;
+    }
+    let mut out = Vec::with_capacity(lines.len());
+    for line in lines {
+        let text = line
+            .get("text")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        if text.is_empty() {
+            continue;
+        }
+        // time is in milliseconds
+        let ms = line
+            .get("time")
+            .and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)))
+            .unwrap_or(0);
+        out.push(format!("{} {}", ms_to_lrc_timestamp(ms), text));
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out.join("\n"))
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ProviderLyricsSearchRequest {
+    pub title: String,
+    pub artist: String,
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
+}
+
+/// Search LyricsPlus mirrors and return normalized results array.
+#[tauri::command]
+pub async fn search_lyricsplus_lyrics(
+    request: ProviderLyricsSearchRequest,
+) -> Result<serde_json::Value, String> {
+    let title = request.title.trim().to_string();
+    let artist = request.artist.trim().to_string();
+    if title.is_empty() || artist.is_empty() {
+        return Err("Indica título y artista.".to_string());
+    }
+    let client = musicbrainz_client()?;
+    let mirrors = [
+        "https://lyricsplus.prjktla.my.id",
+        "https://lyricsplus.binimum.org",
+    ];
+    for base in mirrors {
+        let mut req = client.get(format!("{base}/v2/lyrics/get")).query(&[
+            ("title", title.as_str()),
+            ("artist", artist.as_str()),
+        ]);
+        if let Some(d) = request.duration_sec {
+            if d > 0.0 {
+                req = req.query(&[("duration", format!("{}", d.round() as i64))]);
+            }
+        }
+        let response = match req.send().await {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        if !response.status().is_success() {
+            continue;
+        }
+        let body: serde_json::Value = match response.json().await {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let synced = lyricsplus_json_to_lrc(&body);
+        if synced.is_none() {
+            continue;
+        }
+        let meta = body.get("metadata");
+        let track_name = meta
+            .and_then(|m| m.get("title"))
+            .and_then(|v| v.as_str())
+            .unwrap_or(&title)
+            .to_string();
+        let duration = meta
+            .and_then(|m| m.get("totalDuration"))
+            .and_then(|v| v.as_str())
+            .and_then(parse_duration_mmss)
+            .or(request.duration_sec)
+            .unwrap_or(0.0);
+
+        return Ok(serde_json::json!([{
+            "provider": "lyricsplus",
+            "providerLabel": "LyricsPlus",
+            "trackName": track_name,
+            "artistName": artist,
+            "albumName": serde_json::Value::Null,
+            "duration": duration,
+            "syncedLyrics": synced,
+            "plainLyrics": serde_json::Value::Null,
+            "id": serde_json::Value::Null,
+        }]));
+    }
+    Ok(serde_json::json!([]))
+}
+
+fn parse_duration_mmss(s: &str) -> Option<f64> {
+    // "3:20.046" or "3:20"
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let mins: f64 = parts[0].parse().ok()?;
+    let secs: f64 = parts[1].parse().ok()?;
+    Some(mins * 60.0 + secs)
+}
+
+fn deezer_lines_to_lrc(lines: &serde_json::Value) -> Option<String> {
+    let arr = lines.as_array()?;
+    let mut out = Vec::new();
+    for line in arr {
+        let stamp = line
+            .get("lrcTimestamp")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        let text = line
+            .get("line")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        if stamp.is_empty() || !stamp.starts_with('[') {
+            continue;
+        }
+        if text.is_empty() {
+            out.push(stamp.to_string());
+        } else {
+            out.push(format!("{stamp} {text}"));
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out.join("\n"))
+    }
+}
+
+/// Search Deezer + fetch synchronized lyrics for top hits.
+#[tauri::command]
+pub async fn search_deezer_lyrics(
+    request: ProviderLyricsSearchRequest,
+) -> Result<serde_json::Value, String> {
+    let title = request.title.trim().to_string();
+    let artist = request.artist.trim().to_string();
+    if title.is_empty() {
+        return Err("Indica al menos el título.".to_string());
+    }
+    let client = musicbrainz_client()?;
+    let q = format!("{} {}", title, artist).trim().to_string();
+
+    let search = client
+        .get("https://api.deezer.com/search")
+        .query(&[("q", q.as_str()), ("limit", "6")])
+        .send()
+        .await
+        .map_err(|e| format!("Deezer search falló: {e}"))?;
+    if !search.status().is_success() {
+        return Err(format!("Deezer search HTTP {}", search.status()));
+    }
+    let search_json: serde_json::Value = search
+        .json()
+        .await
+        .map_err(|e| format!("Deezer search JSON: {e}"))?;
+    let tracks = search_json
+        .get("data")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    if tracks.is_empty() {
+        return Ok(serde_json::json!([]));
+    }
+
+    // Anonymous JWT for pipe.deezer.com
+    let auth = client
+        .get("https://auth.deezer.com/login/anonymous")
+        .query(&[("jo", "p"), ("rto", "c"), ("i", "c")])
+        .send()
+        .await
+        .map_err(|e| format!("Deezer auth falló: {e}"))?;
+    let auth_json: serde_json::Value = auth
+        .json()
+        .await
+        .map_err(|e| format!("Deezer auth JSON: {e}"))?;
+    let jwt = auth_json
+        .get("jwt")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Deezer no devolvió JWT anónimo".to_string())?
+        .to_string();
+
+    let mut results = Vec::new();
+    for track in tracks.iter().take(5) {
+        let id = match track.get("id").and_then(|v| v.as_i64().or_else(|| v.as_u64().map(|u| u as i64))) {
+            Some(id) => id,
+            None => continue,
+        };
+        let body = serde_json::json!({
+            "query": "query SynchronizedTrackLyrics($trackId: String!) { track(trackId: $trackId) { lyrics { synchronizedLines { lrcTimestamp line } } } }",
+            "variables": { "trackId": id.to_string() }
+        });
+        let pipe = client
+            .post("https://pipe.deezer.com/api")
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await;
+        let pipe = match pipe {
+            Ok(r) if r.status().is_success() => r,
+            _ => continue,
+        };
+        let pipe_json: serde_json::Value = match pipe.json().await {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let lines = pipe_json.pointer("/data/track/lyrics/synchronizedLines");
+        let synced = match lines.and_then(deezer_lines_to_lrc) {
+            Some(s) => s,
+            None => continue,
+        };
+        let track_name = track
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&title)
+            .to_string();
+        let artist_name = track
+            .pointer("/artist/name")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&artist)
+            .to_string();
+        let album_name = track
+            .pointer("/album/title")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let duration = track
+            .get("duration")
+            .and_then(|v| v.as_f64().or_else(|| v.as_u64().map(|u| u as f64)))
+            .unwrap_or(0.0);
+
+        results.push(serde_json::json!({
+            "provider": "deezer",
+            "providerLabel": "Deezer",
+            "trackName": track_name,
+            "artistName": artist_name,
+            "albumName": album_name,
+            "duration": duration,
+            "syncedLyrics": synced,
+            "plainLyrics": serde_json::Value::Null,
+            "id": id,
+        }));
+    }
+
+    Ok(serde_json::Value::Array(results))
+}

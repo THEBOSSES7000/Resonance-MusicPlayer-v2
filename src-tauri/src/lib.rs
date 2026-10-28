@@ -204,6 +204,8 @@ pub fn run() {
             online_metadata::fetch_metadata_by_fingerprint,
             online_metadata::fetch_cover_art,
             online_metadata::search_lrclib_lyrics,
+            online_metadata::search_lyricsplus_lyrics,
+            online_metadata::search_deezer_lyrics,
             replay_gain::scan_missing_replay_gain,
             replay_gain::cancel_replay_gain_scan,
             windows_media::set_taskbar_playback_progress,

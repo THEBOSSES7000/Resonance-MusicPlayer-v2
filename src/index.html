@@ -1074,7 +1074,7 @@
     <div class="modal-overlay" id="lyrics-search-modal">
       <div class="playlist-modal-card lyrics-search-card">
         <div class="modal-card-header">
-          <h3>Buscar letra en LRCLIB</h3>
+          <h3>Buscar letra</h3>
           <button class="btn-modal-close" id="lyrics-search-close"><i class="ph ph-x"></i></button>
         </div>
         <p class="modal-note-text" id="lyrics-search-context">Aplicar a: —</p>
@@ -1096,16 +1096,31 @@
           </button>
         </div>
         <div class="lyrics-search-meta">
-          <div class="lyrics-search-filter">
-            <button type="button" id="lyrics-search-filter-toggle" class="lyrics-search-filter-toggle" aria-expanded="false" aria-haspopup="true">
-              <i class="ph ph-funnel" aria-hidden="true"></i>
-              <span id="lyrics-search-filter-label">Todas las letras</span>
-              <i class="ph ph-caret-down" aria-hidden="true"></i>
-            </button>
-            <div class="lyrics-search-filter-menu" id="lyrics-search-filter-menu" hidden>
-              <button type="button" data-lyrics-filter="all">Todas las letras</button>
-              <button type="button" data-lyrics-filter="synced">Solo sincronizadas</button>
-              <button type="button" data-lyrics-filter="plain">Solo planas</button>
+          <div class="lyrics-search-filters">
+            <div class="lyrics-search-filter">
+              <button type="button" id="lyrics-search-filter-toggle" class="lyrics-search-filter-toggle" aria-expanded="false" aria-haspopup="true">
+                <i class="ph ph-funnel" aria-hidden="true"></i>
+                <span id="lyrics-search-filter-label">Todas las letras</span>
+                <i class="ph ph-caret-down" aria-hidden="true"></i>
+              </button>
+              <div class="lyrics-search-filter-menu" id="lyrics-search-filter-menu" hidden>
+                <button type="button" data-lyrics-filter="all">Todas las letras</button>
+                <button type="button" data-lyrics-filter="synced">Solo sincronizadas</button>
+                <button type="button" data-lyrics-filter="plain">Solo planas</button>
+              </div>
+            </div>
+            <div class="lyrics-search-filter">
+              <button type="button" id="lyrics-search-provider-toggle" class="lyrics-search-filter-toggle" aria-expanded="false" aria-haspopup="true">
+                <i class="ph ph-cloud" aria-hidden="true"></i>
+                <span id="lyrics-search-provider-label">Todos los proveedores</span>
+                <i class="ph ph-caret-down" aria-hidden="true"></i>
+              </button>
+              <div class="lyrics-search-filter-menu" id="lyrics-search-provider-menu" hidden>
+                <button type="button" data-lyrics-provider="all">Todos los proveedores</button>
+                <button type="button" data-lyrics-provider="lrclib">LRCLib</button>
+                <button type="button" data-lyrics-provider="lyricsplus">LyricsPlus</button>
+                <button type="button" data-lyrics-provider="deezer">Deezer</button>
+              </div>
             </div>
           </div>
           <span id="lyrics-search-count"></span>

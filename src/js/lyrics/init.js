@@ -7,7 +7,7 @@ import { handleLyricsTranslationSettingsChanged, handleLyricsViewUpdated, toggle
 import { lyricsVars } from './sharedState.js';
 import { markLyricsPointerMovement, updateLyricsResyncVisibility } from './scrollResync.js';
 import { getUi } from './uiBridge.js';
-import { applyLyricsToSong, closeLyricsSearch, lyricsResults, lyricsTargetSong, searchLyricsNow, setLyricsSearchFilter, setLyricsStatus } from './lyricsSearch.js';
+import { applyLyricsToSong, closeLyricsSearch, lyricsResults, lyricsTargetSong, searchLyricsNow, setLyricsSearchFilter, setLyricsProviderFilter, setLyricsStatus } from './lyricsSearch.js';
 import { closeTrackEditor, handleCoverFileSelect, renderEditCoverPreview } from './trackEditor.js';
 import { saveTrackEdits } from './saveTrackEdits.js';
 
@@ -72,25 +72,61 @@ export function initLyricsFeatures() {
   updateLyricsTranslationControls(false);
 
   document.getElementById('lyrics-search-close')?.addEventListener('click', closeLyricsSearch);
+  function closeLyricsFilterMenus(exceptId = null) {
+    const pairs = [
+      ['lyrics-search-filter-menu', 'lyrics-search-filter-toggle'],
+      ['lyrics-search-provider-menu', 'lyrics-search-provider-toggle'],
+    ];
+    for (const [menuId, toggleId] of pairs) {
+      if (exceptId && menuId === exceptId) continue;
+      const menu = document.getElementById(menuId);
+      const toggle = document.getElementById(toggleId);
+      if (menu) menu.hidden = true;
+      toggle?.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   document.getElementById('lyrics-search-modal')?.addEventListener('click', event => {
     if (event.target.id === 'lyrics-search-modal') closeLyricsSearch();
     if (!event.target.closest('.lyrics-search-filter')) {
-      const filterMenu = document.getElementById('lyrics-search-filter-menu');
-      const filterToggle = document.getElementById('lyrics-search-filter-toggle');
-      if (filterMenu) filterMenu.hidden = true;
-      filterToggle?.setAttribute('aria-expanded', 'false');
+      closeLyricsFilterMenus();
     }
   });
-  document.getElementById('lyrics-search-filter-toggle')?.addEventListener('click', () => {
+
+  document.getElementById('lyrics-search-filter-toggle')?.addEventListener('click', (event) => {
+    event.stopPropagation();
     const menu = document.getElementById('lyrics-search-filter-menu');
     const toggle = document.getElementById('lyrics-search-filter-toggle');
     if (!menu || !toggle) return;
-    menu.hidden = !menu.hidden;
-    toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    const willOpen = menu.hidden;
+    closeLyricsFilterMenus();
+    if (willOpen) {
+      menu.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+    }
   });
+
+  document.getElementById('lyrics-search-provider-toggle')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const menu = document.getElementById('lyrics-search-provider-menu');
+    const toggle = document.getElementById('lyrics-search-provider-toggle');
+    if (!menu || !toggle) return;
+    const willOpen = menu.hidden;
+    closeLyricsFilterMenus();
+    if (willOpen) {
+      menu.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+  });
+
   document.getElementById('lyrics-search-filter-menu')?.addEventListener('click', event => {
-    const option = event.target.closest('[data-lyrics-filter]');
-    if (option) setLyricsSearchFilter(option.dataset.lyricsFilter);
+    const typeOpt = event.target.closest('[data-lyrics-filter]');
+    if (typeOpt) setLyricsSearchFilter(typeOpt.dataset.lyricsFilter);
+  });
+
+  document.getElementById('lyrics-search-provider-menu')?.addEventListener('click', event => {
+    const provOpt = event.target.closest('[data-lyrics-provider]');
+    if (provOpt) setLyricsProviderFilter(provOpt.dataset.lyricsProvider);
   });
   document.getElementById('lyrics-search-btn')?.addEventListener('click', () => void searchLyricsNow());
   document.getElementById('track-edit-close')?.addEventListener('click', closeTrackEditor);
@@ -130,7 +166,7 @@ export function initLyricsFeatures() {
         setLyricsStatus('Ese resultado no trae letra.', true);
         return;
       }
-      const ok = await applyLyricsToSong(lyricsTargetSong, raw, 'LRCLIB');
+      const ok = await applyLyricsToSong(lyricsTargetSong, raw, item.providerLabel || item.provider || 'proveedor');
       if (ok) setLyricsStatus('Letra aplicada a la pista.');
     }
   });
