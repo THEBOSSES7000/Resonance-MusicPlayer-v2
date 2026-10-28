@@ -167,6 +167,16 @@ body.lyrics-chrome-hidden .lyrics-floating-actions {
   pointer-events: none !important;
 }
 
+
+/* Complemento: elementos del mini player que no tienen clase lyrics-chrome */
+body.lyrics-chrome-hidden .lyrics-focus-nowplaying-header,
+body.lyrics-chrome-hidden .lyrics-focus-cover-fav,
+body.lyrics-chrome-hidden #np-fs-volume {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Ocultar scrollbar cuando la interfaz de letras está oculta (atajo o auto-hide) */
 body.lyrics-chrome-hidden .lyrics-scroll-container {
   scrollbar-width: none;

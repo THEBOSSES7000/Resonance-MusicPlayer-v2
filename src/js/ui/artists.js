@@ -354,14 +354,13 @@ export async function applyArtistHeroMetadata(artistName) {
     playlistHeroDesc.textContent = '';
     playlistHeroDesc.style.display = 'none';
     if (artistDisambiguation) {
-      artistDisambiguation.textContent = metadata.disambiguation;
-      artistDisambiguation.hidden = !metadata.disambiguation;
+      artistDisambiguation.textContent = '';
+      artistDisambiguation.hidden = true;
     }
     if (artistFacts) {
       artistFacts.replaceChildren();
       const facts = [
         ['Origen', metadata.origin],
-        ['Actividad', metadata.activity],
         ['Tipo', metadata.type]
       ].filter(([, value]) => value);
       artistFacts.hidden = facts.length === 0;
@@ -390,8 +389,34 @@ export async function applyArtistHeroMetadata(artistName) {
     playlistHeroDesc.textContent = override.description.trim();
     playlistHeroDesc.style.removeProperty('display');
   }
+  // Bio larga: clamp + botón mostrar más / mostrar menos
   playlistHeroDesc.classList.remove('artist-bio-clamped', 'is-expanded');
-  if (artistBioToggle) artistBioToggle.hidden = true;
+  const descText = (playlistHeroDesc.textContent || '').trim();
+  const isPlaceholder = !descText || descText.startsWith('Sin información');
+  const shouldClamp = !isPlaceholder && (
+    descText.length > 220 ||
+    descText.split(/\s+/).length > 40 ||
+    (playlistHeroDesc.scrollHeight > 0 && playlistHeroDesc.scrollHeight > 72)
+  );
+  if (artistBioToggle) {
+    if (shouldClamp) {
+      playlistHeroDesc.classList.add('artist-bio-clamped');
+      artistBioToggle.hidden = false;
+      artistBioToggle.textContent = 'Mostrar más';
+      artistBioToggle.setAttribute('aria-expanded', 'false');
+      // Medir tras layout: si no desborda 3 líneas, ocultar el botón
+      requestAnimationFrame(() => {
+        if (!playlistHeroDesc.isConnected || !artistBioToggle) return;
+        const overflows = playlistHeroDesc.scrollHeight > playlistHeroDesc.clientHeight + 2;
+        if (!overflows) {
+          playlistHeroDesc.classList.remove('artist-bio-clamped');
+          artistBioToggle.hidden = true;
+        }
+      });
+    } else {
+      artistBioToggle.hidden = true;
+    }
+  }
   if (artistTagsContainer) {
     artistTagsContainer.replaceChildren();
     artistTagsContainer.hidden = !genres.length;

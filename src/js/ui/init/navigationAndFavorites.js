@@ -64,7 +64,7 @@ export function bindNavigationAndFavorites() {
 
   artistBioToggle?.addEventListener('click', () => {
     const expanded = playlistHeroDesc.classList.toggle('is-expanded');
-    artistBioToggle.textContent = expanded ? 'Leer menos' : 'Leer más';
+    artistBioToggle.textContent = expanded ? 'Mostrar menos' : 'Mostrar más';
     artistBioToggle.setAttribute('aria-expanded', String(expanded));
   });
 

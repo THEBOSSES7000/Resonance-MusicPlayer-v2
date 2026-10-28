@@ -401,7 +401,7 @@
             <div class="artist-facts" id="artist-facts" hidden></div>
             <div class="artist-tags" id="artist-tags" aria-label="Géneros del artista" hidden></div>
             <p class="playlist-hero-desc" id="playlist-hero-desc" style="display: none;"></p>
-            <button type="button" class="artist-bio-toggle" id="artist-bio-toggle" hidden>Leer más</button>
+            <button type="button" class="artist-bio-toggle" id="artist-bio-toggle" hidden>Mostrar más</button>
             <div class="playlist-hero-meta">
               <button type="button" id="playlist-hero-author" class="playlist-hero-author-link">Resonance</button>
               <span class="meta-dot">•</span>
@@ -986,50 +986,56 @@
           </button>
         </div>
         <p class="modal-note-text" id="profile-editor-note"></p>
-        <div class="profile-editor-photo-row">
-          <div class="profile-editor-photo" id="profile-editor-photo-preview">
-            <i class="ph ph-image"></i>
+        <div class="profile-editor-body">
+          <div class="profile-editor-photo-row">
+            <div class="profile-editor-photo" id="profile-editor-photo-preview">
+              <i class="ph ph-image"></i>
+            </div>
+            <div class="profile-editor-photo-actions">
+              <button class="btn-import-m3u" id="profile-editor-photo-pick" type="button">
+                <i class="ph ph-camera"></i> Elegir foto
+              </button>
+              <button class="btn-import-m3u" id="profile-editor-photo-remove" type="button">
+                <i class="ph ph-arrow-counter-clockwise"></i> Usar foto de la base
+              </button>
+              <input type="file" id="profile-editor-photo-input" accept="image/*" hidden>
+            </div>
           </div>
-          <div class="profile-editor-photo-actions">
-            <button class="btn-import-m3u" id="profile-editor-photo-pick" type="button">
-              <i class="ph ph-camera"></i> Elegir foto
-            </button>
-            <button class="btn-import-m3u" id="profile-editor-photo-remove" type="button">
-              <i class="ph ph-arrow-counter-clockwise"></i> Usar foto de la base
-            </button>
-            <input type="file" id="profile-editor-photo-input" accept="image/*" hidden>
+          <div class="profile-editor-fields" id="profile-editor-artist-fields">
+            <div class="profile-editor-online-bar">
+              <button class="btn-import-m3u" id="profile-editor-search-online" type="button">
+                <i class="ph ph-magnifying-glass"></i> Buscar en línea
+              </button>
+              <span class="profile-editor-online-hint">MusicBrainz · Last.fm · Wikipedia · Deezer · TheAudioDB · Fanart.tv</span>
+            </div>
+            <div class="profile-editor-search-panel" id="profile-editor-search-panel" hidden>
+              <p class="profile-editor-search-status" id="profile-editor-search-status" hidden></p>
+              <div class="profile-editor-search-results" id="profile-editor-search-results"></div>
+            </div>
+            <label class="track-edit-field" for="profile-editor-description"><span>Descripción</span>
+              <textarea class="modal-textarea-input" id="profile-editor-description" maxlength="3000" autocomplete="off"></textarea>
+            </label>
+            <label class="track-edit-field" for="profile-editor-origin"><span>Origen / país</span>
+              <input class="modal-text-input" id="profile-editor-origin" maxlength="200">
+            </label>
+            <label class="track-edit-field" for="profile-editor-type"><span>Tipo de artista</span>
+              <input class="modal-text-input" id="profile-editor-type" maxlength="100">
+            </label>
+            <label class="track-edit-field" for="profile-editor-genres"><span>Géneros (separados por coma)</span>
+              <input class="modal-text-input" id="profile-editor-genres" maxlength="500">
+            </label>
           </div>
-        </div>
-        <div class="profile-editor-fields" id="profile-editor-artist-fields">
-          <label class="track-edit-field" for="profile-editor-description"><span>Descripción</span>
-            <textarea class="modal-textarea-input" id="profile-editor-description" maxlength="3000" autocomplete="off"></textarea>
-          </label>
-          <label class="track-edit-field" for="profile-editor-origin"><span>Origen / país</span>
-            <input class="modal-text-input" id="profile-editor-origin" maxlength="200">
-          </label>
-          <label class="track-edit-field" for="profile-editor-activity"><span>Años de actividad</span>
-            <input class="modal-text-input" id="profile-editor-activity" maxlength="200">
-          </label>
-          <label class="track-edit-field" for="profile-editor-type"><span>Tipo de artista</span>
-            <input class="modal-text-input" id="profile-editor-type" maxlength="100">
-          </label>
-          <label class="track-edit-field" for="profile-editor-genres"><span>Géneros (separados por coma)</span>
-            <input class="modal-text-input" id="profile-editor-genres" maxlength="500">
-          </label>
-          <label class="track-edit-field" for="profile-editor-context"><span>Contexto / desambiguación</span>
-            <input class="modal-text-input" id="profile-editor-context" maxlength="500">
-          </label>
-        </div>
-        <div class="profile-editor-fields" id="profile-editor-album-fields" hidden>
-          <label class="track-edit-field" for="profile-editor-album-description"><span>Descripción</span>
-            <textarea class="modal-textarea-input" id="profile-editor-album-description" maxlength="3000" autocomplete="off"></textarea>
-          </label>
-          <label class="track-edit-field" for="profile-editor-album-year"><span>Año de publicación</span>
-            <input class="modal-text-input" id="profile-editor-album-year" maxlength="20">
-          </label>
-          <label class="track-edit-field" for="profile-editor-album-label"><span>Sello discográfico</span>
-            <input class="modal-text-input" id="profile-editor-album-label" maxlength="200">
-          </label>
+          <div class="profile-editor-fields" id="profile-editor-album-fields" hidden>
+            <label class="track-edit-field" for="profile-editor-album-description"><span>Descripción</span>
+              <textarea class="modal-textarea-input" id="profile-editor-album-description" maxlength="3000" autocomplete="off"></textarea>
+            </label>
+            <label class="track-edit-field" for="profile-editor-album-year"><span>Año de publicación</span>
+              <input class="modal-text-input" id="profile-editor-album-year" maxlength="20">
+            </label>
+            <label class="track-edit-field" for="profile-editor-album-label"><span>Sello discográfico</span>
+              <input class="modal-text-input" id="profile-editor-album-label" maxlength="200">
+            </label>
+          </div>
         </div>
         <p class="lyrics-search-status" id="profile-editor-status" role="status" hidden></p>
         <div class="modal-card-footer profile-editor-footer">

@@ -814,3 +814,71 @@ pub async fn search_deezer_lyrics(
 
     Ok(serde_json::Value::Array(results))
 }
+
+/// Search Deezer artists (avoids browser CORS).
+#[tauri::command]
+pub async fn search_deezer_artists(query: String) -> Result<serde_json::Value, String> {
+    let q = query.trim().to_string();
+    if q.is_empty() {
+        return Ok(serde_json::json!([]));
+    }
+    let client = musicbrainz_client()?;
+    let response = client
+        .get("https://api.deezer.com/search/artist")
+        .query(&[("q", q.as_str()), ("limit", "4")])
+        .send()
+        .await
+        .map_err(|e| format!("Deezer artist search falló: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("Deezer artist search HTTP {}", response.status()));
+    }
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Deezer artist JSON: {e}"))?;
+    let tracks = body
+        .get("data")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut results = Vec::new();
+    for a in tracks.iter().take(4) {
+        let name = a
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let fans = a.get("nb_fan").and_then(|v| v.as_u64()).unwrap_or(0);
+        let description = if fans > 0 {
+            format!("{fans} fans en Deezer")
+        } else {
+            String::new()
+        };
+        let photo = a
+            .get("picture_xl")
+            .and_then(|v| v.as_str())
+            .or_else(|| a.get("picture_big").and_then(|v| v.as_str()))
+            .or_else(|| a.get("picture_medium").and_then(|v| v.as_str()))
+            .map(|s| s.to_string());
+        let url = a.get("link").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let id = a.get("id").cloned().unwrap_or(serde_json::Value::Null);
+
+        results.push(serde_json::json!({
+            "provider": "deezer",
+            "providerLabel": "Deezer",
+            "name": name,
+            "description": description,
+            "origin": "",
+            "type": "",
+            "genres": [],
+            "photo": photo,
+            "url": url,
+            "id": id,
+        }));
+    }
+    Ok(serde_json::Value::Array(results))
+}

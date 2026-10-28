@@ -163,7 +163,7 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     playlistHeroBanner.style.background = 'var(--bg-hero)';
     if (artistBioToggle) {
       artistBioToggle.hidden = true;
-      artistBioToggle.textContent = 'Leer más';
+      artistBioToggle.textContent = 'Mostrar más';
       artistBioToggle.setAttribute('aria-expanded', 'false');
     }
     void applyArtistHeroMetadata(artistName);

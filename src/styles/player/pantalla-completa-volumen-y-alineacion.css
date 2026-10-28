@@ -317,5 +317,14 @@ body.now-playing-fs[data-np-fs-lyrics-align="center"] .lyrics-overlay.open .lyri
 }
 
 
-
-
+/* Ocultar barra de volumen cuando la interfaz está oculta */
+body.lyrics-chrome-hidden.now-playing-fs #np-fs-volume,
+body.lyrics-chrome-hidden.now-playing-fs #np-fs-volume[data-placement="left"],
+body.lyrics-chrome-hidden.now-playing-fs #np-fs-volume[data-placement="right"],
+body.lyrics-chrome-hidden.now-playing-fs #np-fs-volume[data-placement="bottom"],
+body.lyrics-chrome-hidden #np-fs-volume {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}

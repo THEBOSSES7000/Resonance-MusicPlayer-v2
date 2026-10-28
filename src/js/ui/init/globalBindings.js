@@ -10,7 +10,7 @@ import { state } from '../../state.js';
 import { stopLyricsActiveRowAnimation, updateActiveRowFill, updateSyncedLyricsProgress } from '../lyricsRender.js';
 import { uiVars } from '../sharedState.js';
 import { ARTIST_TRACK_PAGE_SIZE, renderPlaylistDetailView } from '../playlistDetail.js';
-import { closeProfileEditor, prepareProfilePhoto, saveProfileEditor, setProfileEditorPhoto } from '../profileEditor.js';
+import { bindArtistSearchPanel, closeProfileEditor, prepareProfilePhoto, saveProfileEditor, setProfileEditorPhoto } from '../profileEditor.js';
 
 let lyricsPlaybackListenersInitialized = false;
 
@@ -113,4 +113,5 @@ export function bindGlobalEvents() {
   profileEditorModal?.addEventListener('click', event => {
     if (event.target === profileEditorModal) event.stopPropagation();
   });
+  bindArtistSearchPanel();
 }

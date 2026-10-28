@@ -162,6 +162,23 @@ body.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
   z-index: 50 !important;
 }
 
+/* Ocultar interfaz (Ctrl+Shift+P / auto-hide): cabecera de cola, menú ⋯ y favorito */
+body.lyrics-chrome-hidden .lyrics-focus-nowplaying-header,
+body.lyrics-chrome-hidden.now-playing-fs .lyrics-overlay.open .lyrics-focus-nowplaying-header {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-6px);
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s ease;
+}
+body.lyrics-chrome-hidden .lyrics-focus-cover-fav,
+body.lyrics-chrome-hidden.now-playing-fs .lyrics-overlay.open .lyrics-focus-cover-fav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
 /* Menú de letras normal: fila carátula + título/artista (no columna FS) */
 body:not(.now-playing-fs) .lyrics-overlay.open .lyrics-dock-left .lyrics-focus-mini-track {
   display: flex !important;
