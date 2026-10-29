@@ -1,12 +1,13 @@
+import { fetchJsonWithTimeout } from '../net/fetchTimeout.js';
 /**
  * Proveedores de información de artista.
  * Devuelve resultados normalizados para el editor de perfil.
  */
 
-const LASTFM_API_KEY = '83cdb62766dbde114c39fc2ef5b282f2';
-const FANART_API_KEY = '63e812af8fca6d904be09fea2a108db4';
+const LASTFM_API_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('pn_api_lastfm')) || '83cdb62766dbde114c39fc2ef5b282f2';
+const FANART_API_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('pn_api_fanart')) || '63e812af8fca6d904be09fea2a108db4';
 /** Key pública de prueba documentada por TheAudioDB (tier free). */
-const AUDIODB_API_KEY = '123';
+const AUDIODB_API_KEY = (typeof localStorage !== 'undefined' && localStorage.getItem('pn_api_audiodb')) || '123';
 const USER_AGENT = 'ResonanceMusicPlayer/2.0 (https://github.com/THEBOSSES7000/Resonance-MusicPlayer-v2)';
 
 function isTauri() {
@@ -39,10 +40,7 @@ function normalize(r) {
 }
 
 async function fetchJson(url, options = {}) {
-  const headers = { 'User-Agent': USER_AGENT, Accept: 'application/json', ...(options.headers || {}) };
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return fetchJsonWithTimeout(url, options);
 }
 
 // Cola + backoff para MusicBrainz (límite ~1 req/s; 503 = rate limit)
@@ -59,7 +57,8 @@ async function fetchMusicBrainzJson(url, retries = 2) {
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetch(url, { headers });
+        const { fetchWithTimeout } = await import('../net/fetchTimeout.js');
+        const res = await fetchWithTimeout(url, { headers });
         if (res.status === 503 || res.status === 429) {
           lastErr = new Error(`HTTP ${res.status}`);
           await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));

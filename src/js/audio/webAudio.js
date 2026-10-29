@@ -5,7 +5,7 @@ import { state } from '../state.js';
 import { closeLyricsView, syncPlayingUI } from '../ui.js';
 import { cancelCrossfade, cancelDeckRamp, getDeckState, getReplayGainLevel, updateDeckVolume } from './decks.js';
 import { audioVars } from './sharedState.js';
-import { applyNativeStatusToUi, ensureNativeEnergyListener, nativeAudioEnabled, nativeAudioEnergy, nativeInvoke, startNativeProgressPoll, stopNativeProgressPoll } from './nativeEngine.js';
+import { applyNativeStatusToUi, ensureNativeEnergyListener, disableNativeEnergyEmit, nativeAudioEnabled, nativeAudioEnergy, nativeInvoke, startNativeProgressPoll, stopNativeProgressPoll } from './nativeEngine.js';
 import { pushNativeEqualizer } from './effects.js';
 import { audio } from './playback.js';
 import { updateCrossfadeIndicator } from './progressUI.js';
@@ -253,6 +253,7 @@ export async function configureAudioAnalysis(enabled) {
   audioAnalysisEnabled = Boolean(enabled);
   if (nativeAudioEnabled) {
     if (enabled) ensureNativeEnergyListener();
+    else disableNativeEnergyEmit();
     releaseWebAudioIfPossible();
     return true;
   }

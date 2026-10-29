@@ -84,6 +84,7 @@ async function loadCachedNativeLibrary(cachedTracksInput = null) {
       addedDate: new Date(file.lastModified || Date.now()).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
       isFavorite: songIsFavorite({ title: cachedTrack.title, artist: cachedTrack.artist, file: { path: cachedTrack.path } }, favoriteKeys) || Boolean(cachedTrack.isFavorite),
       metadataParserVersion: cachedTrack.metadataParserVersion || null,
+      unavailable: Boolean(cachedTrack.unavailable),
       metadataLoaded: cachedTrack.metadataParserVersion === METADATA_PARSER_VERSION
     };
   });

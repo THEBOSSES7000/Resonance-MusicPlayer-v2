@@ -1,6 +1,7 @@
 //! Comandos de Tauri del motor nativo (cargar, reproducir, pausar, buscar, volumen, ecualizador...).
 
 use super::*;
+use std::sync::atomic::Ordering;
 
 pub fn send_cmd_blocking(
     tx: &Sender<AudioCmd>,
@@ -230,4 +231,14 @@ pub async fn native_audio_status(
     })
     .await
     .map_err(|e| format!("Error en el motor de audio: {e}"))?
+}
+
+
+/// Activa/desactiva la emisión del evento `audio-energy` (solo cuando Visual+ lo necesita).
+#[tauri::command]
+pub fn native_audio_set_energy_emit(enabled: bool) {
+    super::measuring::ENERGY_EMIT_ENABLED.store(enabled, Ordering::Relaxed);
+    if !enabled {
+        // El hilo de audio pondrá la energía a 0 en el próximo tick si aplica.
+    }
 }

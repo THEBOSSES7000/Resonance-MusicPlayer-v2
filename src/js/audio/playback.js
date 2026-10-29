@@ -154,6 +154,19 @@ async function nativeCrossfadeToNext(index) {
     state.activeQueue[index] = canonical;
     track = canonical;
   }
+  if (track?.unavailable) {
+    console.warn('[Resonance] Pista no disponible:', track.title || track.path);
+    try {
+      const { showConfirmDialog } = await import('../ui.js');
+      await showConfirmDialog({
+        title: 'Canción no disponible',
+        message: 'El archivo no está en el disco (¿unidad desconectada o archivo movido?). Se mantiene en la biblioteca y en las playlists.',
+        confirmText: 'Entendido',
+        showCancel: false
+      });
+    } catch (_) {}
+    return false;
+  }
   const path = track?.file?.path || track?.path;
   if (!path || typeof path !== 'string') return false;
 

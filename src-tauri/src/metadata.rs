@@ -220,19 +220,22 @@ pub fn save_scanned_cover_to_dir(
     track_path: &str,
     bytes: &[u8],
 ) -> Result<String, String> {
-    let hash = Sha256::digest(track_path.as_bytes());
-    let file_name = format!("{:x}.jpg", hash);
+    // Deduplicar por contenido de la imagen (no por ruta de canción):
+    // un álbum de 12 pistas con la misma carátula → un solo archivo en disco.
+    let content_hash = Sha256::digest(bytes);
+    let file_name = format!("{:x}.jpg", content_hash);
     let cover_path = covers_directory.join(&file_name);
 
     // Atajo rápido: si la miniatura ya existe en caché, no decodificar ni tocar el disco.
     if cover_path.is_file() {
+        let _ = track_path; // se mantiene el parámetro por compatibilidad de firmas
         return Ok(cover_path.to_string_lossy().into_owned());
     }
 
     let written = (|| -> Result<(), String> {
         let image =
             image::load_from_memory(bytes).map_err(|error| format!("Carátula inválida: {error}"))?;
-        // FilterType::Triangle reduce drásticamente el uso de CPU/RAM en escaneos masivos frente a Lanczos3
+        // FilterType::Triangle reduce CPU/RAM en escaneos masivos frente a Lanczos3
         let resized = if image.width() > 512 || image.height() > 512 {
             image.resize(512, 512, image::imageops::FilterType::Triangle)
         } else {
@@ -248,7 +251,14 @@ pub fn save_scanned_cover_to_dir(
                 image::ExtendedColorType::Rgb8,
             )
             .map_err(|error| format!("No se pudo comprimir la carátula: {error}"))?;
-        fs::write(&cover_path, output.into_inner()).map_err(|e| e.to_string())
+        // Escritura atómica: temporal + rename
+        let tmp_path = covers_directory.join(format!("{:x}.jpg.tmp", content_hash));
+        fs::write(&tmp_path, output.into_inner()).map_err(|e| e.to_string())?;
+        fs::rename(&tmp_path, &cover_path).map_err(|e| {
+            let _ = fs::remove_file(&tmp_path);
+            e.to_string()
+        })?;
+        Ok(())
     })();
 
     if let Err(error) = written {
@@ -257,9 +267,11 @@ pub fn save_scanned_cover_to_dir(
         } else {
             "img"
         };
-        let fallback = covers_directory.join(format!("{:x}.{ext}", hash));
+        let fallback = covers_directory.join(format!("{:x}.{ext}", content_hash));
         if !fallback.is_file() {
-            fs::write(&fallback, bytes).map_err(|e| format!("{error}; fallback: {e}"))?;
+            let tmp = covers_directory.join(format!("{:x}.{ext}.tmp", content_hash));
+            fs::write(&tmp, bytes).map_err(|e| format!("{error}; fallback: {e}"))?;
+            fs::rename(&tmp, &fallback).map_err(|e| format!("{error}; rename: {e}"))?;
         }
         return Ok(fallback.to_string_lossy().into_owned());
     }

@@ -655,3 +655,20 @@
   color: var(--accent-light);
 }
 
+
+
+/* Pistas no disponibles: se conservan en biblioteca y playlists */
+.playlist-table-row.is-unavailable {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+.playlist-table-row.is-unavailable .track-unavailable-icon {
+  color: var(--text-muted, #9ca3af);
+  margin-right: 0.35rem;
+  vertical-align: -0.12em;
+  font-size: 1.05em;
+}
+.playlist-table-row.is-unavailable .row-title,
+.playlist-table-row.is-unavailable .row-artist {
+  color: var(--text-muted, #9ca3af);
+}

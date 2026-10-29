@@ -33,18 +33,26 @@ export let nativeShadow = {
 /** Reloj de pared del último status nativo (para interpolar posición entre polls). */
 export let nativePositionSampleMs = 0;
 
-/** Suscribe al evento de energía del motor nativo (una sola vez). */
+/** Suscribe al evento de energía del motor nativo (solo cuando Visual+ lo necesita). */
 export function ensureNativeEnergyListener() {
-  if (nativeEnergyUnlisten || !window.__TAURI__?.event?.listen) return;
-  void window.__TAURI__.event.listen('audio-energy', event => {
-    const value = Number(event.payload);
-    nativeAudioEnergy = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
-  }).then(unlisten => {
-    nativeEnergyUnlisten = unlisten;
-  }).catch(() => {});
+  if (!window.__TAURI__?.event?.listen) return;
+  if (!nativeEnergyUnlisten) {
+    void window.__TAURI__.event.listen('audio-energy', event => {
+      const value = Number(event.payload);
+      nativeAudioEnergy = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+    }).then(unlisten => {
+      nativeEnergyUnlisten = unlisten;
+    }).catch(() => {});
+  }
+  // Pedir al motor nativo que emita energía
+  void nativeInvoke('native_audio_set_energy_emit', { enabled: true }).catch(() => {});
 }
 
-ensureNativeEnergyListener();
+/** Deja de pedir emisiones de energía (Visual+ apagado). */
+export function disableNativeEnergyEmit() {
+  nativeAudioEnergy = 0;
+  void nativeInvoke('native_audio_set_energy_emit', { enabled: false }).catch(() => {});
+}
 
 export function canUseNativeAudio(track) {
   if (!nativeAudioEnabled) return false;
@@ -58,6 +66,7 @@ export async function nativeInvoke(cmd, args = {}) {
 
 export function stopNativeProgressPoll() {
   if (nativePollTimer) {
+    clearTimeout(nativePollTimer);
     clearInterval(nativePollTimer);
     nativePollTimer = null;
   }
@@ -152,14 +161,42 @@ function maybeStartNativeCrossfade(st) {
   void crossfadeToNext(state.currentTrackIndex + 1);
 }
 
-export function startNativeProgressPoll() {
+function getProgressPollIntervalMs() {
+  // Ventana oculta / minimizada: sondear mucho menos
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return 1000;
+  try {
+    if (document.body?.classList?.contains('window-minimized')) return 1000;
+  } catch (_) {}
+  return 250;
+}
+
+function scheduleNativeProgressPollTick() {
   stopNativeProgressPoll();
-  nativePollTimer = setInterval(() => {
+  const delay = getProgressPollIntervalMs();
+  nativePollTimer = window.setTimeout(() => {
+    nativePollTimer = null;
     if (!audioVars.nativeAudioActive) return;
     nativeInvoke('native_audio_status')
-      .then(st => applyNativeStatusToUi(st))
-      .catch(() => {});
-  }, 250);
+      .then(st => {
+        applyNativeStatusToUi(st);
+        if (audioVars.nativeAudioActive && !st?.paused) {
+          scheduleNativeProgressPollTick();
+        } else if (audioVars.nativeAudioActive && st?.paused) {
+          // En pausa: sondeo lento solo para no perder eventos de fin
+          nativePollTimer = window.setTimeout(() => {
+            nativePollTimer = null;
+            if (audioVars.nativeAudioActive) scheduleNativeProgressPollTick();
+          }, 1000);
+        }
+      })
+      .catch(() => {
+        if (audioVars.nativeAudioActive) scheduleNativeProgressPollTick();
+      });
+  }, delay);
+}
+
+export function startNativeProgressPoll() {
+  scheduleNativeProgressPollTick();
 }
 
 function handleNativeTrackEnded() {
@@ -295,4 +332,12 @@ function nativePauseFadeInSecs() {
   const d = Number(pauseFadeInDuration);
   if (!Number.isFinite(d) || d <= 0) return 0;
   return Math.max(0.05, Math.min(5, d));
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (audioVars.nativeAudioActive && nativePollTimer != null) {
+      startNativeProgressPoll();
+    }
+  });
 }

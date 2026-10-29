@@ -1,5 +1,6 @@
 //! Escaneo de la biblioteca de música.
 
+use rayon::prelude::*;
 use super::*;
 
 pub static CANCEL_MUSIC_LIBRARY_SCAN: AtomicBool = AtomicBool::new(false);
@@ -78,25 +79,39 @@ pub async fn scan_music_library(app: AppHandle) -> Result<MusicLibrary, String> 
     CANCEL_MUSIC_LIBRARY_SCAN.store(false, Ordering::Relaxed);
     tauri::async_runtime::spawn_blocking(move || {
         let directories = read_music_directories(&app)?;
-        let mut files = Vec::new();
+        // Permitir cada raíz antes del recorrido paralelo
         for directory in &directories {
-            if CANCEL_MUSIC_LIBRARY_SCAN.load(Ordering::Relaxed) {
-                break;
-            }
             let root = PathBuf::from(&directory.path);
-            if !root.is_dir() {
-                continue;
+            if root.is_dir() {
+                app.asset_protocol_scope()
+                    .allow_directory(&root, true)
+                    .map_err(|error| error.to_string())?;
             }
-            app.asset_protocol_scope()
-                .allow_directory(&root, true)
-                .map_err(|error| error.to_string())?;
-            let excluded: std::collections::HashSet<String> = directory
-                .excluded_subfolders
-                .iter()
-                .map(|item| normalize_path_key(item))
-                .collect();
-            collect_music_files(&root, &root, &directory.name, &mut files, &excluded)?;
         }
+        // Recorrer varias carpetas raíz en paralelo (rayon)
+        let partials: Vec<Vec<_>> = directories
+            .par_iter()
+            .map(|directory| {
+                if CANCEL_MUSIC_LIBRARY_SCAN.load(Ordering::Relaxed) {
+                    return Vec::new();
+                }
+                let root = PathBuf::from(&directory.path);
+                if !root.is_dir() {
+                    return Vec::new();
+                }
+                let excluded: std::collections::HashSet<String> = directory
+                    .excluded_subfolders
+                    .iter()
+                    .map(|item| normalize_path_key(item))
+                    .collect();
+                let mut local_files = Vec::new();
+                if collect_music_files(&root, &root, &directory.name, &mut local_files, &excluded).is_err() {
+                    return Vec::new();
+                }
+                local_files
+            })
+            .collect();
+        let mut files: Vec<_> = partials.into_iter().flatten().collect();
         files.sort_by(|left, right| right.last_modified.cmp(&left.last_modified));
         Ok(MusicLibrary { directories, files })
     })

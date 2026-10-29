@@ -1,6 +1,10 @@
 //! Medición de energía de la señal (evento audio-energy para Visual+).
 
 use super::*;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Solo emitir `audio-energy` al frontend cuando Visual+ (u otro análisis) lo pide.
+pub static ENERGY_EMIT_ENABLED: AtomicBool = AtomicBool::new(false);
 
 /// Source wrapper que calcula RMS en tiempo real y cuenta frames consumidos
 /// para el reloj de posición (más fiable que Instant del sistema).

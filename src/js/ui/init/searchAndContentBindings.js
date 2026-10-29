@@ -81,7 +81,26 @@ export function bindSearchAndContent() {
 
   // Renderiza el siguiente bloque de filas, búsqueda o álbumes solo al acercarse al final.
   if (mainContent) {
+    let virtualScrollRaf = 0;
     mainContent.addEventListener('scroll', () => {
+      // Ventana virtual: actualizar filas visibles aunque no estemos al final
+      if (
+        uiVars.trackListVirtual &&
+        !uiVars.isLoadingMoreTrackRows &&
+        ['all-music', 'playlist', 'favorites', 'folder-detail', 'album-detail', 'artist'].includes(state.currentView)
+      ) {
+        if (virtualScrollRaf) cancelAnimationFrame(virtualScrollRaf);
+        virtualScrollRaf = requestAnimationFrame(() => {
+          virtualScrollRaf = 0;
+          if (uiVars.isLoadingMoreTrackRows) return;
+          const prev = state.currentView === 'all-music' ? state.musicVisibleCount : uiVars.detailVisibleCount;
+          uiVars.isLoadingMoreTrackRows = true;
+          void renderPlaylistDetailView({ append: false, previousVisibleCount: prev })
+            .catch(() => {})
+            .finally(() => { uiVars.isLoadingMoreTrackRows = false; });
+        });
+      }
+
       const scrollPos = mainContent.scrollTop + mainContent.clientHeight;
       const scrollMax = mainContent.scrollHeight;
       if (scrollMax - scrollPos >= 280 || uiVars.isLoadingMoreTrackRows) return;
@@ -116,16 +135,27 @@ export function bindSearchAndContent() {
         return;
       }
 
-      if (!['all-music', 'playlist', 'favorites', 'folder-detail', 'album-detail'].includes(state.currentView)) {
+      if (!['all-music', 'playlist', 'favorites', 'folder-detail', 'album-detail', 'artist'].includes(state.currentView)) {
         return;
       }
-      // No comparar filas DOM vs visibleCount: MAX_DOM_TRACK_ROWS (~120) deja
-      // renderedCount fijo y bloqueaba el scroll infinito al superar ~150.
       const previousVisibleCount = state.currentView === 'all-music'
         ? state.musicVisibleCount
         : uiVars.detailVisibleCount;
       const totalInList = Array.isArray(uiVars.renderedTrackList) ? uiVars.renderedTrackList.length : 0;
+
+      // Lista virtualizada: al scrollear, re-pintar la ventana visible (sin acumular DOM)
+      if (uiVars.trackListVirtual && totalInList > 0) {
+        if (!uiVars.isLoadingMoreTrackRows) {
+          uiVars.isLoadingMoreTrackRows = true;
+          void renderPlaylistDetailView({ append: false, previousVisibleCount })
+            .catch(error => console.error('No se pudo actualizar la ventana de la lista:', error))
+            .finally(() => { uiVars.isLoadingMoreTrackRows = false; });
+        }
+      }
+
+      // Ampliar el rango "descubierto" al acercarse al final (sigue haciendo falta para listas enormes)
       if (totalInList > 0 && previousVisibleCount >= totalInList) return;
+      if (scrollMax - scrollPos >= 280) return;
       if (state.currentView === 'all-music') state.musicVisibleCount += 50;
       else uiVars.detailVisibleCount += 50;
       uiVars.isLoadingMoreTrackRows = true;

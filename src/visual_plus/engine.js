@@ -202,9 +202,16 @@ function syncVisualPlusSurface() {
   );
 }
 
+const MIN_FRAME_MS = 1000 / 30; // tope ~30 FPS para ahorrar GPU
+
 function draw(timestamp) {
   rafId = 0;
   if (!canAnimate()) return;
+
+  if (lastTimestamp !== 0 && (timestamp - lastTimestamp) < MIN_FRAME_MS) {
+    rafId = requestAnimationFrame(draw);
+    return;
+  }
 
   const dt = lastTimestamp === 0
     ? 0

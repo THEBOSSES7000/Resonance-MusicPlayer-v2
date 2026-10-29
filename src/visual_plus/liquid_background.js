@@ -348,3 +348,11 @@ export function initLiquidImmersiveBackground() {
 }
 
 export const initLiquidBackground = initLiquidImmersiveBackground;
+
+document.addEventListener('visibilitychange', () => {
+  try {
+    if (typeof refreshImmersiveBackgroundState === 'function') {
+      refreshImmersiveBackgroundState();
+    }
+  } catch (_) {}
+});

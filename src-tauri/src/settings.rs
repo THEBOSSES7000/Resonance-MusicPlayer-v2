@@ -195,7 +195,13 @@ pub fn save_app_settings(
         }
     }
     let contents = serde_json::to_vec_pretty(&settings).map_err(|error| error.to_string())?;
-    fs::write(settings_store_path(&app)?, contents).map_err(|error| error.to_string())
+    let path = settings_store_path(&app)?;
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, &contents).map_err(|error| error.to_string())?;
+    fs::rename(&tmp, &path).map_err(|error| {
+        let _ = fs::remove_file(&tmp);
+        error.to_string()
+    })
 }
 
 #[tauri::command]

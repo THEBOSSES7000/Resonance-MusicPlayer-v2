@@ -534,19 +534,24 @@ pub fn audio_thread_main(
                     energy.store(0f32.to_bits(), Ordering::Relaxed);
                 }
 
-                // Emitir energía hacia el frontend para Visual+ (~30–40 Hz)
-                energy_emit_skip = energy_emit_skip.wrapping_add(1);
-                if energy_emit_skip % 2 == 0 {
-                    if let Some(ref app) = app_handle {
-                        let bits = energy.load(Ordering::Relaxed);
-                        // Evitar ruido IPC cuando no hay cambio significativo y está en silencio
-                        let level = f32::from_bits(bits);
-                        let last = f32::from_bits(last_emitted_bits);
-                        if player.is_playing() || level > 0.002 || last > 0.002 {
-                            let _ = app.emit("audio-energy", level);
-                            last_emitted_bits = bits;
+                // Emitir energía solo si el frontend lo activó (Visual+ / análisis de audio)
+                if super::measuring::ENERGY_EMIT_ENABLED.load(Ordering::Relaxed) {
+                    energy_emit_skip = energy_emit_skip.wrapping_add(1);
+                    if energy_emit_skip % 2 == 0 {
+                        if let Some(ref app) = app_handle {
+                            let bits = energy.load(Ordering::Relaxed);
+                            let level = f32::from_bits(bits);
+                            let last = f32::from_bits(last_emitted_bits);
+                            if player.is_playing() || level > 0.002 || last > 0.002 {
+                                let _ = app.emit("audio-energy", level);
+                                last_emitted_bits = bits;
+                            }
                         }
                     }
+                } else if energy_emit_skip != 0 {
+                    energy_emit_skip = 0;
+                    energy.store(0f32.to_bits(), Ordering::Relaxed);
+                    last_emitted_bits = 0;
                 }
                 None
             }

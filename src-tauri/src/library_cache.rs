@@ -181,8 +181,15 @@ pub fn save_cached_music_library(
                 .map(str::to_string)
         })
         .collect();
-    let contents = serde_json::to_vec(&tracks).map_err(|error| error.to_string())?;
-    fs::write(cache_directory.join("library.json"), contents).map_err(|error| error.to_string())?;
+        let contents = serde_json::to_vec(&tracks).map_err(|error| error.to_string())?;
+    // Escritura atómica: evita library.json corrupto si la app se cierra a mitad de guardado
+    let final_path = cache_directory.join("library.json");
+    let tmp_path = cache_directory.join("library.json.tmp");
+    fs::write(&tmp_path, &contents).map_err(|error| error.to_string())?;
+    fs::rename(&tmp_path, &final_path).map_err(|error| {
+        let _ = fs::remove_file(&tmp_path);
+        error.to_string()
+    })?;
     Ok(cover_paths)
 }
 

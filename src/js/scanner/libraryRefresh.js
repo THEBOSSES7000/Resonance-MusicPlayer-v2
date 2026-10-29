@@ -137,14 +137,20 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
     const previousCount = state.localMusicFiles.length;
     const normalizePath = value => String(value || '').replace(/\\/g, '/').toLowerCase();
     const selectedPaths = new Set(library.files.map(file => normalizePath(file.path)));
-    // Solo filtrar pistas que ya no están en disco cuando el escaneo SÍ encontró archivos.
-    // Si el escaneo vuelve vacío (carpeta offline, permiso, ruta rota), NO vaciar la biblioteca.
+    // No borrar pistas ausentes: marcarlas como no disponibles (disco externo, etc.).
+    // Si el escaneo vuelve vacío, se conserva la biblioteca (bloque de abajo).
+    let availabilityChanged = false;
     if (library.files.length > 0) {
-      state.localMusicFiles = state.localMusicFiles.filter(song =>
-        song.file?.path && selectedPaths.has(normalizePath(song.file.path))
-      );
+      for (const song of state.localMusicFiles) {
+        const path = normalizePath(song.file?.path || song.path);
+        if (!path) continue;
+        const nextUnavailable = !selectedPaths.has(path);
+        if (Boolean(song.unavailable) !== nextUnavailable) availabilityChanged = true;
+        song.unavailable = nextUnavailable;
+      }
     }
-    const removedAny = state.localMusicFiles.length !== previousCount;
+    // Ya no se eliminan canciones del array (ni de playlists)
+    const removedAny = availabilityChanged;
 
     if (library.files.length === 0) {
       console.warn(

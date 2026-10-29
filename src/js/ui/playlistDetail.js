@@ -482,6 +482,11 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     const idx = firstSongToRender + pageIndex;
     const row = document.createElement('div');
     row.className = 'playlist-table-row';
+    if (song.unavailable) {
+      row.classList.add('is-unavailable');
+      row.title = 'Archivo no disponible (¿disco desconectado o movido?)';
+      row.dataset.unavailable = '1';
+    }
     row.dataset.songId = song.id != null ? String(song.id) : '';
     row.dataset.trackIdx = String(idx);
     row.dataset.songPath = String(song.file?.path || song.path || '');
@@ -547,7 +552,7 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
       <div class="row-title-box">
         <div class="row-thumb-box">${thumbHtml}</div>
         <div class="row-text-meta">
-          <strong>${escapeHtml(song.title)}</strong>
+          <strong>${song.unavailable ? '<i class="ph ph-prohibit track-unavailable-icon" title="No disponible" aria-hidden="true"></i> ' : ''}${escapeHtml(song.title)}</strong>
           <span>${escapeHtml(song.artist || "Desconocido")}</span>
         </div>
       </div>

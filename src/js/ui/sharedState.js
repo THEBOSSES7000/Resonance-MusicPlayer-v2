@@ -26,5 +26,7 @@ export const uiVars = {
   renderedTrackContextId: null,
   renderedTrackContextTitle: '',
   lastMusicBrainzRequestAt: 0,
-  musicBrainzRequestQueue: Promise.resolve()
+  musicBrainzRequestQueue: Promise.resolve(),
+  /** @type {null | { start: number, end: number, total: number, rowHeight: number }} */
+  trackListVirtual: null
 };

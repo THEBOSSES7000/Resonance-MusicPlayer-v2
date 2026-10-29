@@ -37,7 +37,9 @@ async function flushNativeLibraryCacheToDisk() {
       codec: song.codec,
       genre: song.genre || null,
       replayGainDb: song.replayGainDb,
-      isFavorite: song.isFavorite
+      isFavorite: song.isFavorite,
+      unavailable: Boolean(song.unavailable),
+      metadataLoaded: Boolean(song.metadataLoaded)
     }));
     const coverPaths = await window.__TAURI__.core.invoke('save_cached_music_library', { tracks });
     nativeSongs.forEach((song, index) => {

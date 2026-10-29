@@ -3,9 +3,7 @@ import { initScanner, initializeMusicLibrary } from './scanner.js';
 import { initUI, navigateToView, renderGrids, renderQueue, renderPlaylistsUI, updateFavoritesCount } from './ui.js';
 import { initSettings, renderDirectories } from './settings.js';
 import { initResizers } from './resizers.js';
-import { initLyricsFeatures } from './lyrics.js';
 import { initShortcuts } from './shortcuts.js';
-import { initDiscordRpc } from './discordRpc.js';
 
 function initWindowChrome() {
   const currentWindow = window.__TAURI__?.window?.getCurrentWindow?.();
@@ -141,14 +139,12 @@ function safeInit(label, fn) {
 }
 
 safeInit('windowChrome', initWindowChrome);
-safeInit('discordRpc', initDiscordRpc);
 safeInit('audioPlayer', initAudioPlayer);
 safeInit('scanner', initScanner);
 safeInit('ui', initUI);
 safeInit('settings', initSettings);
 safeInit('shortcuts', initShortcuts);
 safeInit('resizers', initResizers);
-safeInit('lyrics', initLyricsFeatures);
 
 // Cerrar overlays huérfanos que puedan bloquear clics / título
 try {
@@ -175,6 +171,26 @@ safeInit('renderQueue', renderQueue);
 safeInit('renderPlaylistsUI', renderPlaylistsUI);
 safeInit('updateFavoritesCount', updateFavoritesCount);
 safeInit('navigateToView', () => navigateToView(localStorage.getItem('pn_startup_view') === 'all-music' ? 'all-music' : 'home', null, false));
+
+// Módulos no críticos para el primer frame: diferir tras pintar la UI
+function deferNonCriticalModules() {
+  const run = () => {
+    void import('./discordRpc.js')
+      .then((mod) => { try { mod.initDiscordRpc?.(); } catch (e) { console.error('initDiscordRpc:', e); } })
+      .catch((e) => console.error('discordRpc load:', e));
+    void import('./lyrics.js')
+      .then((mod) => { try { mod.initLyricsFeatures?.(); } catch (e) { console.error('initLyricsFeatures:', e); } })
+      .catch((e) => console.error('lyrics load:', e));
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 2500 });
+  } else {
+    window.setTimeout(run, 1);
+  }
+}
+
+deferNonCriticalModules();
+
 void initializeMusicLibrary().catch(error => {
   console.error('initializeMusicLibrary:', error);
 });

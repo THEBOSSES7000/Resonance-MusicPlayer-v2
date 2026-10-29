@@ -1,3 +1,4 @@
+import { fetchJsonWithTimeout } from '../net/fetchTimeout.js';
 /**
  * Lyrics providers — multi-source search for synced / plain lyrics.
  * Inspired by MusicResync (https://github.com/DynamycSound/MusicResync).
@@ -52,10 +53,7 @@ function lyricsPlusToLrc(data) {
 }
 
 async function fetchJson(url, options = {}) {
-  const headers = { 'User-Agent': USER_AGENT, ...(options.headers || {}) };
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return fetchJsonWithTimeout(url, options);
 }
 
 // ─── LRCLib ─────────────────────────────────────────────────────────────────

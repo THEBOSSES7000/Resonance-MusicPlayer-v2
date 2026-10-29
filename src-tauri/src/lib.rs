@@ -223,6 +223,7 @@ pub fn run() {
             native_audio::commands::native_audio_set_output_device,
             native_audio::commands::native_audio_stop,
             native_audio::commands::native_audio_status,
+            native_audio::commands::native_audio_set_energy_emit,
             native_audio::waveform::native_audio_waveform_peaks
         ])
         .run(tauri::generate_context!())

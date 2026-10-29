@@ -1,3 +1,4 @@
+import { compactSong, compactLibrarySongs } from './songMemory.js';
 // Biblioteca · Procesamiento de archivos de audio y re-escaneo.
 
 import { activeLibraryScan, beginLibraryScan, finishLibraryScan, hideScanProgress, updateScanProgress } from './scanProgress.js';
@@ -135,6 +136,7 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
   }
 
   const metadataErrors = await loadSongMetadata(songsToScan, 'Leyendo metadatos');
+  for (const s of songsToScan) compactSong(s);
   state.localMusicFiles.sort((a, b) => (b.file?.lastModified || 0) - (a.file?.lastModified || 0));
   ensureStableIdsForLibrary();
 
