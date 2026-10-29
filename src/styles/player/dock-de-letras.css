@@ -639,3 +639,36 @@ body.lyrics-overlay-open .player-popover {
   filter: brightness(1.08);
 }
 
+
+/* Visual+: canvas siempre detrás; controles y acciones encima */
+.lyrics-overlay.open #visual-plus-canvas {
+  z-index: 0 !important;
+}
+.lyrics-overlay.open .lyrics-dock {
+  z-index: 40 !important;
+}
+.lyrics-overlay.open .lyrics-floating-actions {
+  z-index: 50 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.lyrics-overlay.open .lyrics-floating-button,
+.lyrics-overlay.open .lyrics-floating-button:hover,
+.lyrics-overlay.open .lyrics-floating-button:focus,
+.lyrics-overlay.open .lyrics-floating-button[aria-pressed="true"],
+.lyrics-overlay.open .lyrics-floating-button.active {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Volumen del dock por encima del visualizador */
+.lyrics-overlay.open .lyrics-dock-volume,
+.lyrics-overlay.open .lyrics-volume-slider,
+.lyrics-overlay.open #np-fs-volume {
+  position: relative;
+  z-index: 45;
+}

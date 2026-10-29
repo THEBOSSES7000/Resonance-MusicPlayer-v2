@@ -41,7 +41,31 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
   rainBaseOpacity: 45,
   rainDynamicEnabled: false,
   rainIntensityMultiplier: 1.5,
-  rainMinDensity: 0.4
+  rainMinDensity: 0.4,
+  ps3BgColorMode: 'classic',
+  ps3BgColor: '#0a1a66',
+  ps3WaveColorMode: 'classic',
+  ps3WaveColor: '#4a8cff',
+  ps3Speed: 100,
+  ps3Amplitude: 70,
+  ps3ParticleCount: 50,
+  ps3Brightness: 100,
+  ps3AudioReactive: true,
+  wsStyle: 'bars',
+  wsPosition: 'bottom',
+  wsColorMode: 'custom',
+  wsColor: '#ffffff',
+  wsBarCount: 48,
+  wsSize: 100,
+  wsReactivity: 70,
+  wsIntensity: 70,
+  wsPeakGlow: true,
+  wsOpacity: 85,
+  wsPeakGlowIntensity: 100,
+  wsUiVeil: false,
+  wsUiVeilOpacity: 30,
+  wsGlowColorMode: 'same',
+  wsGlowColor: '#6ea8ff'
 };
 
 function migrateVisualPlusTheme(theme) {
@@ -56,13 +80,42 @@ function readVisualPlusSettings() {
   const saved = JSON.parse(storedValue);
   const settings = { ...DEFAULT_VISUAL_PLUS_SETTINGS, ...saved };
   settings.theme = migrateVisualPlusTheme(settings.theme);
+  // Migrar opciones viejas de Onda PS3 → Ondas
+  if (!settings.ps3BgColorMode && settings.ps3ColorMode) settings.ps3BgColorMode = settings.ps3ColorMode === 'custom' ? 'custom' : settings.ps3ColorMode;
+  if (!settings.ps3WaveColorMode && settings.ps3ColorMode) settings.ps3WaveColorMode = settings.ps3ColorMode;
+  if (!settings.ps3BgColor && settings.ps3Color) settings.ps3BgColor = settings.ps3Color;
+  if (!settings.ps3WaveColor && settings.ps3Color) settings.ps3WaveColor = settings.ps3Color;
+  if (typeof settings.ps3AudioReactive !== 'boolean') settings.ps3AudioReactive = true;
+  if (!settings.ps3BgColorMode) settings.ps3BgColorMode = 'classic';
+  if (!settings.ps3WaveColorMode) settings.ps3WaveColorMode = 'classic';
   if (settings.liquidSpeed != null) settings.liquidSpeed = Math.round(Number(settings.liquidSpeed)) || 100;
   if (settings.blurredSpeed != null) settings.blurredSpeed = Math.round(Number(settings.blurredSpeed)) || 100;
   if (settings.colorDiversity != null) settings.colorDiversity = Math.round(Number(settings.colorDiversity));
   if (typeof settings.blurredStatic !== 'boolean') settings.blurredStatic = false;
   if (typeof settings.liquidStatic !== 'boolean') settings.liquidStatic = false;
+  if (settings.ps3BgColorMode == null) settings.ps3BgColorMode = 'classic';
+  if (settings.ps3WaveColorMode == null) settings.ps3WaveColorMode = 'classic';
+  if (settings.ps3BgColor == null) settings.ps3BgColor = '#0a1a66';
+  if (settings.ps3WaveColor == null) settings.ps3WaveColor = '#4a8cff';
+  if (typeof settings.ps3AudioReactive !== 'boolean') settings.ps3AudioReactive = true;
+  if (!settings.wsStyle) settings.wsStyle = 'bars';
+  if (!settings.wsPosition) settings.wsPosition = 'bottom';
+  if (!settings.wsColorMode) settings.wsColorMode = 'custom';
+  if (!settings.wsColor) settings.wsColor = '#ffffff';
+  if (settings.wsBarCount == null) settings.wsBarCount = 48;
+  if (settings.wsSize == null) settings.wsSize = 100;
+  if (settings.wsReactivity == null) settings.wsReactivity = 70;
+  if (settings.wsIntensity == null) settings.wsIntensity = 70;
+  if (typeof settings.wsPeakGlow !== 'boolean') settings.wsPeakGlow = true;
+  if (settings.wsOpacity == null) settings.wsOpacity = 85;
+  if (settings.wsPeakGlowIntensity == null) settings.wsPeakGlowIntensity = 100;
+  if (typeof settings.wsUiVeil !== 'boolean') settings.wsUiVeil = false;
+  if (settings.wsUiVeilOpacity == null) settings.wsUiVeilOpacity = 30;
+  if (!settings.wsGlowColorMode) settings.wsGlowColorMode = 'same';
+  if (!settings.wsGlowColor) settings.wsGlowColor = '#6ea8ff';
+  if (settings.wsStyle === 'dots') settings.wsStyle = 'bars';
   if (typeof settings.enabled !== 'boolean' ||
-      !['shooting_stars', 'reactive_particles', 'atmospheric', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme) ||
+      !['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme) ||
       typeof settings.sophisticatedLyrics !== 'boolean' ||
       !Number.isInteger(settings.starCount) || settings.starCount < 20 || settings.starCount > 200 ||
       !Number.isInteger(settings.starBrightness) || settings.starBrightness < 10 || settings.starBrightness > 100 ||
@@ -125,6 +178,19 @@ export function initVisualPlusSettings() {
   if (!enabledToggle || !themeSelect) return;
   const sophisticatedLyricsToggle = document.getElementById('visual-plus-sophisticated-lyrics');
   const liquidStaticToggle = document.getElementById('visual-plus-liquid-static');
+  const ps3BgColorModeSelect = document.getElementById('visual-plus-ps3-bg-color-mode');
+  const ps3BgColorInput = document.getElementById('visual-plus-ps3-bg-color');
+  const ps3WaveColorModeSelect = document.getElementById('visual-plus-ps3-wave-color-mode');
+  const ps3WaveColorInput = document.getElementById('visual-plus-ps3-wave-color');
+  const ps3AudioReactiveToggle = document.getElementById('visual-plus-ps3-audio-reactive');
+  const wsStyleSelect = document.getElementById('visual-plus-ws-style');
+  const wsPositionSelect = document.getElementById('visual-plus-ws-position');
+  const wsColorModeSelect = document.getElementById('visual-plus-ws-color-mode');
+  const wsColorInput = document.getElementById('visual-plus-ws-color');
+  const wsPeakGlowToggle = document.getElementById('visual-plus-ws-peak-glow');
+  const wsUiVeilToggle = document.getElementById('visual-plus-ws-ui-veil');
+  const wsGlowColorModeSelect = document.getElementById('visual-plus-ws-glow-color-mode');
+  const wsGlowColorInput = document.getElementById('visual-plus-ws-glow-color');
   const blurredStaticToggle = document.getElementById('visual-plus-blurred-static');
   const visualPlusActiveRowToggle = document.getElementById('visual-plus-active-row-animation-enabled');
   const lyricsFillDirectionSelect = document.getElementById('visual-plus-lyrics-fill-direction');
@@ -202,6 +268,84 @@ export function initVisualPlusSettings() {
       : 'horizontal';
     applyActiveRowFillDirection(direction);
   });
+  ps3BgColorModeSelect?.addEventListener('change', () => {
+    settings = { ...settings, ps3BgColorMode: ps3BgColorModeSelect.value };
+    if (ps3BgColorInput) {
+      ps3BgColorInput.disabled = !settings.enabled || settings.theme !== 'ps3_wave' || settings.ps3BgColorMode !== 'custom';
+    }
+    syncEffectOptions();
+    persistVisualPlusSettings(settings);
+  });
+  ps3WaveColorModeSelect?.addEventListener('change', () => {
+    settings = { ...settings, ps3WaveColorMode: ps3WaveColorModeSelect.value };
+    if (ps3WaveColorInput) {
+      ps3WaveColorInput.disabled = !settings.enabled || settings.theme !== 'ps3_wave' || settings.ps3WaveColorMode !== 'custom';
+    }
+    syncEffectOptions();
+    persistVisualPlusSettings(settings);
+  });
+  ps3BgColorInput?.addEventListener('input', () => {
+    settings = { ...settings, ps3BgColor: ps3BgColorInput.value };
+    persistVisualPlusSettings(settings);
+  });
+  ps3WaveColorInput?.addEventListener('input', () => {
+    settings = { ...settings, ps3WaveColor: ps3WaveColorInput.value };
+    persistVisualPlusSettings(settings);
+  });
+  ps3AudioReactiveToggle?.addEventListener('change', () => {
+    settings = { ...settings, ps3AudioReactive: Boolean(ps3AudioReactiveToggle.checked) };
+    persistVisualPlusSettings(settings);
+  });
+  wsStyleSelect?.addEventListener('change', () => {
+    settings = { ...settings, wsStyle: wsStyleSelect.value };
+    persistVisualPlusSettings(settings);
+  });
+  wsPositionSelect?.addEventListener('change', () => {
+    settings = { ...settings, wsPosition: wsPositionSelect.value };
+    persistVisualPlusSettings(settings);
+  });
+  wsColorModeSelect?.addEventListener('change', () => {
+    const mode = wsColorModeSelect.value || 'custom';
+    settings = { ...settings, wsColorMode: mode };
+    if (wsColorInput) {
+      wsColorInput.disabled = !settings.enabled || settings.theme !== 'wave_sound' || mode !== 'custom';
+    }
+    persistVisualPlusSettings(settings);
+  });
+  wsColorInput?.addEventListener('input', () => {
+    // Al mover el picker, forzar modo personalizado para que sí se aplique
+    settings = { ...settings, wsColor: wsColorInput.value, wsColorMode: 'custom' };
+    if (wsColorModeSelect) wsColorModeSelect.value = 'custom';
+    persistVisualPlusSettings(settings);
+  });
+  wsColorInput?.addEventListener('change', () => {
+    settings = { ...settings, wsColor: wsColorInput.value, wsColorMode: 'custom' };
+    if (wsColorModeSelect) wsColorModeSelect.value = 'custom';
+    persistVisualPlusSettings(settings);
+  });
+  wsPeakGlowToggle?.addEventListener('change', () => {
+    settings = { ...settings, wsPeakGlow: Boolean(wsPeakGlowToggle.checked) };
+    const glowRow = document.getElementById('visual-plus-ws-peak-glow-intensity-row');
+    if (glowRow) glowRow.hidden = !settings.wsPeakGlow;
+    persistVisualPlusSettings(settings);
+  });
+  wsUiVeilToggle?.addEventListener('change', () => {
+    settings = { ...settings, wsUiVeil: Boolean(wsUiVeilToggle.checked) };
+    const veilRow = document.getElementById('visual-plus-ws-ui-veil-opacity-row');
+    if (veilRow) veilRow.hidden = !settings.wsUiVeil;
+    persistVisualPlusSettings(settings);
+  });
+  wsGlowColorModeSelect?.addEventListener('change', () => {
+    settings = { ...settings, wsGlowColorMode: wsGlowColorModeSelect.value };
+    if (wsGlowColorInput) {
+      wsGlowColorInput.disabled = !settings.enabled || settings.theme !== 'wave_sound' || settings.wsGlowColorMode !== 'custom';
+    }
+    persistVisualPlusSettings(settings);
+  });
+  wsGlowColorInput?.addEventListener('input', () => {
+    settings = { ...settings, wsGlowColor: wsGlowColorInput.value };
+    persistVisualPlusSettings(settings);
+  });
   liquidStaticToggle?.addEventListener('change', () => {
     settings = { ...settings, liquidStatic: Boolean(liquidStaticToggle.checked) };
     syncEffectOptions();
@@ -247,6 +391,17 @@ export function initVisualPlusSettings() {
     ['visual-plus-shooting-interval', 'visual-plus-shooting-interval-value', 'shootingInterval', value => `${value} s`],
     ['visual-plus-shooting-speed', 'visual-plus-shooting-speed-value', 'shootingSpeed', value => `${value}%`],
     ['visual-plus-liquid-speed', 'visual-plus-liquid-speed-value', 'liquidSpeed', value => `${value}%`],
+    ['visual-plus-ps3-speed', 'visual-plus-ps3-speed-value', 'ps3Speed', value => `${value}%`],
+    ['visual-plus-ws-bar-count', 'visual-plus-ws-bar-count-value', 'wsBarCount', value => `${value}`],
+    ['visual-plus-ws-size', 'visual-plus-ws-size-value', 'wsSize', value => `${value}%`],
+    ['visual-plus-ws-reactivity', 'visual-plus-ws-reactivity-value', 'wsReactivity', value => `${value}%`],
+    ['visual-plus-ws-intensity', 'visual-plus-ws-intensity-value', 'wsIntensity', value => `${value}%`],
+    ['visual-plus-ws-opacity', 'visual-plus-ws-opacity-value', 'wsOpacity', value => `${value}%`],
+    ['visual-plus-ws-peak-glow-intensity', 'visual-plus-ws-peak-glow-intensity-value', 'wsPeakGlowIntensity', value => `${value}%`],
+    ['visual-plus-ws-ui-veil-opacity', 'visual-plus-ws-ui-veil-opacity-value', 'wsUiVeilOpacity', value => `${value}%`],
+    ['visual-plus-ps3-amplitude', 'visual-plus-ps3-amplitude-value', 'ps3Amplitude', value => `${value}`],
+    ['visual-plus-ps3-particle-count', 'visual-plus-ps3-particle-count-value', 'ps3ParticleCount', value => `${value}`],
+    ['visual-plus-ps3-brightness', 'visual-plus-ps3-brightness-value', 'ps3Brightness', value => `${value}%`],
     ['visual-plus-blurred-speed', 'visual-plus-blurred-speed-value', 'blurredSpeed', value => `${value}%`],
     ['visual-plus-color-diversity', 'visual-plus-color-diversity-value', 'colorDiversity', value => `${value}%`],
     ['visual-plus-trail-length', 'visual-plus-trail-length-value', 'trailLength', value => `${value} px`],
@@ -270,9 +425,13 @@ export function initVisualPlusSettings() {
     const isParticleSetting = key.startsWith('particle');
     const isFireflySetting = key.startsWith('fireflies');
     const isRainSetting = key.startsWith('rain');
+    const isPs3Setting = key.startsWith('ps3');
+    const isWsSetting = key.startsWith('ws');
     const isLiquidSetting = key === 'liquidSpeed' || key === 'liquidStatic' || key === 'blurredSpeed' || key === 'blurredStatic' || key === 'colorDiversity';
     input.disabled = !settings.enabled ||
       (isParticleSetting && settings.theme !== 'reactive_particles') ||
+      (isPs3Setting && settings.theme !== 'ps3_wave') ||
+      (isWsSetting && settings.theme !== 'wave_sound') ||
       (isFireflySetting && (settings.theme !== 'atmospheric' || !settings.firefliesEnabled)) ||
       (isRainSetting && (settings.theme !== 'atmospheric' || !settings.rainEnabled ||
         (key.startsWith('rainIntensity') || key.startsWith('rainMinDensity')) && !settings.rainDynamicEnabled)) ||
@@ -282,7 +441,7 @@ export function initVisualPlusSettings() {
         (key === 'liquidSpeed' && settings.liquidStatic) ||
         (key === 'blurredSpeed' && settings.blurredStatic)
       )) ||
-      (!isParticleSetting && !isFireflySetting && !isRainSetting && !isLiquidSetting && settings.theme !== 'shooting_stars');
+      (!isParticleSetting && !isFireflySetting && !isRainSetting && !isLiquidSetting && !isPs3Setting && !isWsSetting && settings.theme !== 'shooting_stars');
     output.value = formatValue(settings[key]);
     output.textContent = formatValue(settings[key]);
   };
@@ -294,6 +453,14 @@ export function initVisualPlusSettings() {
     if (themeSelect) themeSelect.disabled = !settings.enabled;
     // Ocultar paneles de efecto si Visual+ está apagado
     if (starsSettings) starsSettings.hidden = !settings.enabled || settings.theme !== 'shooting_stars';
+    const ps3Settings = document.getElementById('visual-plus-ps3-settings');
+    if (ps3Settings) ps3Settings.hidden = !settings.enabled || settings.theme !== 'ps3_wave';
+    const wsSettings = document.getElementById('visual-plus-ws-settings');
+    if (wsSettings) wsSettings.hidden = !settings.enabled || settings.theme !== 'wave_sound';
+    const glowIntensityRow = document.getElementById('visual-plus-ws-peak-glow-intensity-row');
+    if (glowIntensityRow) glowIntensityRow.hidden = !settings.wsPeakGlow || settings.theme !== 'wave_sound' || !settings.enabled;
+    const veilOpacityRow = document.getElementById('visual-plus-ws-ui-veil-opacity-row');
+    if (veilOpacityRow) veilOpacityRow.hidden = !settings.wsUiVeil || settings.theme !== 'wave_sound' || !settings.enabled;
     const themeId = settings.theme === 'liquid_immersive' ? 'liquid' : settings.theme === 'liquid_gradient' ? 'blurred' : settings.theme;
     const isLiquidOnly = themeId === 'liquid';
     const isBlurredOnly = themeId === 'blurred';

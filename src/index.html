@@ -2403,6 +2403,8 @@
                 <option value="shooting_stars">Estrellas fugaces</option>
                 <option value="reactive_particles">Partículas Reactivas</option>
                 <option value="atmospheric">Atmosférico</option>
+                <option value="ps3_wave">Ondas</option>
+                <option value="wave_sound">Wave Sound</option>
                 <option value="liquid">Fondo líquido</option>
                 <option value="blurred">Fondo difuminado</option>
               </select>
@@ -2599,7 +2601,160 @@
                 </div>
               </div>
 
-              <div class="visual-plus-effect-options" id="visual-plus-liquid-settings" hidden>
+              
+              
+              <div class="visual-plus-effect-options" id="visual-plus-ws-settings" hidden>
+                <label class="interface-setting-row" for="visual-plus-ws-style">
+                  <strong>Estilo</strong>
+                  <select id="visual-plus-ws-style" class="settings-select" aria-label="Estilo Wave Sound">
+                    <option value="bars">Barras</option>
+                    <option value="line">Línea</option>
+                    <option value="eq">Ecualizador</option>
+                    <option value="blocks">Bloques</option>
+                    <option value="area">Área</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ws-position">
+                  <strong>Posición</strong>
+                  <select id="visual-plus-ws-position" class="settings-select" aria-label="Posición Wave Sound">
+                    <option value="bottom">Inferior</option>
+                    <option value="center">Centrado</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ws-color-mode">
+                  <strong>Color</strong>
+                  <select id="visual-plus-ws-color-mode" class="settings-select" aria-label="Color Wave Sound">
+                    <option value="custom">Personalizado</option>
+                    <option value="theme">Color del tema</option>
+                    <option value="artwork">Color de la carátula</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ws-color">
+                  <strong>Color personalizado</strong>
+                  <input id="visual-plus-ws-color" class="settings-color-input" type="color" value="#ffffff" aria-label="Color personalizado Wave Sound">
+                </label>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Iluminar fondo en el pico</strong>
+                    <p>Ilumina la zona del espectro con más energía.</p>
+                  </div>
+                  <label class="switch" aria-label="Iluminar fondo según pico">
+                    <input id="visual-plus-ws-peak-glow" type="checkbox" checked>
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <label class="visual-plus-range-row" for="visual-plus-ws-peak-glow-intensity" id="visual-plus-ws-peak-glow-intensity-row">
+                  <span><strong>Intensidad del iluminado</strong><output id="visual-plus-ws-peak-glow-intensity-value">100%</output></span>
+                  <input id="visual-plus-ws-peak-glow-intensity" type="range" min="20" max="150" step="5" value="100">
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ws-glow-color-mode">
+                  <strong>Color del brillo</strong>
+                  <select id="visual-plus-ws-glow-color-mode" class="settings-select" aria-label="Color del brillo Wave Sound">
+                    <option value="same">Igual que las barras</option>
+                    <option value="theme">Color del tema</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ws-glow-color">
+                  <strong>Brillo personalizado</strong>
+                  <input id="visual-plus-ws-glow-color" class="settings-color-input" type="color" value="#6ea8ff" aria-label="Color personalizado del brillo">
+                </label>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Capa sobre las barras</strong>
+                    <p>Velo semitransparente del color de fondo para leer mejor controles y letras.</p>
+                  </div>
+                  <label class="switch" aria-label="Capa sobre las barras">
+                    <input id="visual-plus-ws-ui-veil" type="checkbox">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <label class="visual-plus-range-row" for="visual-plus-ws-ui-veil-opacity" id="visual-plus-ws-ui-veil-opacity-row" hidden>
+                  <span><strong>Opacidad de la capa</strong><output id="visual-plus-ws-ui-veil-opacity-value">30%</output></span>
+                  <input id="visual-plus-ws-ui-veil-opacity" type="range" min="10" max="60" step="5" value="30">
+                </label>
+                <div class="settings-divider"></div>
+                <label class="visual-plus-range-row" for="visual-plus-ws-bar-count">
+                  <span><strong>Cantidad de barras</strong><output id="visual-plus-ws-bar-count-value">48</output></span>
+                  <input id="visual-plus-ws-bar-count" type="range" min="8" max="96" step="1" value="48">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ws-size">
+                  <span><strong>Tamaño</strong><output id="visual-plus-ws-size-value">100%</output></span>
+                  <input id="visual-plus-ws-size" type="range" min="40" max="160" step="5" value="100">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ws-opacity">
+                  <span><strong>Transparencia</strong><output id="visual-plus-ws-opacity-value">85%</output></span>
+                  <input id="visual-plus-ws-opacity" type="range" min="20" max="100" step="5" value="85">
+                </label>
+                <p class="settings-hint" style="margin:0;opacity:0.7;font-size:0.8rem;">Más bajo = más transparentes las barras (mejor lectura de letras).</p>
+                <label class="visual-plus-range-row" for="visual-plus-ws-reactivity">
+                  <span><strong>Reactividad del espectro</strong><output id="visual-plus-ws-reactivity-value">70%</output></span>
+                  <input id="visual-plus-ws-reactivity" type="range" min="10" max="100" step="5" value="70">
+                </label>
+                <p class="settings-hint" style="margin:0;opacity:0.7;font-size:0.8rem;">Qué tan rápido responden las barras al audio (suave ↔ reactivo).</p>
+                <label class="visual-plus-range-row" for="visual-plus-ws-intensity">
+                  <span><strong>Intensidad del espectro</strong><output id="visual-plus-ws-intensity-value">70%</output></span>
+                  <input id="visual-plus-ws-intensity" type="range" min="20" max="150" step="5" value="70">
+                </label>
+                <p class="settings-hint" style="margin:0;opacity:0.7;font-size:0.8rem;">Contraste entre frecuencias bajas y altas (sutil ↔ dramático).</p>
+              </div>
+
+              <div class="visual-plus-effect-options" id="visual-plus-ps3-settings" hidden>
+                <div class="audio-setting-row">
+                  <div class="audio-setting-description">
+                    <strong>Reaccionar al ritmo</strong>
+                    <p>La onda se mueve con más fuerza según el audio de la canción.</p>
+                  </div>
+                  <label class="switch" aria-label="Ondas reactivas al audio">
+                    <input id="visual-plus-ps3-audio-reactive" type="checkbox" checked>
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <div class="settings-divider"></div>
+                <label class="interface-setting-row" for="visual-plus-ps3-bg-color-mode">
+                  <strong>Color del fondo</strong>
+                  <select id="visual-plus-ps3-bg-color-mode" class="settings-select" aria-label="Color del fondo de ondas">
+                    <option value="classic">Clásico</option>
+                    <option value="theme">Color del tema</option>
+                    <option value="artwork">Color de la carátula</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ps3-bg-color">
+                  <strong>Fondo personalizado</strong>
+                  <input id="visual-plus-ps3-bg-color" class="settings-color-input" type="color" value="#0a1a66" aria-label="Color personalizado del fondo">
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ps3-wave-color-mode">
+                  <strong>Color de las ondas</strong>
+                  <select id="visual-plus-ps3-wave-color-mode" class="settings-select" aria-label="Color de las ondas">
+                    <option value="classic">Clásico</option>
+                    <option value="theme">Color del tema</option>
+                    <option value="artwork">Color de la carátula</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+                <label class="interface-setting-row" for="visual-plus-ps3-wave-color">
+                  <strong>Ondas personalizadas</strong>
+                  <input id="visual-plus-ps3-wave-color" class="settings-color-input" type="color" value="#4a8cff" aria-label="Color personalizado de las ondas">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ps3-speed">
+                  <span><strong>Velocidad</strong><output id="visual-plus-ps3-speed-value">100%</output></span>
+                  <input id="visual-plus-ps3-speed" type="range" min="25" max="200" step="5" value="100">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ps3-amplitude">
+                  <span><strong>Amplitud</strong><output id="visual-plus-ps3-amplitude-value">70</output></span>
+                  <input id="visual-plus-ps3-amplitude" type="range" min="30" max="140" step="5" value="70">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ps3-particle-count">
+                  <span><strong>Destellos</strong><output id="visual-plus-ps3-particle-count-value">50</output></span>
+                  <input id="visual-plus-ps3-particle-count" type="range" min="0" max="120" step="5" value="50">
+                </label>
+                <label class="visual-plus-range-row" for="visual-plus-ps3-brightness">
+                  <span><strong>Brillo</strong><output id="visual-plus-ps3-brightness-value">100%</output></span>
+                  <input id="visual-plus-ps3-brightness" type="range" min="40" max="100" step="5" value="100">
+                </label>
+              </div>
+<div class="visual-plus-effect-options" id="visual-plus-liquid-settings" hidden>
                 <div class="audio-setting-row">
                   <div class="audio-setting-description">
                     <strong>Fondo líquido estático</strong>

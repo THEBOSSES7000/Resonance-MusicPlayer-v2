@@ -7,6 +7,8 @@ import { MAX_SHOOTING_STARS, MAX_STARS, drawShootingStars, drawStaticStars, fill
 import { MAX_PARTICLES, drawParticles, particles, resetParticle } from './reactive_particles.js';
 import { MAX_FIREFLIES, drawFireflies, fireflies, resetFirefly } from './fireflies.js';
 import { MAX_RAIN_DROPS, drawRain, rainDrops, resetRainDrop } from './rain.js';
+import { drawPs3Wave, resetPs3Wave } from './ps3_wave.js';
+import { drawWaveSound, resetWaveSound } from './wave_sound.js';
 
 let rafId = 0;
 
@@ -108,7 +110,7 @@ function readSettings() {
   if (parsed.theme === 'liquid_immersive') parsed.theme = 'liquid';
   if (parsed.theme === 'liquid_gradient') parsed.theme = 'blurred';
   if (typeof parsed.enabled !== 'boolean' ||
-      !(['shooting_stars', 'reactive_particles', 'atmospheric', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(parsed.theme)) ||
+      !(['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(parsed.theme)) ||
       !Number.isInteger(parsed.starCount) || parsed.starCount < 20 || parsed.starCount > MAX_STARS ||
       !Number.isInteger(parsed.starBrightness) || parsed.starBrightness < 10 || parsed.starBrightness > 100 ||
       !Number.isInteger(parsed.shootingStarCount) || parsed.shootingStarCount < 1 || parsed.shootingStarCount > MAX_SHOOTING_STARS ||
@@ -145,8 +147,9 @@ function readSettings() {
 
 function canAnimate() {
   return vp.enabled &&
-    ['shooting_stars', 'reactive_particles', 'atmospheric'].includes(vp.theme) &&
+    ['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound'].includes(vp.theme) &&
     (vp.theme !== 'atmospheric' || vp.firefliesEnabled || vp.rainEnabled) &&
+    (vp.theme !== 'ps3_wave' || true) &&
     vp.intersecting &&
     document.visibilityState === 'visible' &&
     lyricsOverlay?.classList.contains('open') &&
@@ -214,6 +217,10 @@ function draw(timestamp) {
     drawShootingStars(dt);
   } else if (vp.theme === 'reactive_particles') {
     drawParticles(dt);
+  } else if (vp.theme === 'ps3_wave') {
+    drawPs3Wave(dt);
+  } else if (vp.theme === 'wave_sound') {
+    drawWaveSound(dt);
   } else {
     drawRain(dt);
     drawFireflies(dt);
@@ -224,7 +231,9 @@ function draw(timestamp) {
 function applySettings(settings) {
   const shouldAnalyzeAudio = settings.enabled && (
     settings.theme === 'reactive_particles' ||
-    settings.theme === 'atmospheric' && settings.rainEnabled && settings.rainDynamicEnabled
+    (settings.theme === 'atmospheric' && settings.rainEnabled && settings.rainDynamicEnabled) ||
+    (settings.theme === 'ps3_wave' && settings.ps3AudioReactive !== false) ||
+    settings.theme === 'wave_sound'
   );
   vp.enabled = settings.enabled && !['liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme);
   vp.theme = settings.theme;
@@ -259,6 +268,32 @@ function applySettings(settings) {
   vp.rainDynamicEnabled = settings.rainDynamicEnabled;
   vp.rainIntensityMultiplier = settings.rainIntensityMultiplier;
   vp.rainMinDensity = settings.rainMinDensity;
+  vp.ps3BgColorMode = settings.ps3BgColorMode ?? 'classic';
+  vp.ps3BgColor = settings.ps3BgColor ?? '#0a1a66';
+  vp.ps3WaveColorMode = settings.ps3WaveColorMode ?? 'classic';
+  vp.ps3WaveColor = settings.ps3WaveColor ?? '#4a8cff';
+  vp.ps3Speed = settings.ps3Speed ?? 100;
+  vp.ps3Amplitude = settings.ps3Amplitude ?? 70;
+  vp.ps3ParticleCount = settings.ps3ParticleCount ?? 50;
+  vp.ps3Brightness = settings.ps3Brightness ?? 100;
+  vp.ps3AudioReactive = settings.ps3AudioReactive !== false;
+  vp.wsStyle = settings.wsStyle || 'bars';
+  vp.wsPosition = settings.wsPosition || 'bottom';
+  vp.wsColorMode = ['custom', 'theme', 'artwork'].includes(settings.wsColorMode) ? settings.wsColorMode : 'custom';
+  vp.wsColor = (typeof settings.wsColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(settings.wsColor))
+    ? settings.wsColor
+    : '#ffffff';
+  vp.wsBarCount = settings.wsBarCount ?? 48;
+  vp.wsSize = settings.wsSize ?? 100;
+  vp.wsReactivity = settings.wsReactivity ?? 70;
+  vp.wsIntensity = settings.wsIntensity ?? 70;
+  vp.wsPeakGlow = settings.wsPeakGlow !== false;
+  vp.wsOpacity = settings.wsOpacity ?? 85;
+  vp.wsPeakGlowIntensity = settings.wsPeakGlowIntensity ?? 100;
+  vp.wsUiVeil = Boolean(settings.wsUiVeil);
+  vp.wsUiVeilOpacity = settings.wsUiVeilOpacity ?? 30;
+  vp.wsGlowColorMode = settings.wsGlowColorMode || 'same';
+  vp.wsGlowColor = settings.wsGlowColor || '#6ea8ff';
   for (let index = 0; index < MAX_PARTICLES; index += 1) {
     particles[index].size = randomBetween(vp.particleMinSize, vp.particleMaxSize);
   }
@@ -302,10 +337,11 @@ function applySettings(settings) {
   syncAnimation();
 }
 
-export function initShootingStars(readAudioLevel = () => 0, configureAudioAnalysis = null) {
+export function initShootingStars(readAudioLevel = () => 0, configureAudioAnalysis = null, readSpectrum = null) {
   if (initialized || !lyricsOverlay || !settingsOverlay) return;
   initialized = true;
   vp.audioLevelReader = typeof readAudioLevel === 'function' ? readAudioLevel : () => 0;
+  vp.spectrumReader = typeof readSpectrum === 'function' ? readSpectrum : null;
   audioAnalysisConfigurer = typeof configureAudioAnalysis === 'function' ? configureAudioAnalysis : null;
   mountCanvas();
 

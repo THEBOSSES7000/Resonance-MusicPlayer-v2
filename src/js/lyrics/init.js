@@ -2,6 +2,12 @@
 
 import { initShootingStars } from '../../visual_plus/engine.js';
 import { configureAudioAnalysis, getAudioLevel } from '../audioPlayer.js';
+import * as webAudioModule from '../audio/webAudio.js';
+
+const getFrequencySpectrum = typeof webAudioModule.getFrequencySpectrum === 'function'
+  ? webAudioModule.getFrequencySpectrum
+  : (binCount = 64) => new Float32Array(Math.max(8, binCount | 0));
+
 import { initLiquidGradientBackground } from '../../visual_plus/blurred_background.js';
 import { initLiquidImmersiveBackground } from '../../visual_plus/liquid_background.js';
 import { handleLyricsTranslationSettingsChanged, handleLyricsViewUpdated, toggleLyricsTranslation, updateLyricsTranslationControls } from './translation.js';
@@ -13,7 +19,7 @@ import { closeTrackEditor, handleCoverFileSelect, renderEditCoverPreview } from 
 import { saveTrackEdits } from './saveTrackEdits.js';
 
 export function initLyricsFeatures() {
-  initShootingStars(getAudioLevel, configureAudioAnalysis);
+  initShootingStars(getAudioLevel, configureAudioAnalysis, getFrequencySpectrum);
   try { initLiquidGradientBackground(); } catch (_) {}
   try { initLiquidImmersiveBackground(); } catch (_) {}
   document.getElementById('track-edit-more-toggle')?.addEventListener('click', event => {

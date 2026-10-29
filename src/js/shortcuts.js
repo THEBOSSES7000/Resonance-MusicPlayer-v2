@@ -257,6 +257,8 @@ const VISUAL_PLUS_THEME_ORDER = [
   'shooting_stars',
   'reactive_particles',
   'atmospheric',
+  'ps3_wave',
+  'wave_sound',
   'liquid',
   'blurred',
 ];
@@ -265,6 +267,8 @@ const VISUAL_PLUS_THEME_LABELS = {
   shooting_stars: 'Estrellas fugaces',
   reactive_particles: 'Partículas reactivas',
   atmospheric: 'Atmosférico',
+  ps3_wave: 'Ondas',
+  wave_sound: 'Wave Sound',
   liquid: 'Fondo líquido',
   blurred: 'Fondo difuminado',
   liquid_gradient: 'Fondo difuminado',

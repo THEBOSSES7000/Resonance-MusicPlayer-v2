@@ -152,8 +152,10 @@ function ensureDeckAudioNodes(deck) {
   }
   if (audioAnalysisEnabled && !deckState.analyser) {
     deckState.analyser = audioContext.createAnalyser();
-    deckState.analyser.fftSize = 256;
+    deckState.analyser.fftSize = 512;
+    deckState.analyser.smoothingTimeConstant = 0.55;
     deckState.analysisData = new Uint8Array(deckState.analyser.fftSize);
+    deckState.frequencyData = new Uint8Array(deckState.analyser.frequencyBinCount);
   }
 }
 
@@ -270,6 +272,50 @@ export async function configureAudioAnalysis(enabled) {
   }
   syncAudioContextPlaybackState();
   return true;
+}
+
+
+/** Espectro de frecuencias normalizado [0–1] para Visual+ Wave Sound. */
+export function getFrequencySpectrum(binCount = 64) {
+  const count = Math.max(8, Math.min(256, binCount | 0));
+  const out = new Float32Array(count);
+
+  if (audioVars.nativeAudioActive || nativeAudioEnabled) {
+    const energy = audioAnalysisEnabled ? Number(nativeAudioEnergy) || 0 : 0;
+    // Fallback nativo: forma de espectro a partir de la energía global
+    for (let i = 0; i < count; i += 1) {
+      const t = i / count;
+      const shape = Math.exp(-t * 2.2) * (0.55 + 0.45 * Math.sin(i * 0.7 + energy * 8));
+      out[i] = Math.min(1, energy * shape * (0.7 + Math.random() * 0.3));
+    }
+    return out;
+  }
+
+  if (!audioAnalysisEnabled || !audioContext || audioContext.state !== 'running') return out;
+  const deckState = getDeckState(audio);
+  if (!deckState.analyser || audio.paused) return out;
+  if (!deckState.frequencyData || deckState.frequencyData.length !== deckState.analyser.frequencyBinCount) {
+    deckState.frequencyData = new Uint8Array(deckState.analyser.frequencyBinCount);
+  }
+  deckState.analyser.getByteFrequencyData(deckState.frequencyData);
+  const src = deckState.frequencyData;
+  const srcLen = src.length;
+  // Usar más el rango bajo-medio (más musical para barras)
+  const usable = Math.floor(srcLen * 0.75);
+  for (let i = 0; i < count; i += 1) {
+    const start = Math.floor((i / count) * usable);
+    const end = Math.floor(((i + 1) / count) * usable);
+    let sum = 0;
+    let n = 0;
+    for (let j = start; j < end; j += 1) {
+      sum += src[j];
+      n += 1;
+    }
+    const avg = n ? sum / n / 255 : 0;
+    // Ligera curva para resaltar medios
+    out[i] = Math.min(1, Math.pow(avg, 0.85) * 1.15);
+  }
+  return out;
 }
 
 export function getAudioLevel() {
