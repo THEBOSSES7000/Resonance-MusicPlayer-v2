@@ -4,7 +4,7 @@ import { bindGlobalEvents } from './init/globalBindings.js';
 import { bindFilterAndWindowEvents } from './init/filterAndWindowBindings.js';
 import { bindMenusShortcutsAndListSearch } from './init/menusShortcutsAndListSearch.js';
 import { bindSearchAndContent } from './init/searchAndContentBindings.js';
-import { bindListInteractions } from './init/listInteractions.js';
+import { bindListInteractions, bindMetaLinkNavigation } from './init/listInteractions.js';
 import { bindNavigationAndFavorites } from './init/navigationAndFavorites.js';
 import { bindPlaylistModals } from './init/playlistModals.js';
 import { bindSortMenus } from './init/sortMenus.js';
@@ -43,6 +43,7 @@ export function initUI() {
   bindMenusShortcutsAndListSearch();
   bindSearchAndContent();
   bindListInteractions();
+  try { bindMetaLinkNavigation(); } catch (_) {}
   bindNavigationAndFavorites();
   bindPlaylistModals();
   bindSortMenus();

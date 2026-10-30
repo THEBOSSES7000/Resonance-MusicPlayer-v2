@@ -521,3 +521,68 @@ body:not(.settings-overlay-open) .settings-overlay {
 .shortcuts-section-divider span {
   white-space: nowrap;
 }
+
+
+/* Enlaces artista/álbum en filas de lista */
+.playlist-table-row .meta-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: left;
+}
+.playlist-table-row .meta-link:hover,
+.playlist-table-row .meta-link:focus-visible {
+  text-decoration: underline;
+  color: var(--text-main, #fff);
+}
+.playlist-table-row .meta-album-blocked,
+.playlist-table-row .meta-plain {
+  color: inherit;
+  cursor: default;
+  text-decoration: none;
+}
+.playlist-table-row .row-artist-meta {
+  display: inline;
+}
+.playlist-table-row .meta-sep {
+  opacity: 0.85;
+}
+
+
+/* Enlaces meta (artista / álbum) — visibles y clicables */
+.playlist-table-row .meta-link.meta-artist-link,
+.playlist-table-row .meta-link.meta-album-link {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+}
+.playlist-table-row .meta-link.meta-artist-link:hover,
+.playlist-table-row .meta-link.meta-album-link:hover,
+.playlist-table-row .meta-link.meta-artist-link:focus-visible,
+.playlist-table-row .meta-link.meta-album-link:focus-visible {
+  text-decoration: underline !important;
+  color: var(--text-main, #f2f2f2) !important;
+}
+.playlist-table-row .meta-album-blocked {
+  cursor: default !important;
+  text-decoration: none !important;
+  opacity: 0.85;
+}

@@ -1,11 +1,11 @@
 // UI · Artistas y álbumes de la biblioteca: cachés, coincidencias y tarjetas.
 
 import { state } from '../state.js';
-import { albumsMinTrackCount, blockAlbumsBelowTrackFilter } from './init.js';
 import { currentAlbumLink, currentAlbumSeparator } from './dom.js';
 import { getProfileOverride } from './profileEditor.js';
 import { bindLazyCover } from './covers.js';
 import { navigateToView } from './navigation.js';
+import { escapeHtml } from './uiUtils.js';
 
 const LIBRARY_ENTITY_MAX_ENTRIES = 200;
 
@@ -52,10 +52,70 @@ export function matchingAlbumSongs(artistName, albumTitle) {
   });
 }
 
-export function isAlbumNavigationBlocked(artistName, albumTitle) {
-  if (!blockAlbumsBelowTrackFilter || albumsMinTrackCount === 0) return false;
-  return matchingAlbumSongs(artistName, albumTitle).length <= albumsMinTrackCount;
+function getAlbumsMinTrackCount() {
+  const raw = localStorage.getItem('pn_albums_min_tracks') || '0';
+  return ['0', '3', '4', '5', '6'].includes(raw) ? Number(raw) : 0;
 }
+
+function isBlockAlbumsBelowFilterEnabled() {
+  return localStorage.getItem('pn_albums_block_below_filter') !== 'false';
+}
+
+export function isAlbumNavigationBlocked(artistName, albumTitle) {
+  const minTracks = getAlbumsMinTrackCount();
+  if (!isBlockAlbumsBelowFilterEnabled() || minTracks === 0) return false;
+  return matchingAlbumSongs(artistName, albumTitle).length <= minTracks;
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, '&quot;');
+}
+
+/** HTML de artista(s) clicables para filas de lista. */
+export function buildArtistMetaHtml(artistCredit) {
+  const raw = String(artistCredit || '').trim();
+  const names = artistsFromCredit(raw);
+  if (!names.length) {
+    return `<span class="meta-plain">${escapeHtml(raw || 'Desconocido')}</span>`;
+  }
+  return names.map((name, i) => {
+    const sep = i > 0 ? '<span class="meta-sep">, </span>' : '';
+    return `${sep}<button type="button" class="meta-link meta-artist-link" data-artist="${escapeAttr(name)}" title="Ver artista">${escapeHtml(name)}</button>`;
+  }).join('');
+}
+
+/** HTML de álbum: clicable solo si no está bloqueado por el filtro de pistas mínimas. */
+export function buildAlbumMetaHtml(artistCredit, albumTitle, albumArtist) {
+  const album = String(albumTitle || '').trim();
+  if (!album) {
+    return `<span class="meta-plain">Sencillo</span>`;
+  }
+  const artistName = String(albumArtist || artistsFromCredit(artistCredit)[0] || '').trim();
+  const blocked = Boolean(album) && isAlbumNavigationBlocked(artistName, album);
+  if (blocked) {
+    return `<span class="meta-plain meta-album-blocked" title="Este álbum no cumple el filtro de cantidad de pistas">${escapeHtml(album)}</span>`;
+  }
+  // Sencillos / desconocidos: permitir click si no bloqueados (misma regla)
+  return `<button type="button" class="meta-link meta-album-link" data-artist="${escapeAttr(artistName)}" data-album="${escapeAttr(album)}" title="Ver álbum">${escapeHtml(album)}</button>`;
+}
+
+export function openArtistFromMeta(artistName) {
+  const name = String(artistName || '').trim();
+  if (!name) return;
+  navigateToView('artist', { artistName: name });
+}
+
+export function openAlbumFromMeta(artistName, albumTitle) {
+  const album = String(albumTitle || '').trim();
+  const artist = String(artistName || '').trim();
+  if (!album) return;
+  if (isAlbumNavigationBlocked(artist, album)) return;
+  navigateToView('album-detail', {
+    artistName: artist,
+    albumTitle: album,
+  });
+}
+
 
 export function syncPlayerAlbumLinkState() {
   if (!currentAlbumLink) return;

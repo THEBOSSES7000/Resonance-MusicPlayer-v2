@@ -1,3 +1,4 @@
+import { navigateToView } from '../navigation.js';
 // UI · Interacciones de playlists, filas de canciones, cola, cuadrículas y carruseles.
 
 import { albumsGrid, artistsGrid, exploreGrid, playlistTracksBody, playlistsContainer, queueItemsContainer, recentGrid } from '../dom.js';
@@ -39,6 +40,24 @@ export function bindListInteractions() {
       const target = event.target instanceof Element ? event.target : null;
       const row = target?.closest('.playlist-table-row');
       if (!row) return;
+
+      const artistLink = target.closest('.meta-artist-link');
+      if (artistLink) {
+        event.preventDefault();
+        event.stopPropagation();
+        const name = String(artistLink.dataset.artist || '').trim();
+        if (name) navigateToView('artist', { artistName: name });
+        return;
+      }
+      const albumLink = target.closest('.meta-album-link');
+      if (albumLink) {
+        event.preventDefault();
+        event.stopPropagation();
+        const artist = String(albumLink.dataset.artist || '').trim();
+        const album = String(albumLink.dataset.album || '').trim();
+        if (album) navigateToView('album-detail', { artistName: artist, albumTitle: album });
+        return;
+      }
 
       const favoriteButton = target.closest('.row-fav-btn');
       if (favoriteButton) {
@@ -280,4 +299,31 @@ export function bindListInteractions() {
       albumsGrid.scrollBy({ left: 380, behavior: 'smooth' });
     });
   }
+}
+
+
+/** Clics en artista/álbum (capture): funciona aunque el listener de la tabla falle. */
+export function bindMetaLinkNavigation() {
+  if (window.__pnMetaLinkNavBound) return;
+  window.__pnMetaLinkNavBound = true;
+  document.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const artistLink = target.closest('.meta-artist-link');
+    if (artistLink) {
+      event.preventDefault();
+      event.stopPropagation();
+      const name = String(artistLink.dataset.artist || '').trim();
+      if (name) navigateToView('artist', { artistName: name });
+      return;
+    }
+    const albumLink = target.closest('.meta-album-link');
+    if (albumLink) {
+      event.preventDefault();
+      event.stopPropagation();
+      const artist = String(albumLink.dataset.artist || '').trim();
+      const album = String(albumLink.dataset.album || '').trim();
+      if (album) navigateToView('album-detail', { artistName: artist, albumTitle: album });
+    }
+  }, true);
 }

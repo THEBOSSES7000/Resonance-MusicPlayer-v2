@@ -7,7 +7,7 @@ import { uiVars } from './sharedState.js';
 import { artistAlbumsSection, artistBioToggle, artistDisambiguation, artistFacts, artistLoadMoreButton, artistLoadMoreWrap, artistRelatedSection, artistTagsContainer, btnCollectionOptions, btnPlayAllFavorites, collectionOptionsMenu, collectionOptionsWrap, currentTrackSortLabel, playlistBadgeType, playlistHeroAuthor, playlistHeroBanner, playlistHeroCount, playlistHeroCover, playlistHeroDesc, playlistHeroDuration, playlistHeroTitle, playlistTracksBody, trackSortMenu, tracksFilterBar } from './dom.js';
 import { pnStartPointerDrag, updateTrackReorderToggle } from './dragReorder.js';
 import { queueDetailShowHistory } from './init.js';
-import { albumContextId, artistContextId, matchingAlbumSongs, matchingArtistSongs } from './libraryEntities.js';
+import { albumContextId, artistContextId, matchingAlbumSongs, matchingArtistSongs, buildArtistMetaHtml, buildAlbumMetaHtml } from './libraryEntities.js';
 import { bindListSongCover, clearContainerCovers, formatListRowIndexHtml } from './covers.js';
 import { applyArtistHeroMetadata, renderArtistAlbums, renderRelatedArtists } from './artists.js';
 import { getProfileOverride } from './profileEditor.js';
@@ -553,10 +553,10 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
         <div class="row-thumb-box">${thumbHtml}</div>
         <div class="row-text-meta">
           <strong>${song.unavailable ? '<i class="ph ph-prohibit track-unavailable-icon" title="No disponible" aria-hidden="true"></i> ' : ''}${escapeHtml(song.title)}</strong>
-          <span>${escapeHtml(song.artist || "Desconocido")}</span>
+          <span class="row-artist-meta">${buildArtistMetaHtml(song.artist)}</span>
         </div>
       </div>
-      <div class="row-album">${escapeHtml(song.album || "Sencillo")}</div>
+      <div class="row-album">${buildAlbumMetaHtml(song.artist, song.album, song.albumArtist)}</div>
       <div class="row-date">${(state.currentView === 'playlist' && !isQueue) ? formatPlaylistAddedDate(song) : (state.currentView === 'favorites' ? formatFavoriteAddedDate(song) : escapeHtml(song.addedDate || "Reciente"))}</div>
       <div class="row-duration-box">
         <span>${Number.isFinite(song.duration) && song.duration > 0 ? formatTime(song.duration) : '--:--'}</span>

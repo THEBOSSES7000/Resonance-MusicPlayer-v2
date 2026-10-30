@@ -7,6 +7,7 @@ import { getFavoriteActionLabel, toggleFavoriteForSelection } from '../favorites
 import { isPlaybackPaused, loadSong, resolveManualAutoPlay } from '../../audioPlayer.js';
 import { bindListSongCover, formatListRowIndexHtml } from '../covers.js';
 import { escapeHtml } from '../uiUtils.js';
+import { buildArtistMetaHtml, buildAlbumMetaHtml } from '../libraryEntities.js';
 import { updatePlaylistRowTitleMarquee } from '../playback.js';
 
 /** Resultados de búsqueda de la pestaña «Cola». */
@@ -57,6 +58,7 @@ export function renderQueueSearchResults(append, previousVisibleCount, q, displa
         const target = e.target instanceof Element ? e.target : null;
         const row = target?.closest('.playlist-table-row');
         if (!row) return;
+
         const queueIndex = Number(row.dataset.trackIdx);
         const song = state.activeQueue[queueIndex];
         if (!song) return;
@@ -101,10 +103,10 @@ export function renderQueueSearchResults(append, previousVisibleCount, q, displa
           <div class="row-thumb-box">${thumbHtml}</div>
           <div class="row-text-meta">
             <strong>${escapeHtml(song.title)}</strong>
-            <span>${escapeHtml(song.artist || "Desconocido")}</span>
+            <span class="row-artist-meta">${buildArtistMetaHtml(song.artist)}</span>
           </div>
         </div>
-        <div class="row-album">${escapeHtml(song.album || "Sencillo")}</div>
+        <div class="row-album">${buildAlbumMetaHtml(song.artist, song.album, song.albumArtist)}</div>
         <div class="row-date">${isCurrent ? 'Sonando ahora' : `#${queueIndex + 1}`}</div>
         <div class="row-duration-box">
           <span>${Number.isFinite(song.duration) && song.duration > 0 ? formatTime(song.duration) : '--:--'}</span>
