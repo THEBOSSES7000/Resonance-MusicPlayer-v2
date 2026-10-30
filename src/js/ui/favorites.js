@@ -31,9 +31,6 @@ export function songsMatch(first, second) {
 
 function persistFavoriteKeys() {
   updateFavoritesCount();
-  void import('../scanner.js')
-    .then(mod => mod.saveNativeLibraryCache?.())
-    .catch(() => {});
 }
 
 function setSongFavorite(song, isFavorite) {
@@ -94,6 +91,12 @@ function setSongFavorite(song, isFavorite) {
   }
 
   persistFavoriteKeys();
+  void import('../scanner/dbSync.js')
+    .then(mod => mod.dbUpdateTrackFields(song, {
+      isFavorite: Boolean(song.isFavorite),
+      favoriteAddedAt: song.favoriteAddedAt ?? null,
+    }))
+    .catch(() => {});
 }
 
 export async function toggleFavoriteForSelection(song, clickedElement = null) {

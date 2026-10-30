@@ -33,6 +33,7 @@ notify = "8"
 sysinfo = "0.33"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 sha2 = "0.10"
+rusqlite = { version = "0.32", features = ["bundled"] }
 rodio = { version = "0.17", default-features = true, features = ["symphonia-all"] }
 # Misma línea que rodio 0.17 — listar/abrir dispositivos WASAPI (modo compartido por defecto)
 cpal = "0.15"

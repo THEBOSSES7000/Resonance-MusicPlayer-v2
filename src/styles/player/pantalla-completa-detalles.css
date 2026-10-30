@@ -1,3 +1,37 @@
+/* Fade solo piezas móviles; hold invisible estable; Visual+ intacto */
+body.now-playing-fs .lyrics-overlay.open .lyrics-dock,
+body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container,
+body.now-playing-fs .lyrics-overlay.open .lyrics-floating-actions {
+  transition: opacity 0.35s ease;
+}
+body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-dock,
+body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-scroll-container,
+body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-floating-actions {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.32s ease, visibility 0s linear 0.32s;
+}
+body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-dock,
+body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-scroll-container,
+body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-floating-actions {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transition: opacity 0.42s ease, visibility 0s linear 0s;
+}
+
+/* Visual+ nunca se atenúa ni se oculta con el cambio de layout */
+body.now-playing-fs #visual-plus-canvas,
+body.now-playing-fs #visual-plus-liquid-bg,
+body.now-playing-fs #visual-plus-liquid-bg *,
+body.now-playing-fs .liquid-orbs,
+body.now-playing-fs .liquid-dim {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  transition: none !important;
+}
+
 /* Header origen + posición + menú (solo FS) */
 .lyrics-focus-nowplaying-header {
   display: none;

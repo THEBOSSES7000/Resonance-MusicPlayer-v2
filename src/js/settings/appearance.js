@@ -276,6 +276,7 @@ export function initAppearanceSettings() {
   applyLyricSettings();
 
   const translationEnabledInput = document.getElementById('lyrics-translation-enabled');
+  const translationReplaceInput = document.getElementById('lyrics-translation-replace');
   const translationLanguageSelect = document.getElementById('lyrics-translation-language');
   const storedTranslationLanguage = localStorage.getItem('pn_lyrics_translation_language') || 'es';
   const translationLanguage = LYRIC_TRANSLATION_LANGUAGES.includes(storedTranslationLanguage)
@@ -290,8 +291,15 @@ export function initAppearanceSettings() {
     }
   };
   if (translationEnabledInput) translationEnabledInput.checked = readStoredBoolean('pn_lyrics_translation_enabled');
+  if (translationReplaceInput) translationReplaceInput.checked = readStoredBoolean('pn_lyrics_translation_replace');
   if (translationLanguageSelect) translationLanguageSelect.value = translationLanguage;
   applyLyricsTranslationSettings();
+  translationReplaceInput?.addEventListener('change', event => {
+    localStorage.setItem('pn_lyrics_translation_replace', String(event.currentTarget.checked));
+    document.dispatchEvent(new CustomEvent('pn-lyrics-translation-settings-changed', {
+      detail: { replace: event.currentTarget.checked }
+    }));
+  });
   translationEnabledInput?.addEventListener('change', event => {
     localStorage.setItem('pn_lyrics_translation_enabled', String(event.currentTarget.checked));
     applyLyricsTranslationSettings();

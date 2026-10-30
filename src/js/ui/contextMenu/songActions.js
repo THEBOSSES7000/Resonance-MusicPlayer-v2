@@ -356,7 +356,12 @@ export async function findAndRelinkSong(song) {
     console.warn('No se pudieron leer metadatos del archivo reubicado:', err);
   }
 
-  try { await saveNativeLibraryCache(true); } catch (_) {}
+  try {
+    const { dbUpsertTrack } = await import('../../scanner/dbSync.js');
+    await dbUpsertTrack(song);
+  } catch (_) {
+    try { await saveNativeLibraryCache(true); } catch (_) {}
+  }
   invalidateLibraryEntityCaches();
   renderGrids();
   void renderPlaylistDetailView();

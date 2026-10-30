@@ -112,12 +112,12 @@ function ensureSparkles(count) {
 
 /** Perfil de onda XMB: varias armónicas, capas casi solapadas */
 function waveY(x, phase, amp, layerOffset) {
-  const t = x * 0.0038 + phase;
+  const t = x * 0.0036 + phase;
+  const o = layerOffset * 0.15;
   return (
-    Math.sin(t + layerOffset) * amp
-    + Math.sin(t * 0.55 - phase * 0.35 + layerOffset * 0.7) * amp * 0.42
-    + Math.sin(t * 1.85 + phase * 0.8) * amp * 0.18
-    + Math.cos(t * 0.28 + layerOffset) * amp * 0.12
+    Math.sin(t + o) * amp
+    + Math.sin(t * 0.5 + o * 0.5) * amp * 0.38
+    + Math.sin(t * 1.7 + o) * amp * 0.14
   );
 }
 
@@ -137,21 +137,23 @@ function drawBackground(ctx, w, h, rgb, brightness) {
  */
 function drawSilkRibbon(ctx, w, h, rgb, phase, amp, audioBoost, brightness) {
   const midY = h * 0.52;
-  const baseAmp = amp * (1 + audioBoost * 0.35);
-  const layers = 14; // muchas capas = se lee como una sola cinta
+  // Reactividad: casi no cambia la forma (evita deformar); sí el brillo
+  const baseAmp = amp * (1 + audioBoost * 0.06);
+  const layers = 12;
   const stepX = 4;
-  const b = brightness / 100;
+  const b = (brightness / 100) * (1 + audioBoost * 0.55);
+  const phaseWrapped = phase % (Math.PI * 64);
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
 
   for (let layer = 0; layer < layers; layer += 1) {
     const layerT = layer / (layers - 1);
-    // Desplazamiento vertical mínimo entre capas → casi una sola forma
-    const yShift = (layerT - 0.5) * baseAmp * 0.22;
-    const layerPhase = phase * (0.92 + layerT * 0.08) + layerT * 0.35;
-    const thickness = Math.max(10, h * 0.028) * (0.55 + layerT * 0.55);
-    const alpha = (0.045 + layerT * 0.055) * b;
+    const yShift = (layerT - 0.5) * Math.min(baseAmp * 0.08, 6);
+    // Misma fase en todas las capas (no se separan con el tiempo)
+    const layerPhase = phaseWrapped + layerT * 0.12;
+    const thickness = Math.max(12, h * 0.032) * (0.7 + layerT * 0.35);
+    const alpha = (0.05 + layerT * 0.05) * b * (1 + audioBoost * 0.35);
 
     ctx.beginPath();
     for (let x = -30; x <= w + 30; x += stepX) {
@@ -232,8 +234,9 @@ export function drawPs3Wave(dt) {
 
   const brightness = clamp(Number(vp.ps3Brightness) || 100, 40, 100);
   const speed = clamp(Number(vp.ps3Speed) || 100, 25, 200) / 100;
-  const amplitude = (clamp(Number(vp.ps3Amplitude) || 70, 30, 140) / 100) * Math.min(h * 0.2, 110);
-  const reactive = Boolean(vp.ps3AudioReactive);
+  // Amplitud acotada para no deformar la cinta
+  const amplitude = (clamp(Number(vp.ps3Amplitude) || 70, 40, 100) / 100) * Math.min(h * 0.14, 72);
+  const reactive = vp.ps3AudioReactive !== false;
 
   let level = 0;
   if (reactive && typeof vp.audioLevelReader === 'function') {
@@ -243,11 +246,13 @@ export function drawPs3Wave(dt) {
       level = 0;
     }
   }
-  // Suavizado para que no tiemble
-  audioSmooth += (level - audioSmooth) * Math.min(1, dt * 8);
+  // Suavizado: sigue el ritmo sin temblor
+  audioSmooth += (level - audioSmooth) * Math.min(1, dt * 12);
   const audioBoost = reactive ? audioSmooth : 0;
 
-  wavePhase += dt * speed * (0.7 + audioBoost * 1.1);
+  // El ritmo acelera un poco la onda y el brillo (no la forma)
+  wavePhase += dt * speed * (0.55 + audioBoost * 0.85);
+  if (wavePhase > Math.PI * 256) wavePhase -= Math.PI * 256;
 
   ensureSparkles(Number(vp.ps3ParticleCount) || 50);
 

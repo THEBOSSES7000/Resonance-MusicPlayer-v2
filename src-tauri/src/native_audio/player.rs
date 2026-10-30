@@ -545,6 +545,11 @@ pub fn audio_thread_main(
                             if player.is_playing() || level > 0.002 || last > 0.002 {
                                 let _ = app.emit("audio-energy", level);
                                 last_emitted_bits = bits;
+                                // Espectro real para Wave Sound
+                                if let Ok(spec) = super::measuring::LATEST_SPECTRUM.lock() {
+                                    let bands: Vec<f32> = spec.iter().copied().collect();
+                                    let _ = app.emit("audio-spectrum", bands);
+                                }
                             }
                         }
                     }

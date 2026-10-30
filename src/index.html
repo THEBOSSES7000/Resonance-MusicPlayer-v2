@@ -2022,6 +2022,16 @@
               <div class="settings-card-title">Pantalla completa</div>
               <p>Personaliza la vista de pantalla completa del reproductor (carátula, controles y letras).</p>
             </div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Adaptar diseño según letras</strong>
+                <p>Si la canción tiene letra, usa la posición de carátula configurada (izquierda/derecha). Si no tiene, centra la carátula con una transición suave.</p>
+              </div>
+              <label class="switch" aria-label="Adaptar diseño de pantalla completa según si hay letras">
+                <input id="np-fs-adapt-lyrics" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
             <label class="setting-row-select" for="np-fs-cover-size">
               <span><strong>Tamaño de carátula y controles</strong></span>
               <select id="np-fs-cover-size" class="settings-select" aria-label="Tamaño de carátula y controles en pantalla completa">
@@ -2129,6 +2139,16 @@
               </div>
               <label class="switch" aria-label="Habilitar traducción de letras">
                 <input id="lyrics-translation-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Reemplazar letra al traducir</strong>
+                <p>Muestra solo la traducción con el mismo estilo y animación que la letra original (sin el texto en dos líneas).</p>
+              </div>
+              <label class="switch" aria-label="Reemplazar letra original por la traducción">
+                <input id="lyrics-translation-replace" type="checkbox">
                 <span class="slider"></span>
               </label>
             </div>

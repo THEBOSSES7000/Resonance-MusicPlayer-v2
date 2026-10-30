@@ -121,6 +121,13 @@ export function incrementPlayCount(song) {
   try {
     localStorage.setItem('pn_play_counts', JSON.stringify(state.playCounts));
   } catch (_) {}
+  try {
+    const path = song.file?.path || song.path;
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (invoke && path) {
+      void invoke('db_set_play_count', { path, count }).catch(() => {});
+    }
+  } catch (_) {}
 }
 
 export function getPlayCount(song) {
@@ -386,13 +393,48 @@ export function persistPlaylists() {
         .map(song => compactSongRef(song))
         .filter(Boolean)
     }));
+    // Copia local rápida (compatibilidad / arranque offline)
     localStorage.setItem('pn_playlists', JSON.stringify(compact));
+    // Fuente de verdad en SQLite (Tauri)
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (invoke) {
+      void invoke('db_save_playlists', { playlists: compact }).catch(err => {
+        console.warn('No se pudieron guardar playlists en SQLite:', err);
+      });
+    }
   } catch (error) {
     console.warn('No se pudieron guardar las playlists compactas:', error);
   }
 }
 
 /** Tras cargar la biblioteca, apunta playlist.songs a los objetos canónicos reales. */
+
+/** Carga playlists desde SQLite si existen; si no, mantiene localStorage. */
+export async function loadPlaylistsFromDatabase() {
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (!invoke) return false;
+  try {
+    const rows = await invoke('db_get_playlists');
+    if (Array.isArray(rows) && rows.length > 0) {
+      state.playlists = rows;
+      try {
+        localStorage.setItem('pn_playlists', JSON.stringify(rows));
+      } catch (_) {}
+      return true;
+    }
+    // DB vacía: migrar localStorage → SQLite una vez
+    const local = safeJsonParse(localStorage.getItem('pn_playlists'), []);
+    if (Array.isArray(local) && local.length > 0) {
+      await invoke('db_save_playlists', { playlists: local });
+      state.playlists = local;
+      return true;
+    }
+  } catch (error) {
+    console.warn('loadPlaylistsFromDatabase:', error);
+  }
+  return false;
+}
+
 export function hydratePlaylists() {
   if (!Array.isArray(state.playlists)) {
     state.playlists = [];

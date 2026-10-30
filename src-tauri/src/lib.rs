@@ -38,6 +38,7 @@ mod exports;
 mod metadata;
 mod online_metadata;
 mod library_scan;
+mod db;
 
 use shortcuts_tray::*;
 use discord::*;
@@ -186,6 +187,12 @@ pub fn run() {
             library_scan::cancel_music_library_scan,
             library_cache::get_cached_music_library,
             library_cache::save_cached_music_library,
+            db::db_get_playlists,
+            db::db_save_playlists,
+            db::db_get_play_counts,
+            db::db_set_play_count,
+            db::db_update_track_fields,
+            db::db_upsert_track,
             exports::save_playlist_cover,
             library_cache::get_library_cache_size,
             library_cache::clear_library_cache,

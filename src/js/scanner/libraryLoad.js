@@ -1,6 +1,6 @@
 // Biblioteca · Carga de la biblioteca desde caché e inicialización.
 
-import { getPlayCount, hydratePlaylists, hydrateQueueAndHistory, playCountKey, rebuildSongsIndex, state } from '../state.js';
+import { getPlayCount, hydratePlaylists, hydrateQueueAndHistory, loadPlaylistsFromDatabase, playCountKey, rebuildSongsIndex, state } from '../state.js';
 import { initializePlaybackSession, playFromContext, renderFoldersUI, renderGrids, renderHistoryUI, renderPlaylistsHubUI, renderPlaylistsUI, renderQueue, showConfirmDialog, updateFavoritesCount } from '../ui.js';
 import { applyFavoriteAddedAt, ensureStableIdsForLibrary, songIsFavorite } from './songIdentity.js';
 import { METADATA_PARSER_VERSION } from './lyricsCache.js';
@@ -108,6 +108,7 @@ async function loadCachedNativeLibrary(cachedTracksInput = null) {
   }));
   localStorage.setItem('pn_folders_info', JSON.stringify(state.configuredFolders));
   rebuildSongsIndex();
+  await loadPlaylistsFromDatabase();
   hydratePlaylists();
   hydrateQueueAndHistory();
   renderDirectories();

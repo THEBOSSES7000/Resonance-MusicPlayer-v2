@@ -5,7 +5,7 @@ import { state } from '../state.js';
 import { closeLyricsView, syncPlayingUI } from '../ui.js';
 import { cancelCrossfade, cancelDeckRamp, getDeckState, getReplayGainLevel, updateDeckVolume } from './decks.js';
 import { audioVars } from './sharedState.js';
-import { applyNativeStatusToUi, ensureNativeEnergyListener, disableNativeEnergyEmit, nativeAudioEnabled, nativeAudioEnergy, nativeInvoke, startNativeProgressPoll, stopNativeProgressPoll } from './nativeEngine.js';
+import { applyNativeStatusToUi, ensureNativeEnergyListener, disableNativeEnergyEmit, nativeAudioEnabled, nativeAudioEnergy, nativeAudioSpectrum, nativeInvoke, startNativeProgressPoll, stopNativeProgressPoll } from './nativeEngine.js';
 import { pushNativeEqualizer } from './effects.js';
 import { audio } from './playback.js';
 import { updateCrossfadeIndicator } from './progressUI.js';
@@ -282,12 +282,31 @@ export function getFrequencySpectrum(binCount = 64) {
   const out = new Float32Array(count);
 
   if (audioVars.nativeAudioActive || nativeAudioEnabled) {
+    // Espectro real desde el motor nativo (bandas DFT)
+    if (audioAnalysisEnabled && nativeAudioSpectrum && nativeAudioSpectrum.length > 0) {
+      const src = nativeAudioSpectrum;
+      const srcLen = src.length;
+      for (let i = 0; i < count; i += 1) {
+        const start = Math.floor((i / count) * srcLen);
+        const end = Math.max(start + 1, Math.floor(((i + 1) / count) * srcLen));
+        let sum = 0;
+        let n = 0;
+        for (let j = start; j < end; j += 1) {
+          sum += src[j];
+          n += 1;
+        }
+        const avg = n ? sum / n : 0;
+        // Un poco más de contraste en medios/agudos
+        out[i] = Math.min(1, Math.pow(avg, 0.8) * 1.2);
+      }
+      return out;
+    }
+    // Fallback si aún no hay espectro: forma a partir de energía (mejor que plano)
     const energy = audioAnalysisEnabled ? Number(nativeAudioEnergy) || 0 : 0;
-    // Fallback nativo: forma de espectro a partir de la energía global
     for (let i = 0; i < count; i += 1) {
       const t = i / count;
-      const shape = Math.exp(-t * 2.2) * (0.55 + 0.45 * Math.sin(i * 0.7 + energy * 8));
-      out[i] = Math.min(1, energy * shape * (0.7 + Math.random() * 0.3));
+      const shape = Math.exp(-t * 2.4) * (0.5 + 0.5 * Math.sin(i * 0.55 + energy * 10));
+      out[i] = Math.min(1, energy * shape);
     }
     return out;
   }

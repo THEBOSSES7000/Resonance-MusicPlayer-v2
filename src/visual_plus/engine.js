@@ -239,12 +239,14 @@ function applySettings(settings) {
     settings.theme === 'reactive_particles' ||
     (settings.theme === 'atmospheric' && settings.rainEnabled && settings.rainDynamicEnabled) ||
     (settings.theme === 'ps3_wave' && settings.ps3AudioReactive !== false) ||
-    settings.theme === 'wave_sound'
+    settings.theme === 'wave_sound' ||
+    (settings.theme === 'shooting_stars' && settings.starAudioReactive)
   );
   vp.enabled = settings.enabled && !['liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme);
   vp.theme = settings.theme;
   vp.starCount = settings.starCount;
   vp.starBrightness = settings.starBrightness;
+  vp.starAudioReactive = Boolean(settings.starAudioReactive);
   stars.forEach(star => {
     star.maxAlpha = star.baseMaxAlpha * vp.starBrightness / 100;
   });

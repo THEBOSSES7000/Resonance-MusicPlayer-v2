@@ -68,10 +68,26 @@ function spawnShootingStar() {
 }
 
 export function drawStaticStars(dt) {
+  let audioBoost = 0;
+  if (vp.starAudioReactive && typeof vp.audioLevelReader === 'function') {
+    try {
+      const level = Number(vp.audioLevelReader()) || 0;
+      audioBoost = Math.max(0, Math.min(1, level));
+    } catch (_) {
+      audioBoost = 0;
+    }
+  }
+  // Suavizado ligero para que no parpadee a lo loco
+  if (typeof drawStaticStars._smooth !== 'number') drawStaticStars._smooth = 0;
+  drawStaticStars._smooth += (audioBoost - drawStaticStars._smooth) * Math.min(1, dt * 10);
+  const lightMul = vp.starAudioReactive
+    ? (1 + drawStaticStars._smooth * 1.35)
+    : 1;
+
   for (let index = 0; index < vp.starCount; index += 1) {
     const star = stars[index];
     star.phase += star.speed * dt;
-    star.alpha = star.maxAlpha * (0.58 + Math.sin(star.phase) * 0.42);
+    star.alpha = Math.min(1, star.maxAlpha * (0.58 + Math.sin(star.phase) * 0.42) * lightMul);
     vp.context.globalAlpha = star.alpha;
     if (star.size <= 1.5) {
       vp.context.fillStyle = STAR_COLOR;

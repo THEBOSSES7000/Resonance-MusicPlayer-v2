@@ -16,6 +16,7 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
   sophisticatedLyrics: false,
   starCount: 120,
   starBrightness: 100,
+  starAudioReactive: false,
   shootingStarCount: 2,
   shootingInterval: 4,
   shootingSpeed: 100,
@@ -177,6 +178,7 @@ export function initVisualPlusSettings() {
   const themeSelect = document.getElementById('visual-plus-theme');
   if (!enabledToggle || !themeSelect) return;
   const sophisticatedLyricsToggle = document.getElementById('visual-plus-sophisticated-lyrics');
+  const starAudioReactiveToggle = document.getElementById('visual-plus-star-audio-reactive');
   const liquidStaticToggle = document.getElementById('visual-plus-liquid-static');
   const ps3BgColorModeSelect = document.getElementById('visual-plus-ps3-bg-color-mode');
   const ps3BgColorInput = document.getElementById('visual-plus-ps3-bg-color');
@@ -232,6 +234,7 @@ export function initVisualPlusSettings() {
   settings.theme = normalizedTheme;
   themeSelect.value = normalizedTheme;
   themeSelect.disabled = !settings.enabled;
+  if (starAudioReactiveToggle) starAudioReactiveToggle.checked = Boolean(settings.starAudioReactive);
   const activeRowAnimationEnabled = readStoredBoolean('pn_lyrics_active_row_animation_enabled');
   if (visualPlusActiveRowToggle) visualPlusActiveRowToggle.checked = activeRowAnimationEnabled;
   if (visualPlusFillDirectionSettings) visualPlusFillDirectionSettings.hidden = !activeRowAnimationEnabled;
@@ -566,9 +569,15 @@ export function initVisualPlusSettings() {
     persistVisualPlusSettings(settings);
   });
 
+  starAudioReactiveToggle?.addEventListener('change', () => {
+    settings = { ...settings, starAudioReactive: Boolean(starAudioReactiveToggle.checked) };
+    persistVisualPlusSettings(settings);
+  });
   enabledToggle.addEventListener('change', () => {
+
     settings = { ...settings, enabled: enabledToggle.checked };
     themeSelect.disabled = !settings.enabled;
+  if (starAudioReactiveToggle) starAudioReactiveToggle.checked = Boolean(settings.starAudioReactive);
     syncEffectOptions();
     persistVisualPlusSettings(settings);
   });

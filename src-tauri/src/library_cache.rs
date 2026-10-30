@@ -19,21 +19,8 @@ pub fn library_cache_directory(app: &AppHandle) -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub fn get_cached_music_library(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
-    let cache_path = library_cache_directory(&app)?.join("library.json");
-    let covers_directory = cache_path
-        .parent()
-        .ok_or_else(|| "No se pudo determinar la carpeta de caché de carátulas.".to_string())?
-        .join("covers");
-    if covers_directory.is_dir() {
-        app.asset_protocol_scope()
-            .allow_directory(&covers_directory, true)
-            .map_err(|error| error.to_string())?;
-    }
-    if !cache_path.exists() {
-        return Ok(Vec::new());
-    }
-    let contents = fs::read_to_string(cache_path).map_err(|error| error.to_string())?;
-    serde_json::from_str(&contents).map_err(|error| error.to_string())
+    // Fuente de verdad: SQLite (conexión reutilizada; migra library.json si hace falta)
+    crate::db::with_db(&app, |conn| crate::db::load_all_tracks(conn))
 }
 
 #[tauri::command]
@@ -181,15 +168,8 @@ pub fn save_cached_music_library(
                 .map(str::to_string)
         })
         .collect();
-        let contents = serde_json::to_vec(&tracks).map_err(|error| error.to_string())?;
-    // Escritura atómica: evita library.json corrupto si la app se cierra a mitad de guardado
-    let final_path = cache_directory.join("library.json");
-    let tmp_path = cache_directory.join("library.json.tmp");
-    fs::write(&tmp_path, &contents).map_err(|error| error.to_string())?;
-    fs::rename(&tmp_path, &final_path).map_err(|error| {
-        let _ = fs::remove_file(&tmp_path);
-        error.to_string()
-    })?;
+    // Persistir en SQLite (transaccional; reemplaza el antiguo library.json)
+    crate::db::with_db(&app, |conn| crate::db::replace_all_tracks(conn, &tracks))?;
     Ok(cover_paths)
 }
 
@@ -218,6 +198,13 @@ pub fn get_library_cache_size(app: AppHandle) -> Result<u64, String> {
 #[tauri::command]
 pub fn clear_library_cache(app: AppHandle) -> Result<(), String> {
     let path = library_cache_directory(&app)?;
+    // Borrar también la DB si se pide limpiar caché
+    let db_file = path.join("library.db");
+    if db_file.exists() {
+        let _ = fs::remove_file(&db_file);
+        let _ = fs::remove_file(path.join("library.db-wal"));
+        let _ = fs::remove_file(path.join("library.db-shm"));
+    }
     if path.exists() {
         fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
     }

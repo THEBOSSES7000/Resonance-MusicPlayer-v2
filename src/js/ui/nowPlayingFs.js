@@ -52,16 +52,194 @@ export function getNowPlayingFsLayout() {
   return 'default';
 }
 
-function applyNowPlayingFsLayout(mode) {
+let npFsLayoutToken = 0;
+let npFsLayoutSyncTimer = null;
+let npFsLayoutBusy = false;
+let npFsLayoutQueued = null;
+/** True mientras el dock/letras están ocultos a propósito (no tocar Visual+). */
+let npFsContentHidden = false;
+
+function delayMs(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
+function getCurrentFsLayoutMode() {
+  if (document.body.classList.contains('np-fs-centered')) return 'centered';
+  if (document.body.classList.contains('np-fs-swapped')) return 'swapped';
+  return 'default';
+}
+
+function isAudioCrossfadeActive() {
+  try {
+    const vars = window.__pnAudioVars;
+    if (vars && (vars.crossfadeInProgress || vars.crossfadeVisualActive)) return true;
+  } catch (_) {}
+  return false;
+}
+
+function isFsAdaptLyricsEnabled() {
+  return localStorage.getItem('pn_now_playing_fs_adapt_lyrics') === 'true';
+}
+
+function setFsLayoutClasses(mode) {
   const m = mode === 'swapped' || mode === 'centered' ? mode : 'default';
   document.body.classList.toggle('np-fs-swapped', m === 'swapped');
   document.body.classList.toggle('np-fs-centered', m === 'centered');
-  try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
-  if (m !== 'default' && document.body.classList.contains('now-playing-fs')) {
-    requestAnimationFrame(() => resyncLyricsScrollForFullscreen?.());
-  }
-  try { applyNpFsVolumeBar(); } catch (_) {}
 }
+
+/** Oculta solo dock + letras (captura, antes de que cambie la carátula). */
+function hideFsMovingContent() {
+  document.body.classList.remove('np-fs-layout-fade-in');
+  document.body.classList.add('np-fs-layout-fade-out');
+  npFsContentHidden = true;
+}
+
+function showFsMovingContent() {
+  document.body.classList.remove('np-fs-layout-fade-out');
+  document.body.classList.add('np-fs-layout-fade-in');
+  npFsContentHidden = false;
+}
+
+function clearFsFadeClasses() {
+  document.body.classList.remove('np-fs-layout-fade-out', 'np-fs-layout-fade-in');
+  npFsContentHidden = false;
+}
+
+/**
+ * Cambia el layout: el contenido móvil ya debería estar oculto (o se oculta aquí).
+ */
+async function transitionNowPlayingFsLayout(mode, { persist = true, alreadyHidden = false } = {}) {
+  const m = mode === 'swapped' || mode === 'centered' ? mode : 'default';
+  const same = getCurrentFsLayoutMode() === m;
+
+  if (same && !alreadyHidden && !npFsContentHidden) {
+    if (persist) {
+      try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+    }
+    return;
+  }
+
+  const token = ++npFsLayoutToken;
+  npFsLayoutBusy = true;
+
+  // 1) Ocultar del todo (fade corto)
+  if (!alreadyHidden && !npFsContentHidden) {
+    hideFsMovingContent();
+    await delayMs(320);
+  } else {
+    // Ya oculto por capture: asegurar que el fade-out terminó
+    await delayMs(npFsContentHidden ? 300 : 50);
+  }
+  if (token !== npFsLayoutToken) return;
+
+  // 2) Cambio de layout + datos mientras INVISIBLE
+  setFsLayoutClasses(m);
+  if (persist) {
+    try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+  }
+  try { updateNowPlayingFsHeader(); } catch (_) {}
+  try { applyNpFsVolumeBar(); } catch (_) {}
+  try { resyncLyricsScrollForFullscreen?.(); } catch (_) {}
+
+  // Dar tiempo a layout/carátula/Visual+ a estabilizar (canvas resize, letras, etc.)
+  void document.body.offsetWidth;
+  try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+  await delayMs(50);
+  try { resyncLyricsScrollForFullscreen?.(); } catch (_) {}
+  // Hold invisible ~0.85s para que no se vea el “gris” ni el swap a medias
+  await delayMs(850);
+  if (token !== npFsLayoutToken) return;
+
+  // 3) Fade in más pausado
+  showFsMovingContent();
+  await delayMs(420);
+  if (token !== npFsLayoutToken) return;
+
+  clearFsFadeClasses();
+  npFsLayoutBusy = false;
+
+  if (npFsLayoutQueued) {
+    const queued = npFsLayoutQueued;
+    npFsLayoutQueued = null;
+    void transitionNowPlayingFsLayout(queued.mode, {
+      persist: queued.persist,
+      alreadyHidden: false,
+    });
+  }
+}
+
+function applyNowPlayingFsLayout(mode, { persist = true, animate = true } = {}) {
+  const m = mode === 'swapped' || mode === 'centered' ? mode : 'default';
+  if (!animate || !document.body.classList.contains('now-playing-fs')) {
+    setFsLayoutClasses(m);
+    if (persist) {
+      try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+    }
+    try { applyNpFsVolumeBar(); } catch (_) {}
+    if (document.body.classList.contains('now-playing-fs')) {
+      requestAnimationFrame(() => resyncLyricsScrollForFullscreen?.());
+    }
+    return;
+  }
+  if (npFsLayoutBusy) {
+    npFsLayoutQueued = { mode: m, persist };
+    return;
+  }
+  void transitionNowPlayingFsLayout(m, {
+    persist,
+    alreadyHidden: npFsContentHidden,
+  });
+}
+
+function trackHasDisplayableLyrics(song) {
+  if (!song) return false;
+  const lines = song.lyrics?.lines;
+  if (!Array.isArray(lines) || lines.length === 0) return false;
+  return lines.some(line => String(line?.text || '').trim().length > 0);
+}
+
+function resolveAdaptLayoutTarget() {
+  const song = state.currentTrackIndex >= 0
+    ? state.activeQueue?.[state.currentTrackIndex]
+    : null;
+  const hasLyrics = trackHasDisplayableLyrics(song);
+  let preferred = 'default';
+  try {
+    const stored = localStorage.getItem(NP_FS_LAYOUT_KEY);
+    if (stored === 'swapped' || stored === 'default') preferred = stored;
+    else if (stored === 'centered') preferred = 'default';
+  } catch (_) {}
+  return hasLyrics ? preferred : 'centered';
+}
+
+/** Ajusta default/swapped vs centrado según si hay letras (si el switch está activo). */
+export function syncNowPlayingFsLayoutForLyrics() {
+  if (!document.body.classList.contains('now-playing-fs')) return;
+  if (!isFsAdaptLyricsEnabled()) return;
+
+  const run = () => {
+    const target = resolveAdaptLayoutTarget();
+    applyNowPlayingFsLayout(target, {
+      persist: false,
+      animate: true,
+    });
+  };
+
+  if (npFsLayoutSyncTimer) window.clearTimeout(npFsLayoutSyncTimer);
+  const wait = isAudioCrossfadeActive() ? 420 : 30;
+  npFsLayoutSyncTimer = window.setTimeout(run, wait);
+}
+
+/** Capture: ocultar carátula/letras ANTES de que otros handlers cambien la imagen. */
+function onTrackChangedHideFsContentFirst() {
+  if (!document.body.classList.contains('now-playing-fs')) return;
+  if (!isFsAdaptLyricsEnabled()) return;
+  // Ocultar de inmediato (aunque el layout final sea el mismo, evita ver el swap de carátula)
+  hideFsMovingContent();
+  npFsLayoutBusy = true;
+  // El sync (bubble) hará el resto y el fade-in
+}
+
 
 export function openNowPlayingFsMoreMenu(anchorEl) {
   const song = state.currentTrackIndex >= 0 ? state.activeQueue[state.currentTrackIndex] : null;
@@ -147,9 +325,11 @@ export function setNowPlayingFullscreen(enabled) {
     btn.classList.toggle('active-toggle', Boolean(enabled));
     btn.setAttribute('aria-pressed', String(Boolean(enabled)));
   }
-  if (enabled) applyNowPlayingFsLayout(getNowPlayingFsLayout());
-  else {
-    document.body.classList.remove('np-fs-swapped', 'np-fs-centered');
+  if (enabled) {
+    applyNowPlayingFsLayout(getNowPlayingFsLayout());
+    try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
+  } else {
+    document.body.classList.remove('np-fs-swapped', 'np-fs-centered', 'np-fs-layout-animating');
   }
   updateNowPlayingFsHeader();
   try { applyNpFsVolumeBar(); } catch (_) {}
@@ -177,9 +357,11 @@ function openNowPlayingFullscreen() {
   }
   updateNowPlayingFsHeader();
   try { applyNpFsVolumeBar(); } catch (_) {}
+  try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
   // Tras el layout de pantalla completa, recolocar letras (evita empezar a mitad)
   requestAnimationFrame(() => {
     updateNowPlayingFsHeader();
+    try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
     try { applyNpFsVolumeBar(); } catch (_) {}
     resyncLyricsScrollForFullscreen();
     setTimeout(() => {
@@ -316,3 +498,11 @@ export function updatePlayerState(isPlaying, coverUrl, accentColor) {
   // coverUrl se gestiona por el pipeline normal de carátulas del dock FS
   void coverUrl;
 }
+
+document.addEventListener('pn-lyrics-view-updated', () => {
+  try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
+});
+document.addEventListener('pn-track-changed', onTrackChangedHideFsContentFirst, true);
+document.addEventListener('pn-track-changed', () => {
+  try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
+});

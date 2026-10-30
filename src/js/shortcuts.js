@@ -19,6 +19,8 @@ import {
 import { toggleLyricsTranslation } from './lyrics.js';
 import { refreshImmersiveBackgroundState, syncImmersiveBackgroundFromCover } from '../visual_plus/liquid_background.js';
 import { refreshLiquidBackgroundState, syncLiquidBackgroundFromCover } from '../visual_plus/blurred_background.js';
+import { switchAndSaveTheme, loadVisualPlusSettings, saveVisualPlusSettings } from './settings/visualPlusStorage.js';
+import { switchThemeWithProfiles, snapshotThemeOptions, migrateVisualPlusThemeId as migrateThemeProfile } from './settings/visualPlusThemeProfiles.js';
 
 const STORAGE_KEY = 'pn_shortcuts';
 const SHORTCUT_ACTIONS = {
@@ -321,6 +323,10 @@ function syncVisualPlusUiControls(settings) {
     const option = [...themeSelect.options].find((o) => o.value === settings.theme);
     if (option) themeSelect.value = settings.theme;
     themeSelect.disabled = !settings.enabled;
+    // Forzar que el menú de ajustes refleje el modo (sin volver a disparar guardado en bucle)
+    try {
+      themeSelect.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (_) {}
   }
   // Mostrar/ocultar paneles de opciones de efecto si existen
   try {
@@ -329,15 +335,12 @@ function syncVisualPlusUiControls(settings) {
 }
 
 function writeVisualPlusConfig(settings) {
-  const normalized = {
+  const normalized = saveVisualPlusSettings({
     ...settings,
     theme: migrateVisualPlusThemeId(settings.theme) || 'shooting_stars',
     enabled: Boolean(settings.enabled),
-  };
-  localStorage.setItem('pn_visual_plus', JSON.stringify(normalized));
-  // 1) Canvas themes (estrellas / partículas / atmosférico)
+  });
   document.dispatchEvent(new CustomEvent('pn-visual-plus-settings-changed', { detail: normalized }));
-  // 2) Fondos fuera del canvas: apagar/encender de forma exclusiva
   try { refreshImmersiveBackgroundState(); } catch (_) {}
   try { refreshLiquidBackgroundState(); } catch (_) {}
   const cover = resolveCoverSrcForVisualPlus();
@@ -368,21 +371,20 @@ async function withVisualPlusCrossfade(applyFn) {
 }
 
 async function cycleVisualPlusTheme() {
-  const settings = readVisualPlusConfig();
+  const settings = loadVisualPlusSettings();
   const current = migrateVisualPlusThemeId(settings.theme);
   const idx = VISUAL_PLUS_THEME_ORDER.indexOf(current);
   const next = VISUAL_PLUS_THEME_ORDER[(idx >= 0 ? idx + 1 : 0) % VISUAL_PLUS_THEME_ORDER.length];
   const nextSettings = {
-    ...settings,
-    enabled: true, // al ciclar modos, asegurar Visual+ activo
-    theme: next,
+    ...switchAndSaveTheme({ ...settings, theme: current }, next),
+    enabled: true,
   };
   await withVisualPlusCrossfade(() => writeVisualPlusConfig(nextSettings));
   setStatus(`Visual+: ${VISUAL_PLUS_THEME_LABELS[next] || next}`);
 }
 
 async function toggleVisualPlusEnabled() {
-  const settings = readVisualPlusConfig();
+  const settings = loadVisualPlusSettings();
   const nextEnabled = !settings.enabled;
   const nextSettings = { ...settings, enabled: nextEnabled };
   await withVisualPlusCrossfade(() => writeVisualPlusConfig(nextSettings));

@@ -111,10 +111,10 @@ function readSpectrum(barCount) {
     }
   }
 
+  // Reactividad alta = menos suavizado = sigue mejor los picos de la canción
   const reactivity = clamp((Number(vp.wsReactivity) || 70) / 100, 0.05, 1);
-  // En pausa decae rápido; en play, smooth según reactividad
-  const smooth = playing ? (1 - reactivity) : 0.82;
-  const intensity = clamp((Number(vp.wsIntensity) || 70) / 100, 0.2, 1.5);
+  const smooth = playing ? Math.max(0.12, 1 - reactivity * 0.92) : 0.82;
+  const intensity = clamp((Number(vp.wsIntensity) || 70) / 100, 0.2, 1.8);
 
   while (smoothed.length < barCount) smoothed.push(0);
   if (smoothed.length > barCount) smoothed.length = barCount;
@@ -131,7 +131,7 @@ function readSpectrum(barCount) {
     }
   }
   peakBin = maxI;
-  peakSmooth = peakSmooth * 0.85 + maxV * 0.15;
+  peakSmooth = peakSmooth * 0.65 + maxV * 0.35;
   if (!playing) peakSmooth *= 0.85;
   return smoothed;
 }

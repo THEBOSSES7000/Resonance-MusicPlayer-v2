@@ -317,6 +317,17 @@ function applyNpFsVolumeBarMode(mode) {
 }
 
 export function initNowPlayingFsSettings() {
+  const adaptLyricsToggle = document.getElementById('np-fs-adapt-lyrics');
+  if (adaptLyricsToggle) {
+    adaptLyricsToggle.checked = localStorage.getItem('pn_now_playing_fs_adapt_lyrics') === 'true';
+    adaptLyricsToggle.addEventListener('change', () => {
+      localStorage.setItem('pn_now_playing_fs_adapt_lyrics', String(adaptLyricsToggle.checked));
+      try {
+        import('../ui/nowPlayingFs.js').then(m => m.syncNowPlayingFsLayoutForLyrics?.());
+      } catch (_) {}
+    });
+  }
+
   applyNpFsCoverSize(getNpFsCoverSize());
   applyNpFsSyncLyrics(isNpFsSyncLyrics());
   if (!isNpFsSyncLyrics()) applyNpFsLyricsCustomFromStorage();

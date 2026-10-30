@@ -42,3 +42,5 @@ export const audioVars = {
   crossfadeAnimationResolve: null,
   crossfadeGeneration: 0
 };
+
+try { window.__pnAudioVars = audioVars; } catch (_) {}

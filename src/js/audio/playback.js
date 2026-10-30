@@ -156,6 +156,10 @@ async function tryRestoreUnavailableTrack(track) {
     const result = Array.isArray(results) ? results[0] : null;
     if (!result || result.error || !result.metadata) return false;
     track.unavailable = false;
+    try {
+      const { dbUpdateTrackFields } = await import('../scanner/dbSync.js');
+      void dbUpdateTrackFields(track, { unavailable: false });
+    } catch (_) {}
     const meta = result.metadata;
     if (meta.title) track.title = meta.title;
     if (meta.artist) track.artist = meta.artist;
@@ -163,10 +167,7 @@ async function tryRestoreUnavailableTrack(track) {
     if (meta.duration) track.duration = meta.duration;
     if (meta.trackNumber != null) track.trackNumber = meta.trackNumber;
     track.metadataLoaded = true;
-    try {
-      const { saveNativeLibraryCache } = await import('../scanner.js');
-      void saveNativeLibraryCache(true);
-    } catch (_) {}
+    try { const { dbUpdateTrackFields } = await import('../scanner/dbSync.js'); void dbUpdateTrackFields(track, { unavailable: true }); } catch (_) {}
     try {
       const { renderPlaylistDetailView } = await import('../ui/playlistDetail.js');
       void renderPlaylistDetailView();
@@ -181,8 +182,11 @@ async function markTrackUnavailable(track) {
   if (!track) return;
   track.unavailable = true;
   try {
-    const { saveNativeLibraryCache } = await import('../scanner.js');
-    void saveNativeLibraryCache(true);
+    const { dbUpdateTrackFields } = await import('../scanner/dbSync.js');
+    void dbUpdateTrackFields(track, { unavailable: true });
+  } catch (_) {}
+  try {
+    // respaldo: no forzar save completo
   } catch (_) {}
   try {
     const { renderPlaylistDetailView } = await import('../ui/playlistDetail.js');

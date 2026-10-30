@@ -28,6 +28,11 @@ function isLyricsTranslationEnabled() {
   return localStorage.getItem('pn_lyrics_translation_enabled') === 'true';
 }
 
+/** Si true, al traducir se reemplaza la letra original (misma animación/estilo). */
+export function isLyricsTranslationReplaceMode() {
+  return localStorage.getItem('pn_lyrics_translation_replace') === 'true';
+}
+
 function getLyricsTranslationLanguage() {
   const language = localStorage.getItem('pn_lyrics_translation_language') || 'es';
   return LYRIC_TRANSLATION_LANGUAGES.includes(language) ? language : 'es';
@@ -130,18 +135,31 @@ function replaceLyricsLineLayers(line, baseLayers) {
 function restoreOriginalLyrics() {
   document.querySelectorAll('#lyrics-lines-box .lyric-line-sync').forEach(line => {
     replaceLyricsLineLayers(line, [cloneOriginalLyrics(line)]);
+    line.classList.remove('lyric-line-translation-replaced');
   });
   document.dispatchEvent(new CustomEvent('pn-lyrics-layers-changed'));
 }
 
 function renderTranslatedLyrics(lines) {
   const lyricElements = document.querySelectorAll('#lyrics-lines-box .lyric-line-sync');
+  const replaceMode = isLyricsTranslationReplaceMode();
   lyricElements.forEach((line, index) => {
-    const original = cloneOriginalLyrics(line);
-    const translated = document.createElement('span');
-    translated.className = 'lyric-line-translation';
-    translated.textContent = lines[index]?.text || '';
-    replaceLyricsLineLayers(line, [original, translated]);
+    const translatedText = lines[index]?.text || '';
+    if (replaceMode) {
+      // Solo traducción, con la misma clase que la letra normal → mismos estilos/animación
+      const layer = document.createElement('span');
+      layer.className = 'lyric-line-original';
+      layer.textContent = translatedText || (line.dataset.originalText || '');
+      replaceLyricsLineLayers(line, [layer]);
+      line.classList.add('lyric-line-translation-replaced');
+    } else {
+      const original = cloneOriginalLyrics(line);
+      const translated = document.createElement('span');
+      translated.className = 'lyric-line-translation';
+      translated.textContent = translatedText;
+      replaceLyricsLineLayers(line, [original, translated]);
+      line.classList.remove('lyric-line-translation-replaced');
+    }
   });
   document.dispatchEvent(new CustomEvent('pn-lyrics-layers-changed'));
 }

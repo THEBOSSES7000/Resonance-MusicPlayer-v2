@@ -20,6 +20,9 @@ let nativePollTimer = null;
 
 /** Energía RMS (0–1) recibida desde Rust vía evento `audio-energy` (Visual+). */
 export let nativeAudioEnergy = 0;
+/** Espectro nativo 64 bandas (0–1) desde Rust. */
+export let nativeAudioSpectrum = null;
+
 
 let nativeEnergyUnlisten = null;
 
@@ -37,6 +40,18 @@ export let nativePositionSampleMs = 0;
 export function ensureNativeEnergyListener() {
   if (!window.__TAURI__?.event?.listen) return;
   if (!nativeEnergyUnlisten) {
+    void window.__TAURI__.event.listen('audio-spectrum', event => {
+      const raw = event?.payload;
+      if (Array.isArray(raw) && raw.length > 0) {
+        if (!nativeAudioSpectrum || nativeAudioSpectrum.length !== raw.length) {
+          nativeAudioSpectrum = new Float32Array(raw.length);
+        }
+        for (let i = 0; i < raw.length; i += 1) {
+          const v = Number(raw[i]);
+          nativeAudioSpectrum[i] = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+        }
+      }
+    }).catch(() => {});
     void window.__TAURI__.event.listen('audio-energy', event => {
       const value = Number(event.payload);
       nativeAudioEnergy = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
@@ -51,6 +66,7 @@ export function ensureNativeEnergyListener() {
 /** Deja de pedir emisiones de energía (Visual+ apagado). */
 export function disableNativeEnergyEmit() {
   nativeAudioEnergy = 0;
+  nativeAudioSpectrum = null;
   void nativeInvoke('native_audio_set_energy_emit', { enabled: false }).catch(() => {});
 }
 
