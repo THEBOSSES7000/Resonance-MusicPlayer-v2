@@ -8,7 +8,7 @@ import { notifyDiscordPresence, updateWindowSongTitle, updateWindowsMediaMetadat
 import { resetProgressVisual, setProgressVisual, updateAudioQuality, updateCrossfadeIndicator, updateProgressTimes } from './progressUI.js';
 import { paintPlayerCover, resetPlayerCoverToPlaceholder } from './playerCover.js';
 import { ensureSongMetadata, persistPlaybackSession, renderQueue, showConfirmDialog, syncPlayingUI, updateFavIcon, updateLyricsUI, updateSyncedLyricsProgress } from '../ui.js';
-import { getSongByIdOrPath, resolveAudioUrl, resolveCoverUrl, state } from '../state.js';
+import { formatTime, getSongByIdOrPath, resolveAudioUrl, resolveCoverUrl, state } from '../state.js';
 import { crossfadeAutomaticOnly, crossfadeDuration, crossfadeEnabled, masterVolume, pauseFadeEnabled, pauseFadeInDuration, pauseFadeOutDuration, playbackFadeInDuration, playbackFadeInEnabled, playbackFadeOutDuration, playbackFadeOutEnabled, updateLyricsButtonVisibility } from './webAudio.js';
 import { loadWaveformForTrack } from './waveform.js';
 import { ensureSongCover, ensureSongLyrics, ensureSongTechDetails } from '../scanner.js';
@@ -17,6 +17,182 @@ import { resetPlayCountSession } from './playCount.js';
 import { needsHtmlAudioEffects, setPlaybackPitch, setPlaybackSpeed } from './effects.js';
 
 export let audio = primaryAudio;
+
+
+/** Pausa la reproducción actual sin vaciar la cola (pista ausente / click en desaparecida). */
+export async function pausePlaybackForMissingTrack() {
+  // Detener de verdad el motor nativo (no solo pause): si queda active,
+  // togglePlay reanuda el archivo anterior mientras la UI muestra la ausente.
+  try { cancelCrossfade?.(); } catch (_) {}
+  try { stopNativeProgressPoll(); } catch (_) {}
+  try {
+    if (audioVars.nativeAudioActive) {
+      try {
+        await nativeInvoke('native_audio_stop');
+      } catch (_) {
+        try {
+          await nativeInvoke('native_audio_pause', { fadeOutSecs: 0 });
+        } catch (_) {}
+      }
+      audioVars.nativeAudioActive = false;
+    }
+  } catch (_) {}
+  try {
+    nativeShadow.paused = true;
+    nativeShadow.currentTime = 0;
+    nativeShadow.path = null;
+  } catch (_) {}
+  try {
+    audioDecks?.forEach?.(deck => {
+      try {
+        deck.pause();
+        deck.removeAttribute('src');
+      } catch (_) {}
+    });
+  } catch (_) {}
+  try {
+    if (playIcon) playIcon.className = 'ph-fill ph-play';
+  } catch (_) {}
+  try { resetProgressVisual?.(); } catch (_) {}
+  try {
+    if (timeCurrentEl) timeCurrentEl.textContent = '0:00';
+  } catch (_) {}
+  try { syncPlayingUI?.(false); } catch (_) {}
+  try { updateWindowsMediaPlayback?.(false); } catch (_) {}
+  try {
+    document.body.classList.remove('np-fs-audio-playing');
+  } catch (_) {}
+}
+
+function isMissingFileError(error) {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return (
+    msg.includes('no such file') ||
+    msg.includes('not found') ||
+    msg.includes('no se pudo') ||
+    msg.includes('os error 2') ||
+    msg.includes('cannot find') ||
+    msg.includes('acceso') ||
+    msg.includes('denied') ||
+    msg.includes('invalid path') ||
+    msg.includes('no existe') ||
+    msg.includes('failed to open') ||
+    msg.includes('could not open')
+  );
+}
+
+
+/** Muestra en la barra inferior la pista ausente de forma coherente (sin mezclar con la anterior). */
+function showMissingTrackInPlayerUi(track, index) {
+  if (typeof index === 'number' && index >= 0) {
+    state.currentTrackIndex = index;
+  }
+  const title = (track?.title || track?.file?.name || 'Canción perdida').trim();
+  const artist = (track?.artist || '').trim();
+  try {
+    currentTitleTextEl.textContent = title;
+  } catch (_) {}
+  try {
+    currentArtistEl.textContent = artist
+      ? `${artist} · No disponible`
+      : 'Canción no disponible';
+  } catch (_) {}
+  try {
+    resetProgressVisual?.();
+  } catch (_) {}
+  try {
+    if (timeCurrentEl) timeCurrentEl.textContent = '0:00';
+    if (timeTotalEl) {
+      const d = Number(track?.duration);
+      timeTotalEl.textContent = Number.isFinite(d) && d > 0
+        ? (typeof formatTime === 'function' ? formatTime(d) : `${Math.floor(d / 60)}:${String(Math.floor(d % 60)).padStart(2, '0')}`)
+        : '--:--';
+    }
+  } catch (_) {}
+  try {
+    // Portada: placeholder, no la de la canción anterior
+    resetPlayerCoverToPlaceholder?.();
+  } catch (_) {
+    try {
+      paintPlayerCover?.(null, track);
+    } catch (_) {}
+  }
+  try {
+    updateTitleMarquee?.();
+  } catch (_) {}
+  try {
+    updateFavIcon?.();
+  } catch (_) {}
+  try {
+    updateLyricsButtonVisibility?.(track);
+  } catch (_) {}
+  try {
+    renderQueue?.();
+  } catch (_) {}
+  try {
+    updateWindowSongTitle?.(track);
+  } catch (_) {}
+  try {
+    void updateWindowsMediaMetadata?.(track);
+    updateWindowsMediaPlayback?.(false);
+  } catch (_) {}
+  try {
+    notifyDiscordPresence?.(false);
+  } catch (_) {}
+}
+
+
+/** Si la pista estaba ausente, comprueba si el archivo volvió a existir en su ruta. */
+async function tryRestoreUnavailableTrack(track) {
+  if (!track?.unavailable) return false;
+  const path = track.file?.path || track.path;
+  if (!path || typeof path !== 'string') return false;
+  if (!window.__TAURI__?.core?.invoke) return false;
+  try {
+    const results = await window.__TAURI__.core.invoke('scan_files_metadata', {
+      paths: [path],
+      includeLyrics: false
+    });
+    const result = Array.isArray(results) ? results[0] : null;
+    if (!result || result.error || !result.metadata) return false;
+    track.unavailable = false;
+    const meta = result.metadata;
+    if (meta.title) track.title = meta.title;
+    if (meta.artist) track.artist = meta.artist;
+    if (meta.album) track.album = meta.album;
+    if (meta.duration) track.duration = meta.duration;
+    if (meta.trackNumber != null) track.trackNumber = meta.trackNumber;
+    track.metadataLoaded = true;
+    try {
+      const { saveNativeLibraryCache } = await import('../scanner.js');
+      void saveNativeLibraryCache(true);
+    } catch (_) {}
+    try {
+      const { renderPlaylistDetailView } = await import('../ui/playlistDetail.js');
+      void renderPlaylistDetailView();
+    } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function markTrackUnavailable(track) {
+  if (!track) return;
+  track.unavailable = true;
+  try {
+    const { saveNativeLibraryCache } = await import('../scanner.js');
+    void saveNativeLibraryCache(true);
+  } catch (_) {}
+  try {
+    const { renderPlaylistDetailView } = await import('../ui/playlistDetail.js');
+    void renderPlaylistDetailView();
+  } catch (_) {}
+  try {
+    const { renderGrids } = await import('../ui.js');
+    renderGrids?.();
+  } catch (_) {}
+}
 
 export function stopPlaybackForDeletedFile() {
   cancelCrossfade();
@@ -155,18 +331,29 @@ async function nativeCrossfadeToNext(index) {
     track = canonical;
   }
   if (track?.unavailable) {
-    console.warn('[Resonance] Pista no disponible:', track.title || track.path);
-    try {
-      const { showConfirmDialog } = await import('../ui.js');
-      await showConfirmDialog({
-        title: 'Canción no disponible',
-        message: 'El archivo no está en el disco (¿unidad desconectada o archivo movido?). Se mantiene en la biblioteca y en las playlists.',
-        confirmText: 'Entendido',
-        showCancel: false
-      });
-    } catch (_) {}
-    return false;
+    // Reintentar: si el archivo volvió a su ruta, restaurar y seguir cargando
+    const restored = await tryRestoreUnavailableTrack(track);
+    if (restored) {
+      try {
+        const { showLibraryToast } = await import('../ui/libraryToast.js');
+        showLibraryToast(`Canción restaurada: ${track.title || track.file?.name || ''}`, {
+          type: 'success',
+          durationMs: 3500
+        });
+      } catch (_) {}
+      // Continuar con loadSong normalmente (ya no unavailable)
+    } else {
+      console.warn('[Resonance] Pista no disponible:', track.title || track.path);
+      await pausePlaybackForMissingTrack();
+      showMissingTrackInPlayerUi(track, index);
+      try {
+        const { showMissingSongToast } = await import('../ui/libraryToast.js');
+        showMissingSongToast(track);
+      } catch (_) {}
+      return false;
+    }
   }
+
   const path = track?.file?.path || track?.path;
   if (!path || typeof path !== 'string') return false;
 
@@ -447,6 +634,30 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
     state.activeQueue[index] = canonical;
     track = canonical;
   }
+
+  if (track?.unavailable) {
+    // Reintentar: si el archivo volvió a su ruta, restaurar y seguir cargando
+    const restored = await tryRestoreUnavailableTrack(track);
+    if (restored) {
+      try {
+        const { showLibraryToast } = await import('../ui/libraryToast.js');
+        showLibraryToast(`Canción restaurada: ${track.title || track.file?.name || ''}`, {
+          type: 'success',
+          durationMs: 3500
+        });
+      } catch (_) {}
+      // Continuar con loadSong normalmente (ya no unavailable)
+    } else {
+      console.warn('[Resonance] Pista no disponible:', track.title || track.path);
+      await pausePlaybackForMissingTrack();
+      showMissingTrackInPlayerUi(track, index);
+      try {
+        const { showMissingSongToast } = await import('../ui/libraryToast.js');
+        showMissingSongToast(track);
+      } catch (_) {}
+      return false;
+    }
+  }
   track.isEnqueuedNext = false;
 
   const currentTrack = state.currentTrackIndex < 0
@@ -454,7 +665,11 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
     : state.activeQueue[state.currentTrackIndex];
   const trackChanged = !currentTrack ||
     currentTrack.id !== track.id ||
-    (currentTrack.file?.path || currentTrack.audioUrl) !== (track.file?.path || track.audioUrl);
+    (currentTrack.file?.path || currentTrack.audioUrl) !== (track.file?.path || track.audioUrl) ||
+    Boolean(track._forceReloadToken);
+  if (track._forceReloadToken) {
+    delete track._forceReloadToken;
+  }
   if (preserveCrossfade) {
     await ensureSongMetadata(track);
     if (crossfadeToken !== audioVars.crossfadeGeneration) return;
@@ -474,10 +689,31 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
     try {
       await nativeLoadTrack(track, Boolean(autoPlay));
     } catch (error) {
-      console.error('Audio nativo falló, usando HTML Audio:', error);
+      console.error('Audio nativo falló:', error);
+      if (isMissingFileError(error)) {
+        await markTrackUnavailable(track);
+        await pausePlaybackForMissingTrack();
+        showMissingTrackInPlayerUi(track, index);
+        try {
+          const { showMissingSongToast } = await import('../ui/libraryToast.js');
+          showMissingSongToast(track);
+        } catch (_) {}
+        // No cambiar a HTML ni dejar la pista anterior sonando
+        return false;
+      }
+      // Otro error: intentar HTML Audio
       audioVars.nativeAudioActive = false;
       audioSrc = resolveAudioUrl(track);
-      if (!audioSrc) return;
+      if (!audioSrc) {
+        await markTrackUnavailable(track);
+        await pausePlaybackForMissingTrack();
+        showMissingTrackInPlayerUi(track, index);
+        try {
+          const { showMissingSongToast } = await import('../ui/libraryToast.js');
+          showMissingSongToast(track);
+        } catch (_) {}
+        return false;
+      }
       targetDeck.src = audioSrc;
     }
   } else {
@@ -486,7 +722,14 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
     audioSrc = resolveAudioUrl(track);
     if (!audioSrc) {
       console.error('No se pudo resolver la URL de audio de la pista:', track?.title);
-      return;
+      await markTrackUnavailable(track);
+      await pausePlaybackForMissingTrack();
+      showMissingTrackInPlayerUi(track, index);
+      try {
+        const { showMissingSongToast } = await import('../ui/libraryToast.js');
+        showMissingSongToast(track);
+      } catch (_) {}
+      return false;
     }
     targetDeck.src = audioSrc;
   }
@@ -569,6 +812,12 @@ export function togglePlay() {
   if (state.activeQueue.length === 0) return;
   if (state.currentTrackIndex === -1) {
     loadSong(0, true);
+    return;
+  }
+  const current = state.activeQueue[state.currentTrackIndex];
+  // Pista ausente: no reanudar el audio nativo anterior; intentar restaurar/cargar
+  if (current?.unavailable) {
+    void loadSong(state.currentTrackIndex, true, false);
     return;
   }
   if (audioVars.nativeAudioActive) {

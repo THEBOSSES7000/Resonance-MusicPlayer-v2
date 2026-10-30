@@ -12,7 +12,11 @@ import { showSongDetails } from '../songDetails.js';
 import { navigateToView } from '../navigation.js';
 import { artistsFromCredit } from '../libraryEntities.js';
 import { openPlaylistPicker } from '../playlistPicker.js';
-import { createDeleteSongFileContextItem } from './songActions.js';
+import {
+  createDeleteSongFileContextItem,
+  createFindSongContextItem,
+  createRemoveFromLibraryContextItem
+} from './songActions.js';
 
 /** Menú contextual de una canción (tarjeta o fila de tabla). */
 export function buildSongContextItems(target, items) {
@@ -282,7 +286,13 @@ export function buildSongContextItems(target, items) {
       action: () => navigateToView('artist', { artistName: artistsFromCredit(song.artist)[0] || song.artist })
     });
     items.push({ type: 'separator' });
-    items.push(createDeleteSongFileContextItem(song));
+    if (song.unavailable) {
+      // Solo acciones que no requieren el archivo en disco
+      items.push(createFindSongContextItem(song));
+      items.push(createRemoveFromLibraryContextItem(song));
+    } else {
+      items.push(createDeleteSongFileContextItem(song));
+    }
     } // fin else no-queue-detail
   }
   return items;

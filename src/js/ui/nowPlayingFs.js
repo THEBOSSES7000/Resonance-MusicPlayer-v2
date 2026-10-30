@@ -159,7 +159,8 @@ function hasActivePlaybackTrack() {
   try {
     if (state.currentTrackIndex < 0) return false;
     const track = state.activeQueue?.[state.currentTrackIndex];
-    return Boolean(track);
+    if (!track || track.unavailable) return false;
+    return true;
   } catch (_) {
     return false;
   }

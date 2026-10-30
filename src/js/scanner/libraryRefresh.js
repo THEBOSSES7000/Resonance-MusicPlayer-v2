@@ -151,6 +151,20 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
     }
     // Ya no se eliminan canciones del array (ni de playlists)
     const removedAny = availabilityChanged;
+    if (availabilityChanged) {
+      const missingCount = state.localMusicFiles.filter(s => s.unavailable).length;
+      if (missingCount > 0) {
+        try {
+          const { showLibraryToast } = await import('../ui/libraryToast.js');
+          showLibraryToast(
+            missingCount === 1
+              ? '1 canción no se encontró en el disco'
+              : `${missingCount} canciones no se encontraron en el disco`,
+            { type: 'error', durationMs: 6000 }
+          );
+        } catch (_) {}
+      }
+    }
 
     if (library.files.length === 0) {
       console.warn(
