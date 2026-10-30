@@ -68,6 +68,14 @@ function initWindowChrome() {
     }
   };
 
+  // Marca <body> cuando la ventana está minimizada (el sondeo de progreso y los fondos animados lo usan para ahorrar CPU/GPU).
+  const updateMinimizedState = async () => {
+    try {
+      const minimized = await currentWindow.isMinimized();
+      document.body.classList.toggle('window-minimized', Boolean(minimized));
+    } catch (_) {}
+  };
+
   minimizeButton.addEventListener('click', () => runWindowAction(() =>
     localStorage.getItem('pn_minimize_to_tray') === 'true'
       ? currentWindow.hide()
@@ -95,14 +103,20 @@ function initWindowChrome() {
       await updateMaximizeButton();
     });
   });
-  window.addEventListener('resize', () => void updateMaximizeButton());
+  window.addEventListener('resize', () => {
+    void updateMaximizeButton();
+    void updateMinimizedState();
+  });
   if (typeof currentWindow.onMoved === 'function') {
     void currentWindow.onMoved(scheduleWindowBoundsSave).catch(error => {
       console.error('No se pudo observar el movimiento de la ventana:', error);
     });
   }
   if (typeof currentWindow.onResized === 'function') {
-    void currentWindow.onResized(scheduleWindowBoundsSave).catch(error => {
+    void currentWindow.onResized(() => {
+      scheduleWindowBoundsSave();
+      void updateMinimizedState();
+    }).catch(error => {
       console.error('No se pudo observar el cambio de tamaño de la ventana:', error);
     });
   }

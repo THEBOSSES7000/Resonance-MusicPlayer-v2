@@ -89,15 +89,15 @@ pub async fn scan_music_library(app: AppHandle) -> Result<MusicLibrary, String> 
             }
         }
         // Recorrer varias carpetas raíz en paralelo (rayon)
-        let partials: Vec<Vec<_>> = directories
+        let partials: Vec<Result<Vec<MusicFile>, String>> = directories
             .par_iter()
-            .map(|directory| {
+            .map(|directory| -> Result<Vec<MusicFile>, String> {
                 if CANCEL_MUSIC_LIBRARY_SCAN.load(Ordering::Relaxed) {
-                    return Vec::new();
+                    return Ok(Vec::new());
                 }
                 let root = PathBuf::from(&directory.path);
                 if !root.is_dir() {
-                    return Vec::new();
+                    return Ok(Vec::new());
                 }
                 let excluded: std::collections::HashSet<String> = directory
                     .excluded_subfolders
@@ -105,13 +105,16 @@ pub async fn scan_music_library(app: AppHandle) -> Result<MusicLibrary, String> 
                     .map(|item| normalize_path_key(item))
                     .collect();
                 let mut local_files = Vec::new();
-                if collect_music_files(&root, &root, &directory.name, &mut local_files, &excluded).is_err() {
-                    return Vec::new();
-                }
-                local_files
+                // Un error de lectura aborta el escaneo (como antes): así no se confunde
+                // "no pude leer la carpeta" con "la carpeta está vacía".
+                collect_music_files(&root, &root, &directory.name, &mut local_files, &excluded)?;
+                Ok(local_files)
             })
             .collect();
-        let mut files: Vec<_> = partials.into_iter().flatten().collect();
+        let mut files: Vec<MusicFile> = Vec::new();
+        for partial in partials {
+            files.extend(partial?);
+        }
         files.sort_by(|left, right| right.last_modified.cmp(&left.last_modified));
         Ok(MusicLibrary { directories, files })
     })

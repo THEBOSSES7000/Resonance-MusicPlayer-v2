@@ -6,7 +6,7 @@ import { applyFavoriteAddedAt, ensureStableIdsForLibrary, songIsFavorite } from 
 import { METADATA_PARSER_VERSION } from './lyricsCache.js';
 import { renderDirectories } from '../settings.js';
 import { scannerVars } from './sharedState.js';
-import { isTauriRuntime } from './fileUtils.js';
+import { formatAddedDate, isTauriRuntime } from './fileUtils.js';
 import { configureMusicWatcher, refreshNativeMusicLibrary } from './libraryRefresh.js';
 
 async function loadCachedNativeLibrary(cachedTracksInput = null) {
@@ -81,7 +81,7 @@ async function loadCachedNativeLibrary(cachedTracksInput = null) {
       folderName: (file.webkitRelativePath || '').split('/')[1] || directories.find(dir => dir.path === file.directoryPath)?.name || 'Música',
       audioUrl: null,
       playCount: (songKey && state.playCounts[songKey]) || getPlayCount(cachedTrack) || 0,
-      addedDate: new Date(file.lastModified || Date.now()).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+      addedDate: formatAddedDate(file.lastModified),
       isFavorite: songIsFavorite({ title: cachedTrack.title, artist: cachedTrack.artist, file: { path: cachedTrack.path } }, favoriteKeys) || Boolean(cachedTrack.isFavorite),
       metadataParserVersion: cachedTrack.metadataParserVersion || null,
       unavailable: Boolean(cachedTrack.unavailable),
@@ -128,6 +128,9 @@ async function loadCachedNativeLibrary(cachedTracksInput = null) {
   }
 }
 
+/** Espera antes del reescaneo automático de arranque cuando ya existe caché. */
+const STARTUP_RESCAN_DELAY_MS = 2500;
+
 export async function initializeMusicLibrary() {
   if (!isTauriRuntime()) {
     await initializePlaybackSession();
@@ -158,16 +161,21 @@ export async function initializeMusicLibrary() {
     // 2) Escaneo / upgrade en segundo plano para no congelar clics ni el menú
     const shouldRescan = scanOnStartup || needsMetadataUpgrade || !hadCachedTracks;
     if (shouldRescan) {
-      const rescanPromise = refreshNativeMusicLibrary(false, {
+      const scanOptions = {
         skipRenderIfUnchanged: hadCachedTracks && !needsMetadataUpgrade
-      });
+      };
       if (!hadCachedTracks) {
         // Sin caché hay que esperar al menos el primer escaneo
-        await rescanPromise;
+        await refreshNativeMusicLibrary(false, scanOptions);
       } else {
-        void rescanPromise.catch(error => {
-          console.error('Escaneo en segundo plano falló:', error);
-        });
+        // Con caché la interfaz ya está pintada: el reescaneo espera unos segundos
+        // para no competir con el arranque (salvo que haya que actualizar metadatos).
+        const delayMs = needsMetadataUpgrade ? 0 : STARTUP_RESCAN_DELAY_MS;
+        window.setTimeout(() => {
+          void refreshNativeMusicLibrary(false, scanOptions).catch(error => {
+            console.error('Escaneo en segundo plano falló:', error);
+          });
+        }, delayMs);
       }
     }
   } catch (error) {

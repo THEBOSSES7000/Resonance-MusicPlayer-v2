@@ -149,7 +149,6 @@ function canAnimate() {
   return vp.enabled &&
     ['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound'].includes(vp.theme) &&
     (vp.theme !== 'atmospheric' || vp.firefliesEnabled || vp.rainEnabled) &&
-    (vp.theme !== 'ps3_wave' || true) &&
     vp.intersecting &&
     document.visibilityState === 'visible' &&
     lyricsOverlay?.classList.contains('open') &&

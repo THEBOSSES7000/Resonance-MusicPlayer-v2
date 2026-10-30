@@ -1,9 +1,9 @@
-import { compactSong, compactLibrarySongs } from './songMemory.js';
+import { compactSong } from './songMemory.js';
 // Biblioteca · Procesamiento de archivos de audio y re-escaneo.
 
 import { activeLibraryScan, beginLibraryScan, finishLibraryScan, hideScanProgress, updateScanProgress } from './scanProgress.js';
 import { getPlayCount, rebuildSongsIndex, state } from '../state.js';
-import { getFileKey, isTauriRuntime } from './fileUtils.js';
+import { formatAddedDate, getFileKey, isTauriRuntime } from './fileUtils.js';
 import { METADATA_PARSER_VERSION } from './lyricsCache.js';
 import { applyFavoriteAddedAt, assignStableSongId, ensureStableIdsForLibrary, songIsFavorite } from './songIdentity.js';
 import { scannerVars } from './sharedState.js';
@@ -32,6 +32,7 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
   const existingFiles = new Map(state.localMusicFiles.map(song => [getFileKey(song.file), song]));
   const pendingFiles = new Map();
   const songsToScan = [];
+  const songsToScanSet = new Set();
   let addedSongsCount = 0;
 
   matchedFiles.forEach((file) => {
@@ -92,7 +93,7 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
         codec: null,
         replayGainDb: null,
         playCount: 0,
-        addedDate: new Date(file.lastModified || Date.now()).toLocaleDateString("es-ES", { day: 'numeric', month: 'short', year: 'numeric' }),
+        addedDate: formatAddedDate(file.lastModified),
         isFavorite: songIsFavorite({ title, artist, file }, savedFavKeys)
       };
       assignStableSongId(song);
@@ -117,7 +118,10 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
       song.file = file;
       song.folderName = folderName;
     }
-    if (shouldScanMetadata && !songsToScan.includes(song)) songsToScan.push(song);
+    if (shouldScanMetadata && !songsToScanSet.has(song)) {
+      songsToScanSet.add(song);
+      songsToScan.push(song);
+    }
   });
 
   const hasChanges = songsToScan.length > 0 || addedSongsCount > 0 || Boolean(options.removedAny);

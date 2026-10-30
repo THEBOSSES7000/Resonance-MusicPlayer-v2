@@ -198,6 +198,11 @@ export function syncImmersiveAnimationPlayState() {
   if (!kawarp) return;
   const settings = readVisualPlusSettings();
   if (!isLiquidTheme(settings)) return;
+  // Ventana oculta o minimizada: no gastar GPU
+  if (document.hidden || document.body?.classList?.contains('window-minimized')) {
+    try { kawarp.stop(); } catch (_) {}
+    return;
+  }
   applySpeedFromSettings();
   try {
     // start() es no-op si ya está playing; reiniciar si estaba parado
@@ -351,8 +356,7 @@ export const initLiquidBackground = initLiquidImmersiveBackground;
 
 document.addEventListener('visibilitychange', () => {
   try {
-    if (typeof refreshImmersiveBackgroundState === 'function') {
-      refreshImmersiveBackgroundState();
-    }
+    // Oculta: pausar. Visible: reanudar sin recargar la carátula.
+    syncImmersiveAnimationPlayState();
   } catch (_) {}
 });

@@ -26,3 +26,16 @@ export function getFallbackMetadata(file) {
     artist: parts[0].trim() || 'Desconocido'
   };
 }
+
+const ADDED_DATE_OPTIONS = { day: 'numeric', month: 'short', year: 'numeric' };
+const addedDateFormatter = new Intl.DateTimeFormat('es-ES', ADDED_DATE_OPTIONS);
+
+/**
+ * Fecha de agregado ("5 sept 2025"). Reutiliza un único formateador: crear uno por canción
+ * (toLocaleDateString con opciones) tardaba ~0,05 ms cada vez y se notaba con decenas de miles de archivos.
+ */
+export function formatAddedDate(timestamp) {
+  const date = new Date(timestamp || Date.now());
+  if (Number.isNaN(date.getTime())) return date.toLocaleDateString('es-ES', ADDED_DATE_OPTIONS);
+  return addedDateFormatter.format(date);
+}

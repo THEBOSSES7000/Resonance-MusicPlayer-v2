@@ -23,6 +23,8 @@ let originalSetItem = null;
 let originalRemoveItem = null;
 let originalClear = null;
 let lastChangedWasHeavy = false;
+/** true mientras haya cambios en localStorage que aún no se han escrito en disco */
+let hasUnsavedChanges = false;
 
 function isHeavyKey(key) {
   const k = String(key || '');
@@ -57,6 +59,7 @@ function reportPersistenceError(error) {
 }
 
 function queueSave(invoke, storage) {
+  hasUnsavedChanges = false;
   const settings = getSettingsSnapshot(storage);
   pendingSave = pendingSave
     .catch(() => {})
@@ -69,6 +72,7 @@ function queueSave(invoke, storage) {
 }
 
 function scheduleSave(invoke, storage, heavy = false) {
+  hasUnsavedChanges = true;
   if (heavy) {
     lastChangedWasHeavy = true;
     window.clearTimeout(heavySaveTimer);
@@ -150,16 +154,31 @@ export async function initializeSettingsPersistence() {
     if (containedSettings) scheduleSave(invoke, storage, false);
   };
 
-  window.__pnFlushSettingsToDisk = async () => {
+  // Guarda ya. Si no hay cambios pendientes no reescribe el archivo (salvo con force = true).
+  window.__pnFlushSettingsToDisk = async (force = false) => {
     window.clearTimeout(saveTimer);
     window.clearTimeout(heavySaveTimer);
     saveTimer = null;
     heavySaveTimer = null;
+    if (!force && !hasUnsavedChanges) {
+      await pendingSave.catch(() => {});
+      return;
+    }
     await queueSave(invoke, storage);
   };
 
+  // Al ocultar o cerrar la ventana, guardar lo pendiente en vez de esperar al debounce.
+  const flushIfPending = () => {
+    if (!hasUnsavedChanges) return;
+    void window.__pnFlushSettingsToDisk().catch(() => {});
+  };
+  window.addEventListener('pagehide', flushIfPending);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushIfPending();
+  });
+
   if (storedSettings === null) {
-    await window.__pnFlushSettingsToDisk();
+    await window.__pnFlushSettingsToDisk(true);
   }
 
   return true;

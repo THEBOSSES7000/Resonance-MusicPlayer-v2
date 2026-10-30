@@ -215,6 +215,9 @@ pub fn save_scanned_cover_to_cache(
     save_scanned_cover_to_dir(&covers_directory, track_path, bytes)
 }
 
+/// Contador para nombres de archivo temporal únicos (las carátulas se guardan en paralelo).
+static COVER_TMP_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 pub fn save_scanned_cover_to_dir(
     covers_directory: &Path,
     track_path: &str,
@@ -251,13 +254,19 @@ pub fn save_scanned_cover_to_dir(
                 image::ExtendedColorType::Rgb8,
             )
             .map_err(|error| format!("No se pudo comprimir la carátula: {error}"))?;
-        // Escritura atómica: temporal + rename
-        let tmp_path = covers_directory.join(format!("{:x}.jpg.tmp", content_hash));
+        // Escritura atómica: temporal ÚNICO por llamada + rename.
+        // Varias pistas del mismo álbum se procesan en paralelo con la misma carátula;
+        // un temporal compartido provocaba escrituras cruzadas y archivos truncados.
+        let tmp_id = COVER_TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp_path = covers_directory.join(format!("{:x}.{tmp_id}.jpg.tmp", content_hash));
         fs::write(&tmp_path, output.into_inner()).map_err(|e| e.to_string())?;
-        fs::rename(&tmp_path, &cover_path).map_err(|e| {
+        if let Err(rename_error) = fs::rename(&tmp_path, &cover_path) {
             let _ = fs::remove_file(&tmp_path);
-            e.to_string()
-        })?;
+            // Otro hilo pudo terminar antes con la misma imagen: en ese caso no es un error.
+            if !cover_path.is_file() {
+                return Err(rename_error.to_string());
+            }
+        }
         Ok(())
     })();
 
@@ -269,9 +278,15 @@ pub fn save_scanned_cover_to_dir(
         };
         let fallback = covers_directory.join(format!("{:x}.{ext}", content_hash));
         if !fallback.is_file() {
-            let tmp = covers_directory.join(format!("{:x}.{ext}.tmp", content_hash));
+            let fallback_id = COVER_TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let tmp = covers_directory.join(format!("{:x}.{ext}.{fallback_id}.tmp", content_hash));
             fs::write(&tmp, bytes).map_err(|e| format!("{error}; fallback: {e}"))?;
-            fs::rename(&tmp, &fallback).map_err(|e| format!("{error}; rename: {e}"))?;
+            if let Err(rename_error) = fs::rename(&tmp, &fallback) {
+                let _ = fs::remove_file(&tmp);
+                if !fallback.is_file() {
+                    return Err(format!("{error}; rename: {rename_error}"));
+                }
+            }
         }
         return Ok(fallback.to_string_lossy().into_owned());
     }

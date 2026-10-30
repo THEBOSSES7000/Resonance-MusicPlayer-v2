@@ -15,7 +15,19 @@ function syncScanToolbarActive() {
   });
 }
 
+/** Marca de tiempo del último repintado de la barra (para no repintar por cada canción). */
+let lastProgressPaintAt = 0;
+const PROGRESS_PAINT_INTERVAL_MS = 100;
+
 export function updateScanProgress({ label, completed = 0, total = 0, indeterminate = false, complete = false }) {
+  // Durante el escaneo se llama una vez por canción; repintar solo ~10 veces por segundo.
+  // Siempre se pinta el primer, el último y los estados especiales.
+  const isIntermediate = !complete && !indeterminate && total > 0 && completed > 0 && completed < total;
+  if (isIntermediate) {
+    const now = performance.now();
+    if (now - lastProgressPaintAt < PROGRESS_PAINT_INTERVAL_MS) return;
+    lastProgressPaintAt = now;
+  }
   document.querySelectorAll('[data-scan-progress]').forEach(progress => {
     progress.hidden = false;
     progress.classList.toggle('is-indeterminate', indeterminate);

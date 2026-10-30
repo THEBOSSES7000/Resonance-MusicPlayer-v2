@@ -625,8 +625,16 @@ export async function nextSong(isAutoEnd = false) {
     return;
   }
 
-  if (state.currentTrackIndex + 1 < state.activeQueue.length) {
-    const nextIdx = state.currentTrackIndex + 1;
+  // Saltar pistas marcadas como no disponibles (disco desconectado, archivo movido)
+  const firstPlayableAfter = (start) => {
+    let idx = start;
+    while (idx < state.activeQueue.length && state.activeQueue[idx]?.unavailable) idx += 1;
+    return idx < state.activeQueue.length ? idx : -1;
+  };
+  const upcomingIdx = firstPlayableAfter(state.currentTrackIndex + 1);
+
+  if (upcomingIdx !== -1) {
+    const nextIdx = upcomingIdx;
     const canCrossfade = crossfadeEnabled
       && (!crossfadeAutomaticOnly || isAutoEnd)
       && !keepPaused;
@@ -637,7 +645,8 @@ export async function nextSong(isAutoEnd = false) {
       if (state.isShuffle) {
         state.activeQueue = shuffleArray(state.activeQueue);
       }
-      loadSong(0, !keepPaused, true);
+      const firstIdx = firstPlayableAfter(0);
+      if (firstIdx !== -1) loadSong(firstIdx, !keepPaused, true);
     } else if (state.repeatMode === 'one') {
       if (keepPaused) void seekPlayback(0);
       else restartCurrentTrack();
