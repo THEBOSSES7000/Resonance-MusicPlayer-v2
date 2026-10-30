@@ -287,8 +287,13 @@ export function initAppearanceSettings() {
     if (translationEnabledInput) translationEnabledInput.checked = enabled;
     if (translationLanguageSelect) {
       translationLanguageSelect.value = translationLanguageSelect.value || translationLanguage;
-      translationLanguageSelect.disabled = !enabled;
+      translationLanguageSelect.disabled = false;
     }
+    const languageRow = document.querySelector('.lyrics-language-row');
+    if (languageRow) languageRow.hidden = !enabled;
+    const replaceInput = document.getElementById('lyrics-translation-replace');
+    const replaceRow = replaceInput?.closest('.audio-setting-row');
+    if (replaceRow) replaceRow.hidden = !enabled;
   };
   if (translationEnabledInput) translationEnabledInput.checked = readStoredBoolean('pn_lyrics_translation_enabled');
   if (translationReplaceInput) translationReplaceInput.checked = readStoredBoolean('pn_lyrics_translation_replace');

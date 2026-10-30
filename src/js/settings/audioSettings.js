@@ -275,6 +275,7 @@ export function initAudioSettings() {
   initReplayGainScanner();
 
   const crossfadeEnabled = document.getElementById('audio-crossfade-enabled');
+  const crossfadeDependent = document.getElementById('crossfade-dependent-options');
   const crossfadeDuration = document.getElementById('audio-crossfade-duration');
   const crossfadeOutput = document.getElementById('audio-crossfade-duration-value');
   const crossfadeAutomaticOnly = document.getElementById('audio-crossfade-natural-only');
@@ -282,11 +283,11 @@ export function initAudioSettings() {
   const crossfadeIndicatorSetting = document.getElementById('crossfade-indicator-setting');
   const crossfadeIndicatorSwitch = document.getElementById('crossfade-indicator-switch');
   const syncCrossfadeIndicatorAvailability = () => {
-    const enabled = Boolean(crossfadeEnabled?.checked);
-    if (crossfadeIndicatorEnabled) crossfadeIndicatorEnabled.disabled = !enabled;
-    crossfadeIndicatorSetting?.classList.toggle('is-disabled', !enabled);
-    crossfadeIndicatorSwitch?.classList.toggle('is-disabled', !enabled);
-    crossfadeIndicatorSetting?.setAttribute('aria-disabled', String(!enabled));
+    /* Las opciones viven en #crossfade-dependent-options (hidden si crossfade off) */
+    if (crossfadeIndicatorEnabled) crossfadeIndicatorEnabled.disabled = false;
+    crossfadeIndicatorSetting?.classList.remove('is-disabled');
+    crossfadeIndicatorSwitch?.classList.remove('is-disabled');
+    crossfadeIndicatorSetting?.removeAttribute('aria-disabled');
   };
   if (crossfadeIndicatorEnabled) {
     crossfadeIndicatorEnabled.checked = readStoredBoolean('pn_audio_crossfade_indicator_enabled', true);
@@ -308,8 +309,9 @@ export function initAudioSettings() {
       const duration = Number(crossfadeDuration.value);
       if (crossfadeOutput) crossfadeOutput.value = `${duration} s`;
       localStorage.setItem('pn_audio_crossfade_duration', String(duration));
+      if (crossfadeDependent) crossfadeDependent.hidden = !crossfadeEnabled.checked;
       if (crossfadeAutomaticOnly) {
-        crossfadeAutomaticOnly.disabled = !crossfadeEnabled.checked;
+        crossfadeAutomaticOnly.disabled = false;
         localStorage.setItem('pn_audio_crossfade_natural_only', String(crossfadeAutomaticOnly.checked));
       }
       setCrossfadeSettings(crossfadeEnabled.checked, duration, crossfadeAutomaticOnly?.checked);
