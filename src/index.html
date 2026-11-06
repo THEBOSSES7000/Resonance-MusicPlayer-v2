@@ -1972,18 +1972,6 @@
             </div>
           </div>
           <div class="settings-card">
-            <div class="audio-setting-row">
-              <div class="audio-setting-description">
-                <strong>Acentos vibrantes y contraste enriquecido</strong>
-                <p>Añade variedad de color y mayor separación visual en filas activas, badges de audio y elementos destacados manteniendo la identidad de cada tema.</p>
-              </div>
-              <label class="switch" aria-label="Acentos vibrantes y contraste enriquecido">
-                <input id="vibrant-accents-enabled" type="checkbox">
-                <span class="slider"></span>
-              </label>
-            </div>
-          </div>
-          <div class="settings-card">
             <div>
               <div class="settings-card-title">Barra de progreso</div>
               <p>Elige cómo visualizar y controlar el avance de la canción.</p>
@@ -1998,6 +1986,18 @@
                 <strong>Waveform</strong>
               </button>
             </div>
+            <label class="waveform-times-option progress-animation-toggle" id="progress-animation-toggle-row" for="progress-animation-enabled" hidden>
+              <input id="progress-animation-enabled" type="checkbox">
+              <span>Barra animada</span>
+            </label>
+            <label class="setting-row-select progress-animation-style-row" id="progress-animation-style-row" for="progress-animation-style" hidden>
+              <span><strong>Estilo de animación</strong></span>
+              <select id="progress-animation-style" class="settings-select" aria-label="Estilo de barra animada">
+                <option value="uniform">Ola uniforme</option>
+                <option value="continuous">Onda continua</option>
+                <option value="shimmer">Barrido brillante</option>
+              </select>
+            </label>
             <label class="waveform-times-option progress-at-top-option" for="progress-at-top">
               <input id="progress-at-top" type="checkbox">
               <span>Mostrar una línea recta de progreso en el borde superior del reproductor, en vez de la onda</span>
@@ -2208,7 +2208,7 @@
                 <span class="slider"></span>
               </label>
             </div>
-            <label class="setting-range-row lyrics-hide-chrome-timeout-row" for="lyrics-hide-chrome-timeout" id="lyrics-hide-chrome-timeout-row" class="setting-dependent">
+            <label class="setting-range-row lyrics-hide-chrome-timeout-row setting-dependent" for="lyrics-hide-chrome-timeout" id="lyrics-hide-chrome-timeout-row" hidden>
               <span><strong>Ocultar botones después de</strong></span>
               <select id="lyrics-hide-chrome-timeout" class="settings-select" aria-label="Tiempo antes de ocultar botones en letras">
                 <option value="5">5 segundos</option>
@@ -2480,7 +2480,6 @@
                 <option value="ps3_wave">Ondas</option>
                 <option value="wave_sound">Wave Sound</option>
                 <option value="liquid">Fondo líquido</option>
-                <option value="blurred">Fondo difuminado</option>
               </select>
             </label>
             <div class="visual-plus-options setting-dependent" id="visual-plus-options">
@@ -2846,29 +2845,6 @@
                 </label>
                 <p class="settings-hint" style="margin:0.25rem 0 0;opacity:0.75;font-size:0.82rem;">Controla la velocidad del movimiento líquido.</p>
               </div>
-              <div class="visual-plus-effect-options" id="visual-plus-blurred-settings" hidden>
-                <div class="audio-setting-row">
-                  <div class="audio-setting-description">
-                    <strong>Fondo difuminado estático</strong>
-                    <p>Mantiene los colores sin animar los orbes.</p>
-                  </div>
-                  <label class="switch" aria-label="Fondo difuminado estático">
-                    <input id="visual-plus-blurred-static" type="checkbox">
-                    <span class="slider round"></span>
-                  </label>
-                </div>
-                <div class="settings-divider"></div>
-                <label class="visual-plus-range-row" for="visual-plus-blurred-speed" id="visual-plus-blurred-speed-row">
-                  <span><strong>Velocidad del fondo difuminado</strong><output id="visual-plus-blurred-speed-value">100%</output></span>
-                  <input id="visual-plus-blurred-speed" type="range" min="25" max="200" step="5" value="100">
-                </label>
-                <label class="visual-plus-range-row" for="visual-plus-color-diversity" id="visual-plus-color-diversity-row">
-                  <span><strong>Variedad de color</strong><output id="visual-plus-color-diversity-value">55%</output></span>
-                  <input id="visual-plus-color-diversity" type="range" min="0" max="100" step="5" value="55">
-                </label>
-                <p class="settings-hint" style="margin:0.25rem 0 0;opacity:0.75;font-size:0.82rem;">Más variedad = más colores distintos de la portada.</p>
-              </div>
-
             </div>
           </div>
         </section>

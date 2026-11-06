@@ -339,6 +339,250 @@
 .progress-container.is-seeking { cursor: grabbing; }
 .progress-container:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 4px; }
 .progress-bar { width: 0%; height: 100%; background: #fff; border-radius: 2px; transition: width 0.08s linear; }
+.progress-container[data-progress-style="solid"][data-animated="true"] {
+  height: 6px;
+  overflow: visible;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"]:hover,
+.progress-container[data-progress-style="solid"][data-animated="true"].is-seeking { height: 9px; }
+.progress-container[data-progress-style="solid"][data-animated="true"] .progress-bar {
+  position: relative;
+  overflow: visible;
+  border-radius: inherit;
+  background: var(--cover-accent-color, var(--accent-light));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cover-accent-color, var(--accent-light)) 72%, transparent));
+  transition: width 0.08s linear, height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"] .progress-bar::before {
+  position: absolute;
+  z-index: 1;
+  inset: -2px 0;
+  content: "";
+  opacity: 0;
+  transform: scaleY(0.12);
+  transform-origin: center;
+  background-color: rgba(255,255,255,0.9);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 16'%3E%3Cpath d='M-48 8 C-40 1 -32 1 -24 8 S-8 15 0 8 S16 1 24 8 S40 15 48 8 S64 1 72 8 S88 15 96 8' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 16'%3E%3Cpath d='M-48 8 C-40 1 -32 1 -24 8 S-8 15 0 8 S16 1 24 8 S40 15 48 8 S64 1 72 8 S88 15 96 8' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 48px 100%;
+  mask-size: 48px 100%;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  pointer-events: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar::before {
+  inset: -3px 0;
+  opacity: 1;
+  background-color: var(--accent-light);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 12'%3E%3Cpath d='M-16 6 C-11 0 -5 0 0 6 S11 12 16 6 S27 0 32 6 S43 12 48 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 12'%3E%3Cpath d='M-16 6 C-11 0 -5 0 0 6 S11 12 16 6 S27 0 32 6 S43 12 48 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  -webkit-mask-size: 32px 12px;
+  mask-size: 32px 12px;
+  -webkit-mask-position: 0 50%;
+  mask-position: 0 50%;
+  transform: scaleY(0.08);
+  transform-origin: center;
+  transition: opacity 0.3s ease, background-color 0.3s ease, transform 0.3s ease-out;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] {
+  background: transparent;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"]::after {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: var(--progress-ratio, 0%);
+  height: 3px;
+  content: "";
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-50%);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar {
+  border-radius: 0;
+  background: transparent;
+  filter: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar::after {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  content: "";
+  border-radius: 50%;
+  background: var(--accent-light);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-light) 55%, transparent);
+  transform: translateY(-50%);
+}
+.bottom-player.is-playing .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar::before {
+  opacity: 1;
+  animation: progress-wave-uniform-phase 1.1s linear infinite, progress-wave-uniform-shape 0.55s ease-in-out infinite alternate;
+}
+.bottom-player:not(.is-playing) .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar::before {
+  inset: 50% 0 auto;
+  height: 3px;
+  border-radius: 999px;
+  -webkit-mask-image: none;
+  mask-image: none;
+  animation: none;
+  transform: translateY(-50%);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] {
+  background: var(--progress-track, var(--border-subtle));
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar {
+  overflow: visible;
+  background: transparent;
+  filter: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar::before {
+  display: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar::after {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  content: "";
+  border: 2px solid var(--accent-purple);
+  border-radius: 50%;
+  background: var(--bg-sidebar);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--accent-purple) 58%, transparent);
+  transform: translateY(-50%);
+}
+.progress-wave-canvas {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 0;
+  display: none;
+  max-width: none;
+  height: 26px;
+  overflow: visible;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-wave-canvas {
+  display: block;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] {
+  background: var(--progress-track, var(--border-subtle));
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar {
+  overflow: visible;
+  border-radius: inherit;
+  background: var(--accent-purple);
+  filter: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar::before {
+  inset: 0;
+  display: block;
+  opacity: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    color-mix(in srgb, white 12%, transparent) 28%,
+    color-mix(in srgb, white 82%, transparent) 50%,
+    color-mix(in srgb, white 12%, transparent) 72%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 38% 100%;
+  -webkit-mask-image: none;
+  mask-image: none;
+  transform: none;
+  transition: opacity 0.24s ease;
+}
+.bottom-player.is-playing .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar::before {
+  opacity: 1;
+  animation: progress-shimmer-sweep 1.9s linear infinite;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar::after {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  content: "";
+  border: 2px solid var(--accent-purple);
+  border-radius: 50%;
+  background: var(--bg-sidebar);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-purple) 48%, transparent);
+  transform: translateY(-50%);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"]::before {
+  position: absolute;
+  z-index: 3;
+  left: clamp(24px, var(--progress-hover-x, 50%), calc(100% - 24px));
+  bottom: calc(100% + 9px);
+  padding: 0.22rem 0.42rem;
+  content: attr(data-preview-time);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-sidebar) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text-main);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 4px) scale(0.94);
+  transition: opacity 0.14s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.progress-container[data-progress-style="solid"][data-animated="true"]:hover::before,
+.progress-container[data-progress-style="solid"][data-animated="true"].is-seeking::before {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.progress-container[data-progress-style="solid"][data-animated="true"].is-seeking-release .progress-bar {
+  animation: progress-seek-release 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes progress-wave-uniform-phase {
+  from { -webkit-mask-position: 0 50%; mask-position: 0 50%; }
+  to { -webkit-mask-position: 32px 50%; mask-position: 32px 50%; }
+}
+@keyframes progress-wave-uniform-shape {
+  from { transform: scaleY(0.62); }
+  to { transform: scaleY(1); }
+}
+@keyframes progress-shimmer-sweep {
+  0% { background-position: -50% 50%; opacity: 0; }
+  14% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { background-position: 150% 50%; opacity: 0; }
+}
+@keyframes progress-seek-release {
+  0% { transform: scaleY(1.45); }
+  55% { transform: scaleY(0.78); }
+  100% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-container[data-progress-style="solid"][data-animated="true"] .progress-bar::before {
+    animation: none !important;
+    transition-duration: 0.3s;
+  }
+  .bottom-player.is-playing .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="uniform"] .progress-bar::before {
+    transform: scaleY(0.82);
+  }
+  .progress-container[data-progress-style="solid"][data-animated="true"].is-seeking-release .progress-bar {
+    animation: none;
+  }
+}
 .progress-container[data-progress-style="waveform"] {
   height: var(--player-wave-height, 22px);
   overflow: visible;
@@ -366,7 +610,7 @@
 }
 .progress-waveform-track { opacity: 0.55; }
 .progress-waveform-played { right: auto; }
-/* Canvas densas (Barras estilo AIMP) y SVG (Continua) */
+/* Canvas densas (Barras estilo AIMP) */
 .progress-waveform .progress-wave-canvas,
 .progress-waveform .progress-wave-svg,
 .progress-waveform svg {
@@ -394,7 +638,7 @@
 .bottom-player.progress-at-top .playback-row {
   position: absolute;
   z-index: 2;
-  inset: 0 0 auto;
+  inset: -1px 0 auto;
   display: flex;
   align-items: flex-start;
   width: 100%;
@@ -418,10 +662,12 @@
 }
 .bottom-player.progress-at-top .progress-container::after {
   position: absolute;
+  z-index: 0;
   inset: 0 0 auto;
-  height: 3px;
+  height: 2px;
   content: "";
   background: var(--progress-track);
+  pointer-events: none;
 }
 .bottom-player.progress-at-top .progress-container:hover,
 .bottom-player.progress-at-top .progress-container[data-progress-style="waveform"]:hover { height: 12px; }
@@ -435,6 +681,66 @@
   border-radius: 0;
   background: #fff;
 }
+.bottom-player.progress-at-top .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar {
+  z-index: 1;
+  height: 3px;
+  background: transparent;
+}
+.bottom-player.progress-at-top .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar {
+  overflow: visible;
+  height: 3px;
+  border-radius: 0;
+  background: var(--accent-purple);
+  filter: none;
+}
+.bottom-player.progress-at-top .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] {
+  overflow: visible;
+}
+.bottom-player.progress-at-top.progress-at-top-shimmer .progress-container::after {
+  display: none;
+}
+.bottom-player.progress-at-top.progress-at-top-shimmer .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.bottom-player.progress-at-top .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar::before {
+  inset: 0;
+  display: block;
+  border-radius: 0;
+}
+.bottom-player.progress-at-top .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="shimmer"] .progress-bar::after {
+  top: 50%;
+  right: -7px;
+}
+.bottom-player.progress-at-top-shimmer {
+  overflow: visible;
+}
+.bottom-player.progress-at-top-continuous .playback-row,
+.bottom-player.progress-at-top-continuous .playback-bar,
+.bottom-player.progress-at-top-continuous .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] {
+  height: 26px;
+}
+.bottom-player.progress-at-top-continuous {
+  overflow: visible;
+}
+.bottom-player.progress-at-top-continuous .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] {
+  border-radius: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.bottom-player.progress-at-top-continuous .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-wave-canvas {
+  z-index: 2;
+  top: calc(100% - 27px);
+  height: 26px;
+  transform: none;
+}
+.bottom-player.progress-at-top-continuous .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar::after {
+  top: calc(100% - 2px);
+  z-index: 3;
+}
 .bottom-player.progress-at-top .progress-waveform { display: none; }
+.bottom-player.progress-at-top .progress-container[data-animated="true"] .progress-bar::before,
+.bottom-player.progress-at-top .progress-container[data-animated="true"]::before { display: none; }
 .bottom-player.progress-at-top #resizer-bottom { pointer-events: none; }
-

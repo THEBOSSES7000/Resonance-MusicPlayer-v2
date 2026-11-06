@@ -55,9 +55,6 @@ const DEFAULTS = {
   wsGlowColor: '#6ea8ff',
   liquidSpeed: 100,
   liquidStatic: false,
-  blurredSpeed: 100,
-  blurredStatic: false,
-  colorDiversity: 55,
 };
 
 export const VISUAL_PLUS_THEME_OPTION_KEYS = {
@@ -85,12 +82,10 @@ export const VISUAL_PLUS_THEME_OPTION_KEYS = {
     'wsUiVeil', 'wsUiVeilOpacity', 'wsGlowColorMode', 'wsGlowColor',
   ],
   liquid: ['liquidSpeed', 'liquidStatic'],
-  blurred: ['blurredSpeed', 'blurredStatic', 'colorDiversity'],
 };
 
 export function migrateVisualPlusThemeId(theme) {
-  if (theme === 'liquid_immersive') return 'liquid';
-  if (theme === 'liquid_gradient') return 'blurred';
+  if (theme === 'liquid_immersive' || theme === 'liquid_gradient' || theme === 'blurred') return 'liquid';
   return theme || 'shooting_stars';
 }
 
@@ -115,7 +110,15 @@ export function switchThemeWithProfiles(settings, nextTheme) {
   };
   profiles[current] = snapshotThemeOptions(current, settings || {});
 
-  const restored = profiles[next] && typeof profiles[next] === 'object' ? profiles[next] : {};
+  const legacyLiquidProfile = profiles.blurred && typeof profiles.blurred === 'object'
+    ? {
+      liquidSpeed: profiles.blurred.blurredSpeed,
+      liquidStatic: profiles.blurred.blurredStatic,
+    }
+    : {};
+  const restored = profiles[next] && typeof profiles[next] === 'object'
+    ? profiles[next]
+    : next === 'liquid' ? legacyLiquidProfile : {};
   const merged = {
     ...(settings || {}),
     themeProfiles: profiles,

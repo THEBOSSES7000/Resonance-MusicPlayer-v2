@@ -10,9 +10,6 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
   theme: 'shooting_stars',
   liquidSpeed: 100,
   liquidStatic: false,
-  blurredSpeed: 100,
-  blurredStatic: false,
-  colorDiversity: 55,
   sophisticatedLyrics: false,
   starCount: 120,
   starBrightness: 100,
@@ -70,8 +67,7 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
 };
 
 function migrateVisualPlusTheme(theme) {
-  if (theme === 'liquid_immersive') return 'liquid';
-  if (theme === 'liquid_gradient') return 'blurred';
+  if (theme === 'liquid_immersive' || theme === 'liquid_gradient' || theme === 'blurred') return 'liquid';
   return theme;
 }
 
@@ -80,6 +76,13 @@ function readVisualPlusSettings() {
   if (storedValue === null) return { ...DEFAULT_VISUAL_PLUS_SETTINGS };
   const saved = JSON.parse(storedValue);
   const settings = { ...DEFAULT_VISUAL_PLUS_SETTINGS, ...saved };
+  const legacyBlurredTheme = ['blurred', 'liquid_gradient'].includes(saved.theme);
+  if (legacyBlurredTheme && saved.blurredSpeed != null) {
+    settings.liquidSpeed = Math.round(Number(saved.blurredSpeed)) || 100;
+  }
+  if (legacyBlurredTheme && typeof saved.blurredStatic === 'boolean') {
+    settings.liquidStatic = saved.blurredStatic;
+  }
   settings.theme = migrateVisualPlusTheme(settings.theme);
   // Migrar opciones viejas de Onda PS3 → Ondas
   if (!settings.ps3BgColorMode && settings.ps3ColorMode) settings.ps3BgColorMode = settings.ps3ColorMode === 'custom' ? 'custom' : settings.ps3ColorMode;
@@ -90,10 +93,10 @@ function readVisualPlusSettings() {
   if (!settings.ps3BgColorMode) settings.ps3BgColorMode = 'classic';
   if (!settings.ps3WaveColorMode) settings.ps3WaveColorMode = 'classic';
   if (settings.liquidSpeed != null) settings.liquidSpeed = Math.round(Number(settings.liquidSpeed)) || 100;
-  if (settings.blurredSpeed != null) settings.blurredSpeed = Math.round(Number(settings.blurredSpeed)) || 100;
-  if (settings.colorDiversity != null) settings.colorDiversity = Math.round(Number(settings.colorDiversity));
-  if (typeof settings.blurredStatic !== 'boolean') settings.blurredStatic = false;
   if (typeof settings.liquidStatic !== 'boolean') settings.liquidStatic = false;
+  delete settings.blurredSpeed;
+  delete settings.blurredStatic;
+  delete settings.colorDiversity;
   if (settings.ps3BgColorMode == null) settings.ps3BgColorMode = 'classic';
   if (settings.ps3WaveColorMode == null) settings.ps3WaveColorMode = 'classic';
   if (settings.ps3BgColor == null) settings.ps3BgColor = '#0a1a66';
@@ -116,7 +119,7 @@ function readVisualPlusSettings() {
   if (!settings.wsGlowColor) settings.wsGlowColor = '#6ea8ff';
   if (settings.wsStyle === 'dots') settings.wsStyle = 'bars';
   if (typeof settings.enabled !== 'boolean' ||
-      !['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme) ||
+      !['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid'].includes(settings.theme) ||
       typeof settings.sophisticatedLyrics !== 'boolean' ||
       !Number.isInteger(settings.starCount) || settings.starCount < 20 || settings.starCount > 200 ||
       !Number.isInteger(settings.starBrightness) || settings.starBrightness < 10 || settings.starBrightness > 100 ||
@@ -125,9 +128,6 @@ function readVisualPlusSettings() {
       !Number.isInteger(settings.shootingSpeed) || settings.shootingSpeed < 50 || settings.shootingSpeed > 200 ||
       !Number.isInteger(settings.liquidSpeed) || settings.liquidSpeed < 25 || settings.liquidSpeed > 200 ||
       typeof settings.liquidStatic !== 'boolean' ||
-      typeof settings.blurredStatic !== 'boolean' ||
-      !Number.isInteger(settings.blurredSpeed) || settings.blurredSpeed < 25 || settings.blurredSpeed > 200 ||
-      (settings.colorDiversity != null && (!Number.isFinite(Number(settings.colorDiversity)) || Number(settings.colorDiversity) < 0 || Number(settings.colorDiversity) > 100)) ||
       !Number.isInteger(settings.trailLength) || settings.trailLength < 80 || settings.trailLength > 260 ||
       !Number.isInteger(settings.particleCount) || settings.particleCount < 20 || settings.particleCount > 150 ||
       !Number.isInteger(settings.particleSpeed) || settings.particleSpeed < 10 || settings.particleSpeed > 80 ||
@@ -193,7 +193,6 @@ export function initVisualPlusSettings() {
   const wsUiVeilToggle = document.getElementById('visual-plus-ws-ui-veil');
   const wsGlowColorModeSelect = document.getElementById('visual-plus-ws-glow-color-mode');
   const wsGlowColorInput = document.getElementById('visual-plus-ws-glow-color');
-  const blurredStaticToggle = document.getElementById('visual-plus-blurred-static');
   const visualPlusActiveRowToggle = document.getElementById('visual-plus-active-row-animation-enabled');
   const lyricsFillDirectionSelect = document.getElementById('visual-plus-lyrics-fill-direction');
   const visualPlusFillDirectionSettings = document.getElementById('visual-plus-lyrics-fill-direction-settings');
@@ -230,7 +229,7 @@ export function initVisualPlusSettings() {
     shouldSave = true;
   }
   enabledToggle.checked = settings.enabled;
-  const normalizedTheme = settings.theme === 'liquid_immersive' ? 'liquid' : settings.theme === 'liquid_gradient' ? 'blurred' : settings.theme;
+  const normalizedTheme = migrateVisualPlusTheme(settings.theme);
   settings.theme = normalizedTheme;
   themeSelect.value = normalizedTheme;
   themeSelect.disabled = !settings.enabled;
@@ -354,11 +353,6 @@ export function initVisualPlusSettings() {
     syncEffectOptions();
     persistVisualPlusSettings(settings);
   });
-  blurredStaticToggle?.addEventListener('change', () => {
-    settings = { ...settings, blurredStatic: Boolean(blurredStaticToggle.checked) };
-    syncEffectOptions();
-    persistVisualPlusSettings(settings);
-  });
   sophisticatedLyricsToggle?.addEventListener('change', () => {
     if (!readStoredBoolean('pn_lyrics_active_row_animation_enabled')) {
       sophisticatedLyricsToggle.checked = false;
@@ -405,8 +399,6 @@ export function initVisualPlusSettings() {
     ['visual-plus-ps3-amplitude', 'visual-plus-ps3-amplitude-value', 'ps3Amplitude', value => `${value}`],
     ['visual-plus-ps3-particle-count', 'visual-plus-ps3-particle-count-value', 'ps3ParticleCount', value => `${value}`],
     ['visual-plus-ps3-brightness', 'visual-plus-ps3-brightness-value', 'ps3Brightness', value => `${value}%`],
-    ['visual-plus-blurred-speed', 'visual-plus-blurred-speed-value', 'blurredSpeed', value => `${value}%`],
-    ['visual-plus-color-diversity', 'visual-plus-color-diversity-value', 'colorDiversity', value => `${value}%`],
     ['visual-plus-trail-length', 'visual-plus-trail-length-value', 'trailLength', value => `${value} px`],
     ['visual-plus-particle-count', 'visual-plus-particle-count-value', 'particleCount', value => String(value)],
     ['visual-plus-particle-speed', 'visual-plus-particle-speed-value', 'particleSpeed', value => `${value} px/s`],
@@ -430,7 +422,7 @@ export function initVisualPlusSettings() {
     const isRainSetting = key.startsWith('rain');
     const isPs3Setting = key.startsWith('ps3');
     const isWsSetting = key.startsWith('ws');
-    const isLiquidSetting = key === 'liquidSpeed' || key === 'liquidStatic' || key === 'blurredSpeed' || key === 'blurredStatic' || key === 'colorDiversity';
+    const isLiquidSetting = key === 'liquidSpeed' || key === 'liquidStatic';
     input.disabled = !settings.enabled ||
       (isParticleSetting && settings.theme !== 'reactive_particles') ||
       (isPs3Setting && settings.theme !== 'ps3_wave') ||
@@ -439,10 +431,8 @@ export function initVisualPlusSettings() {
       (isRainSetting && (settings.theme !== 'atmospheric' || !settings.rainEnabled ||
         (key.startsWith('rainIntensity') || key.startsWith('rainMinDensity')) && !settings.rainDynamicEnabled)) ||
       (isLiquidSetting && (
-        ((key === 'liquidSpeed' || key === 'liquidStatic') && settings.theme !== 'liquid' && settings.theme !== 'liquid_immersive') ||
-        ((key === 'blurredSpeed' || key === 'blurredStatic' || key === 'colorDiversity') && settings.theme !== 'blurred' && settings.theme !== 'liquid_gradient') ||
-        (key === 'liquidSpeed' && settings.liquidStatic) ||
-        (key === 'blurredSpeed' && settings.blurredStatic)
+        settings.theme !== 'liquid' ||
+        (key === 'liquidSpeed' && settings.liquidStatic)
       )) ||
       (!isParticleSetting && !isFireflySetting && !isRainSetting && !isLiquidSetting && !isPs3Setting && !isWsSetting && settings.theme !== 'shooting_stars');
     output.value = formatValue(settings[key]);
@@ -464,19 +454,11 @@ export function initVisualPlusSettings() {
     if (glowIntensityRow) glowIntensityRow.hidden = !settings.wsPeakGlow || settings.theme !== 'wave_sound' || !settings.enabled;
     const veilOpacityRow = document.getElementById('visual-plus-ws-ui-veil-opacity-row');
     if (veilOpacityRow) veilOpacityRow.hidden = !settings.wsUiVeil || settings.theme !== 'wave_sound' || !settings.enabled;
-    const themeId = settings.theme === 'liquid_immersive' ? 'liquid' : settings.theme === 'liquid_gradient' ? 'blurred' : settings.theme;
-    const isLiquidOnly = themeId === 'liquid';
-    const isBlurredOnly = themeId === 'blurred';
+    const isLiquidOnly = settings.theme === 'liquid';
     const liquidSettings = document.getElementById('visual-plus-liquid-settings');
     if (liquidSettings) liquidSettings.hidden = !settings.enabled || !isLiquidOnly;
-    const blurredSettings = document.getElementById('visual-plus-blurred-settings');
-    if (blurredSettings) blurredSettings.hidden = !settings.enabled || !isBlurredOnly;
     const liquidSpeedRow = document.getElementById('visual-plus-liquid-speed-row');
     if (liquidSpeedRow) liquidSpeedRow.hidden = Boolean(settings.liquidStatic);
-    const blurredSpeedRow = document.getElementById('visual-plus-blurred-speed-row');
-    if (blurredSpeedRow) blurredSpeedRow.hidden = Boolean(settings.blurredStatic);
-    const diversityRow = document.getElementById('visual-plus-color-diversity-row');
-    if (diversityRow) diversityRow.hidden = !settings.enabled || !isBlurredOnly;
     if (liquidStaticToggle) {
       liquidStaticToggle.disabled = !settings.enabled || !isLiquidOnly;
     }

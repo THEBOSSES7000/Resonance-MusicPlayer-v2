@@ -1,6 +1,6 @@
 // Visual+ · Motor del lienzo
 // Monta el canvas sobre la vista de letras, controla el bucle de animación, aplica los ajustes
-// y delega el dibujo en el tema activo. El tema «liquid_gradient» vive aparte (liquid_gradient.js).
+// y delega el dibujo en el tema activo. Los fondos líquidos se gestionan aparte.
 
 import { DEFAULT_SETTINGS, MAX_TRAIL_LENGTH, lyricsOverlay, randomBetween, settingsOverlay, vp } from './state.js';
 import { MAX_SHOOTING_STARS, MAX_STARS, drawShootingStars, drawStaticStars, fillStar, shootingStars, stars } from './shooting_stars.js';
@@ -107,10 +107,9 @@ function readSettings() {
   const stored = localStorage.getItem('pn_visual_plus');
   if (stored === null) return { ...DEFAULT_SETTINGS };
   const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
-  if (parsed.theme === 'liquid_immersive') parsed.theme = 'liquid';
-  if (parsed.theme === 'liquid_gradient') parsed.theme = 'blurred';
+  if (['liquid_immersive', 'liquid_gradient', 'blurred'].includes(parsed.theme)) parsed.theme = 'liquid';
   if (typeof parsed.enabled !== 'boolean' ||
-      !(['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(parsed.theme)) ||
+      !(['shooting_stars', 'reactive_particles', 'atmospheric', 'ps3_wave', 'wave_sound', 'liquid'].includes(parsed.theme)) ||
       !Number.isInteger(parsed.starCount) || parsed.starCount < 20 || parsed.starCount > MAX_STARS ||
       !Number.isInteger(parsed.starBrightness) || parsed.starBrightness < 10 || parsed.starBrightness > 100 ||
       !Number.isInteger(parsed.shootingStarCount) || parsed.shootingStarCount < 1 || parsed.shootingStarCount > MAX_SHOOTING_STARS ||
@@ -242,7 +241,7 @@ function applySettings(settings) {
     settings.theme === 'wave_sound' ||
     (settings.theme === 'shooting_stars' && settings.starAudioReactive)
   );
-  vp.enabled = settings.enabled && !['liquid', 'blurred', 'liquid_gradient', 'liquid_immersive'].includes(settings.theme);
+  vp.enabled = settings.enabled && settings.theme !== 'liquid';
   vp.theme = settings.theme;
   vp.starCount = settings.starCount;
   vp.starBrightness = settings.starBrightness;

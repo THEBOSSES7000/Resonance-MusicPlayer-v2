@@ -10,6 +10,7 @@ import { activeLibraryScan, beginLibraryScan, finishLibraryScan, hideScanProgres
 import { loadedLyricsSongs } from './lyricsCache.js';
 import { renderDirectories } from '../settings.js';
 import { processAudioFiles } from './processFiles.js';
+import { showLibraryToast } from '../ui/libraryToast.js';
 
 export async function configureMusicWatcher() {
   if (!isTauriRuntime()) return;
@@ -55,9 +56,16 @@ export async function refreshLibraryMetadata() {
       status.textContent = cacheSaved ? refreshSummary : `${refreshSummary} No se guardó la caché en disco.`;
     }
     window.dispatchEvent(new Event('pn-library-cache-updated'));
+    showLibraryToast(
+      metadataErrors
+        ? `Sincronización completada; ${metadataErrors} canción(es) no se pudieron leer`
+        : 'Sincronización completada',
+      { type: metadataErrors ? 'warning' : 'success' }
+    );
     scannerVars.hideScanProgressTimer = setTimeout(hideScanProgress, 6000);
   } catch (error) {
     console.error('No se pudieron refrescar los metadatos de la biblioteca:', error);
+    showLibraryToast('No se pudo completar la sincronización de la biblioteca', { type: 'error' });
     await showConfirmDialog({
       title: 'No se pudieron refrescar los metadatos',
       message: 'Ocurrió un error al releer las canciones. Revisa la consola para más detalles.',
@@ -125,7 +133,7 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
   updateScanProgress({ label: 'Buscando canciones en las carpetas guardadas', indeterminate: true });
   try {
     const library = await window.__TAURI__.core.invoke('scan_music_library');
-    if (activeLibraryScan?.cancelled) return;
+    if (activeLibraryScan?.cancelled) return false;
     const trackCounts = new Map();
     library.files.forEach(file => {
       trackCounts.set(file.directoryPath, (trackCounts.get(file.directoryPath) || 0) + 1);
@@ -187,7 +195,7 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
       }
       if (configureWatcher) await configureMusicWatcher();
       hideScanProgress();
-      return;
+      return true;
     }
 
     const files = library.files.map(file => ({
@@ -203,9 +211,11 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
       skipRenderIfUnchanged: Boolean(options.skipRenderIfUnchanged)
     });
     if (configureWatcher) await configureMusicWatcher();
+    return true;
   } catch (error) {
-    if (activeLibraryScan?.cancelled) return;
+    if (activeLibraryScan?.cancelled) return false;
     console.error('No se pudieron cargar las carpetas de música guardadas:', error);
+    showLibraryToast('No se pudieron leer las carpetas de música guardadas', { type: 'error' });
     updateScanProgress({ label: 'No se pudieron leer las carpetas guardadas', complete: true });
     scannerVars.hideScanProgressTimer = setTimeout(hideScanProgress, 8000);
     await showConfirmDialog({
@@ -214,15 +224,20 @@ async function refreshNativeMusicLibraryInternal(configureWatcher = true, option
       confirmText: "Entendido",
       showCancel: false
     });
+    return false;
   }
 }
 
 export async function addNativeMusicDirectory() {
   try {
     const directory = await window.__TAURI__.core.invoke('add_music_directory');
-    if (directory) await refreshNativeMusicLibrary();
+    if (directory) {
+      const synchronized = await refreshNativeMusicLibrary();
+      if (synchronized) showLibraryToast('Sincronización completada', { type: 'success' });
+    }
   } catch (error) {
     console.error('No se pudo agregar la carpeta de música:', error);
+    showLibraryToast('No se pudo agregar la carpeta de música', { type: 'error' });
     await showConfirmDialog({
       title: "No se pudo agregar la carpeta",
       message: "No se pudo guardar el acceso a la carpeta seleccionada.",

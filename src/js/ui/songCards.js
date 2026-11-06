@@ -11,6 +11,11 @@ import { ensureSongMetadata, playFromContext } from './playback.js';
 export function createSongCard(song, onPlayCallback, contextType = "") {
   const card = document.createElement('div');
   card.className = 'song-card';
+  if (song.unavailable) {
+    card.classList.add('is-unavailable');
+    card.title = 'Archivo no disponible (¿disco desconectado o movido?)';
+    card.dataset.unavailable = '1';
+  }
   card.dataset.id = song.id;
   card.dataset.context = contextType;
 

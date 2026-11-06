@@ -42,6 +42,14 @@
 .song-card.is-playing-elsewhere h4 {
   color: var(--text-main);
 }
+.song-card.is-unavailable {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+.song-card.is-unavailable h4,
+.song-card.is-unavailable p {
+  color: var(--text-muted, #9ca3af);
+}
 
 .card-soundwave-badge {
   position: absolute;
@@ -244,4 +252,3 @@
   color: var(--accent-light);
   font-size: 0.74rem;
 }
-

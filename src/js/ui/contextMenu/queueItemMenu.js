@@ -1,7 +1,7 @@
 // UI · Menú contextual de un elemento de la cola.
 
 import { state } from '../../state.js';
-import { addToQueue, loadSong, removeFromQueue, resolveManualAutoPlay } from '../../audioPlayer.js';
+import { addToQueue, isPlaybackPaused, loadSong, removeFromQueue, resolveManualAutoPlay, togglePlay } from '../../audioPlayer.js';
 import { renderQueue } from '../queueHistory.js';
 import { showConfirmDialog } from '../uiUtils.js';
 import { getFavoriteActionLabel, toggleFavoriteForSelection } from '../favorites.js';
@@ -13,9 +13,13 @@ import { createDeleteSongFileContextItem } from './songActions.js';
 
 /** Menú contextual de un elemento de la cola. */
 export function buildQueueItemContextItems(target, items) {
-  const qItem = target.closest('.queue-item');
+  const qItem = target.closest('.queue-item, .now-playing-card');
+  const isCurrent = qItem.classList.contains('now-playing-card');
   const songId = qItem.dataset.songId;
-  const song = state.songsById?.get?.(String(songId))
+  const song = (isCurrent && state.currentTrackIndex >= 0
+    ? state.activeQueue[state.currentTrackIndex]
+    : null)
+    || state.songsById?.get?.(String(songId))
     || (qItem.dataset.queueIdx !== undefined ? state.activeQueue[Number(qItem.dataset.queueIdx)] : null)
     || state.localMusicFiles.find(s => String(s.id) === String(songId));
 
@@ -23,7 +27,13 @@ export function buildQueueItemContextItems(target, items) {
   const isHistory = qItem.dataset.historyIdx !== undefined;
 
   if (song) {
-    if (isUpcoming) {
+    if (isCurrent) {
+      items.push({
+        label: isPlaybackPaused() ? 'Reanudar' : 'Pausar',
+        icon: isPlaybackPaused() ? 'ph ph-play' : 'ph ph-pause',
+        action: () => togglePlay()
+      });
+    } else if (isUpcoming) {
       const qIdx = Number(qItem.dataset.queueIdx);
       items.push({
         label: 'Reproducir ahora',
@@ -84,7 +94,7 @@ export function buildQueueItemContextItems(target, items) {
       });
     }
 
-    items.push({ type: 'separator' });
+    if (items.length > 0) items.push({ type: 'separator' });
 
     items.push({
       label: getFavoriteActionLabel(song.isFavorite),

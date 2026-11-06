@@ -9,6 +9,7 @@ import { renderPlaylistDetailView } from './playlistDetail.js';
 import { songsMatch } from './favorites.js';
 import { bindLazyCover, clearContainerCovers } from './covers.js';
 import { btnAddPlaylist } from './dom.js';
+import { showLibraryToast } from './libraryToast.js';
 
 export function addCurrentSongToPlaylist() {
   const song = state.currentTrackIndex === -1
@@ -59,6 +60,7 @@ export async function addSongToPlaylist(song, playlist) {
   if (state.currentView === 'playlist' && state.currentPlaylistId === playlist.id) {
     renderPlaylistDetailView();
   }
+  showLibraryToast(`Canción agregada a ${playlist.title}`, { type: 'success' });
 }
 
 async function addSongsToPlaylist(songs, playlist) {
@@ -80,6 +82,7 @@ async function addSongsToPlaylist(songs, playlist) {
   if (state.currentView === 'playlist' && state.currentPlaylistId === playlist.id) {
     renderPlaylistDetailView();
   }
+  return songsToAdd.length;
 }
 
 function playlistContainsSong(playlist, song) {
@@ -265,17 +268,33 @@ export function openPlaylistPicker(songs) {
     const playlist = state.playlists.find(item => String(item.id) === playlistButton.dataset.playlistId);
     if (!playlist) return;
     close();
-    void addSongsToPlaylist(selectedSongs, playlist);
+    void addSongsToPlaylist(selectedSongs, playlist).then(addedCount => {
+      if (!addedCount) return;
+      showLibraryToast(
+        `${addedCount} ${addedCount === 1 ? 'canción agregada' : 'canciones agregadas'} a ${playlist.title}`,
+        { type: 'success' }
+      );
+    });
   };
 
-  const apply = () => {
+  const apply = async () => {
     if (mode !== 'multiple') return;
     const selectedIds = new Set(
       [...options.querySelectorAll('input:checked')].map(input => input.value)
     );
     const selectedPlaylists = state.playlists.filter(playlist => selectedIds.has(String(playlist.id)));
     close();
-    selectedPlaylists.forEach(playlist => { void addSongsToPlaylist(selectedSongs, playlist); });
+    const results = await Promise.all(selectedPlaylists.map(async playlist => ({
+      playlist,
+      addedCount: await addSongsToPlaylist(selectedSongs, playlist)
+    })));
+    const added = results.filter(result => result.addedCount > 0);
+    const totalAdded = added.reduce((total, result) => total + result.addedCount, 0);
+    if (!totalAdded) return;
+    const message = added.length === 1
+      ? `${totalAdded} ${totalAdded === 1 ? 'canción agregada' : 'canciones agregadas'} a ${added[0].playlist.title}`
+      : `${totalAdded} canciones agregadas a ${added.length} playlists`;
+    showLibraryToast(message, { type: 'success' });
   };
   const onBackdropClick = event => { if (event.target === modal) event.stopPropagation(); };
   const onKeyDown = event => {

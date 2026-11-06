@@ -15,9 +15,6 @@ export const DEFAULT_VISUAL_PLUS = {
   sophisticatedLyrics: false,
   liquidSpeed: 100,
   liquidStatic: false,
-  blurredSpeed: 100,
-  blurredStatic: false,
-  colorDiversity: 55,
   starCount: 120,
   starBrightness: 100,
   shootingStarCount: 2,
@@ -100,7 +97,17 @@ export function loadVisualPlusSettings() {
         : {}),
     },
   };
+  const legacyBlurredTheme = ['blurred', 'liquid_gradient'].includes(settings.theme);
+  if (legacyBlurredTheme && saved?.blurredSpeed != null) {
+    settings.liquidSpeed = Math.round(Number(saved.blurredSpeed)) || 100;
+  }
+  if (legacyBlurredTheme && typeof saved?.blurredStatic === 'boolean') {
+    settings.liquidStatic = saved.blurredStatic;
+  }
   settings.theme = migrateVisualPlusThemeId(settings.theme);
+  delete settings.blurredSpeed;
+  delete settings.blurredStatic;
+  delete settings.colorDiversity;
   settings.enabled = Boolean(settings.enabled);
 
   // Aplicar perfil del tema activo (fuente de verdad de ese modo)

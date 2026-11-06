@@ -14,8 +14,7 @@ function getLiquidRoot() {
 }
 
 function migrateTheme(theme) {
-  if (theme === 'liquid_gradient') return 'blurred';
-  if (theme === 'liquid_immersive') return 'liquid';
+  if (theme === 'liquid_gradient' || theme === 'liquid_immersive' || theme === 'blurred') return 'liquid';
   return theme;
 }
 

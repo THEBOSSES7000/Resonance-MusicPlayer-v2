@@ -12,6 +12,7 @@ import { saveNativeLibraryCache } from './libraryCache.js';
 import { renderDirectories } from '../settings.js';
 import { playFromContext, renderFoldersUI, renderGrids, renderHistoryUI, renderPlaylistDetailView, renderPlaylistsHubUI, renderPlaylistsUI, renderQueue, renderSearchResultsContent, showConfirmDialog, updateFavoritesCount } from '../ui.js';
 import { addNativeMusicDirectory, refreshNativeMusicLibrary } from './libraryRefresh.js';
+import { showLibraryToast } from '../ui/libraryToast.js';
 
 export async function processAudioFiles(matchedFiles, baseFolderName, options = {}) {
   const scan = beginLibraryScan();
@@ -224,7 +225,8 @@ export async function rescanConfiguredMusic() {
         await addNativeMusicDirectory();
         return;
       }
-      await refreshNativeMusicLibrary();
+      const synchronized = await refreshNativeMusicLibrary();
+      if (synchronized) showLibraryToast('Sincronización completada', { type: 'success' });
       return;
     }
 
@@ -258,12 +260,19 @@ export async function rescanConfiguredMusic() {
         completed: songsToRefresh.length,
         total: songsToRefresh.length
       });
+      showLibraryToast(
+        failures
+          ? `Sincronización completada; ${failures} canción(es) no se pudieron leer`
+          : 'Sincronización completada',
+        { type: failures ? 'warning' : 'success' }
+      );
       scannerVars.hideScanProgressTimer = setTimeout(hideScanProgress, 6000);
     } else {
       document.getElementById('native-folder-input').click();
     }
   } catch (error) {
     console.error('No se pudo actualizar la biblioteca:', error);
+    showLibraryToast('No se pudo completar la sincronización de la biblioteca', { type: 'error' });
     updateScanProgress({ label: 'No se pudo completar el escaneo', complete: true });
     scannerVars.hideScanProgressTimer = setTimeout(hideScanProgress, 8000);
     await showConfirmDialog({

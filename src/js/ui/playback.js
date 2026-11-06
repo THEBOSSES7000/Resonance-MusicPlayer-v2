@@ -12,7 +12,7 @@ import { syncLiquidAnimationPlayState } from '../../visual_plus/blurred_backgrou
 import { syncImmersiveAnimationPlayState } from '../../visual_plus/liquid_background.js';
 import { syncLyricsDockButtonStates, syncLyricsDockPlayIcon } from './lyricsDock.js';
 import { albumContextId, artistContextId, syncPlayerAlbumLinkState } from './libraryEntities.js';
-import { getSoundWaveHTML } from './uiUtils.js';
+import { syncSoundWave } from './uiUtils.js';
 import { syncLibraryAlbumIndicators } from './homeGrids.js';
 import { sameQuickSongReference } from './collections.js';
 
@@ -220,6 +220,7 @@ export function syncNpFsVinylLabelArt(coverSrc) {
 
 export function syncPlayingUI(isPlaying) {
   document.body.classList.toggle('np-fs-audio-playing', Boolean(isPlaying));
+  document.getElementById('bottom-player')?.classList.toggle('is-playing', Boolean(isPlaying));
   try { syncLiquidAnimationPlayState(); } catch (_) {}
   try { syncImmersiveAnimationPlayState(); } catch (_) {}
   try { syncLyricsDockPlayIcon(); syncLyricsDockButtonStates(); } catch (_) {}
@@ -279,7 +280,7 @@ export function syncPlayingUI(isPlaying) {
           soundwaveBadge.className = 'card-soundwave-badge';
           card.querySelector('.card-img-wrap').appendChild(soundwaveBadge);
         }
-        soundwaveBadge.innerHTML = getSoundWaveHTML(!isPlaying);
+        syncSoundWave(soundwaveBadge, true, !isPlaying);
         soundwaveBadge.style.display = 'flex';
       } else {
         card.classList.remove('is-active');
@@ -325,7 +326,7 @@ export function syncPlayingUI(isPlaying) {
         row.classList.add('is-active');
         row.classList.remove('is-playing-elsewhere');
         if (indexCell) {
-          indexCell.innerHTML = getSoundWaveHTML(!isPlaying);
+          syncSoundWave(indexCell, true, !isPlaying);
         }
       } else {
         row.classList.remove('is-active');
@@ -346,7 +347,7 @@ export function syncPlayingUI(isPlaying) {
   // 3. Soundwave en tarjeta "Sonando ahora"
   const nowPlayingWaveWrap = document.querySelector('.now-playing-wave-wrap');
   if (nowPlayingWaveWrap) {
-    nowPlayingWaveWrap.innerHTML = getSoundWaveHTML(isPlaybackPaused());
+    syncSoundWave(nowPlayingWaveWrap, Boolean(currentSong), !isPlaying);
   }
 
   // 4. Barra lateral izquierda:
@@ -355,7 +356,7 @@ export function syncPlayingUI(isPlaying) {
   if (navBtnHome) {
     navBtnHome.classList.toggle('is-playing-origin', isHomePlaying);
     if (homeSidebarSoundwave) {
-      homeSidebarSoundwave.innerHTML = isHomePlaying ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(homeSidebarSoundwave, isHomePlaying && Boolean(currentSong), !isPlaying);
     }
   }
 
@@ -364,7 +365,7 @@ export function syncPlayingUI(isPlaying) {
   if (navBtnMusic) {
     navBtnMusic.classList.toggle('is-playing-origin', isMusicPlaying);
     if (musicSidebarSoundwave) {
-      musicSidebarSoundwave.innerHTML = isMusicPlaying ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(musicSidebarSoundwave, isMusicPlaying && Boolean(currentSong), !isPlaying);
     }
   }
 
@@ -373,7 +374,7 @@ export function syncPlayingUI(isPlaying) {
   if (navBtnFolders) {
     navBtnFolders.classList.toggle('is-playing-origin', isFoldersPlaying);
     if (foldersSidebarSoundwave) {
-      foldersSidebarSoundwave.innerHTML = isFoldersPlaying ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(foldersSidebarSoundwave, isFoldersPlaying && Boolean(currentSong), !isPlaying);
     }
   }
 
@@ -392,7 +393,7 @@ export function syncPlayingUI(isPlaying) {
   if (navBtnPlaylists) {
     navBtnPlaylists.classList.toggle('is-playing-origin', shouldShowOnGeneralPlaylistsNav);
     if (playlistsSidebarSoundwave) {
-      playlistsSidebarSoundwave.innerHTML = shouldShowOnGeneralPlaylistsNav ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(playlistsSidebarSoundwave, shouldShowOnGeneralPlaylistsNav && Boolean(currentSong), !isPlaying);
     }
   }
 
@@ -401,7 +402,7 @@ export function syncPlayingUI(isPlaying) {
   if (btnOpenFavorites) {
     btnOpenFavorites.classList.toggle('is-playing-origin', isFavPlaying);
     if (favSidebarSoundwave) {
-      favSidebarSoundwave.innerHTML = isFavPlaying ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(favSidebarSoundwave, isFavPlaying && Boolean(currentSong), !isPlaying);
     }
   }
 
@@ -417,7 +418,7 @@ export function syncPlayingUI(isPlaying) {
         state.activeContextId === originId;
       card.classList.toggle('is-playing-origin', isQuickItemPlaying);
       const waveWrap = card.querySelector('.sidebar-soundwave-wrap');
-      if (waveWrap) waveWrap.innerHTML = isQuickItemPlaying ? getSoundWaveHTML(!isPlaying) : '';
+      if (waveWrap) syncSoundWave(waveWrap, isQuickItemPlaying && Boolean(currentSong), !isPlaying);
       return;
     }
     const plId = Number(card.dataset.id);
@@ -425,7 +426,7 @@ export function syncPlayingUI(isPlaying) {
     card.classList.toggle('is-playing-origin', isThisPlaylist);
     const waveWrap = card.querySelector('.sidebar-soundwave-wrap');
     if (waveWrap) {
-      waveWrap.innerHTML = isThisPlaylist ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(waveWrap, isThisPlaylist && Boolean(currentSong), !isPlaying);
     }
   });
 
@@ -446,7 +447,7 @@ export function syncPlayingUI(isPlaying) {
     }
     const waveWrap = fCard.querySelector('.folder-soundwave-wrap');
     if (waveWrap) {
-      waveWrap.innerHTML = isThisFolder ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(waveWrap, isThisFolder && Boolean(currentSong), !isPlaying);
     }
   });
 
@@ -467,7 +468,7 @@ export function syncPlayingUI(isPlaying) {
     }
     const waveWrap = pCard.querySelector('.playlist-hub-soundwave-wrap');
     if (waveWrap) {
-      waveWrap.innerHTML = isThisPlaylist ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(waveWrap, isThisPlaylist && Boolean(currentSong), !isPlaying);
     }
   });
 }

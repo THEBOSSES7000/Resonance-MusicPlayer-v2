@@ -13,6 +13,25 @@ export function getSoundWaveHTML(isPaused = false) {
   `;
 }
 
+export function syncSoundWave(container, shouldShow, isPaused = false) {
+  if (!container) return;
+
+  let wave = container.matches('.sound-wave')
+    ? container
+    : container.querySelector('.sound-wave');
+
+  if (!shouldShow) {
+    wave?.remove();
+    return;
+  }
+
+  if (!wave) {
+    container.insertAdjacentHTML('beforeend', getSoundWaveHTML(isPaused));
+    wave = container.querySelector('.sound-wave');
+  }
+  wave?.classList.toggle('paused', isPaused);
+}
+
 export function showConfirmDialog({ title = "¿Estás seguro?", message = "", confirmText = "Aceptar", cancelText = "Cancelar", showCancel = true, alternateText = null }) {
   return new Promise((resolve) => {
     if (!confirmModalOverlay || !btnConfirmYes) {

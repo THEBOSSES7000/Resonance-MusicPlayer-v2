@@ -108,7 +108,7 @@ export function handleCustomContextMenu(e) {
   else if (target.closest('.player-left')) {
     items = buildPlayerLeftContextItems(target, items);
   }
-  else if (target.closest('.queue-item')) {
+  else if (target.closest('.now-playing-card, .queue-item')) {
     items = buildQueueItemContextItems(target, items);
   }
   else if (target.closest('.song-card') || target.closest('.playlist-table-row')) {

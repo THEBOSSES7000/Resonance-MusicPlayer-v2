@@ -9,6 +9,7 @@ import { initLiquidImmersiveBackground, syncImmersiveBackgroundFromCover } from 
 import { lyricsLinesBox, lyricsSongArtist, lyricsSongTitle } from './dom.js';
 import { getPlaybackDuration, getPlaybackPosition, isPlaybackPaused, seekPlayback } from '../audioPlayer.js';
 import { fitLyricLineToViewport, lyricsProgressSeeking, refitActiveLyricLine, removeStylePropCached, setStylePropIfChanged } from './lyricsDock.js';
+import { audioVars } from '../audio/sharedState.js';
 
 export let lyricsAutoScrollEnabled = true;
 
@@ -22,6 +23,25 @@ const LYRIC_VOICE_COLORS = [
   '#38a8ff', '#ff941f', '#ff3b8d', '#35c98a',
   '#ffd21f', '#19c9d2', '#a16bff', '#ff4b45'
 ];
+
+function updateLyricsMiniPlayerCover(track) {
+  const miniPlayerCover = document.getElementById('lyrics-focus-mini-cover');
+  if (!miniPlayerCover) return;
+  clearContainerCovers(miniPlayerCover);
+  miniPlayerCover.replaceChildren();
+  const coverSrc = track ? resolveCoverUrl(track) : null;
+  if (coverSrc) {
+    const image = document.createElement('img');
+    image.src = coverSrc;
+    image.alt = `Carátula de ${track.title || 'la canción actual'}`;
+    miniPlayerCover.appendChild(image);
+  } else {
+    const placeholder = document.createElement('i');
+    placeholder.className = 'ph ph-music-note';
+    placeholder.setAttribute('aria-hidden', 'true');
+    miniPlayerCover.appendChild(placeholder);
+  }
+}
 
 export function updateLyricsUI() {
   voiceLineResizeObserver?.disconnect();
@@ -40,8 +60,6 @@ export function updateLyricsUI() {
     miniPlayerTitle.textContent = current?.title || '';
     miniPlayerArtist.textContent = current?.artist || 'Desconocido';
     miniPlayerAlbum.textContent = current?.album || '';
-    clearContainerCovers(miniPlayerCover);
-    miniPlayerCover.replaceChildren();
     const coverSrc = current ? resolveCoverUrl(current) : null;
     try { syncNpFsVinylLabelArt(coverSrc); } catch (_) {}
     try { syncLiquidBackgroundFromCover(coverSrc || null); } catch (_) {}
@@ -49,16 +67,17 @@ export function updateLyricsUI() {
     try {
       document.dispatchEvent(new CustomEvent('pn-track-cover-changed', { detail: { coverSrc: coverSrc || null, track: current || null } }));
     } catch (_) {}
-    if (coverSrc) {
-      const image = document.createElement('img');
-      image.src = coverSrc;
-      image.alt = `Carátula de ${current.title || 'la canción actual'}`;
-      miniPlayerCover.appendChild(image);
+    const fadePromise = document.body.classList.contains('now-playing-fs')
+      ? audioVars.fullscreenCrossfadeFadePromise
+      : null;
+    if (fadePromise) {
+      void fadePromise.then(() => {
+        if (state.activeQueue[state.currentTrackIndex] === current) {
+          updateLyricsMiniPlayerCover(current);
+        }
+      });
     } else {
-      const placeholder = document.createElement('i');
-      placeholder.className = 'ph ph-music-note';
-      placeholder.setAttribute('aria-hidden', 'true');
-      miniPlayerCover.appendChild(placeholder);
+      updateLyricsMiniPlayerCover(current);
     }
   };
 

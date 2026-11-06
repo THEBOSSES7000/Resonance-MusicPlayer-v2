@@ -7,6 +7,7 @@ import { addNativeMusicDirectory, clearCachedMetadataFromMemory, refreshLibraryM
 import { saveNativeLibraryCache } from './libraryCache.js';
 import { showConfirmDialog } from '../ui.js';
 import { scannerVars } from './sharedState.js';
+import { showLibraryToast } from '../ui/libraryToast.js';
 
 export function initScanner() {
   const nativeFolderInput = document.getElementById('native-folder-input');
@@ -75,8 +76,10 @@ export function initScanner() {
 
     try {
       await processAudioFiles(matchedFiles, folderName);
+      showLibraryToast('Sincronización completada', { type: 'success' });
     } catch (error) {
       console.error('No se pudo completar el escaneo de la biblioteca:', error);
+      showLibraryToast('No se pudo completar la sincronización de la biblioteca', { type: 'error' });
       updateScanProgress({ label: 'No se pudo completar el escaneo', complete: true });
       scannerVars.hideScanProgressTimer = setTimeout(hideScanProgress, 8000);
       await showConfirmDialog({

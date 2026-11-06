@@ -696,6 +696,7 @@
   border-radius: 2px;
   transform-origin: bottom;
   animation: soundwave-bar 0.9s ease-in-out infinite alternate;
+  transition: opacity 0.18s ease, filter 0.18s ease;
 }
 .sound-wave span:nth-child(1) { height: 40%; animation-duration: 0.75s; }
 .sound-wave span:nth-child(2) { height: 100%; animation-duration: 1.05s; animation-delay: 0.2s; }
@@ -704,7 +705,8 @@
 
 .sound-wave.paused span {
   animation-play-state: paused !important;
-  opacity: 0.75;
+  opacity: 0.72;
+  filter: saturate(0.78);
 }
 
 @keyframes soundwave-bar {
@@ -712,4 +714,3 @@
   50% { transform: scaleY(0.65); }
   100% { transform: scaleY(1); }
 }
-

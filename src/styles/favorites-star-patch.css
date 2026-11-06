@@ -1,5 +1,3 @@
-/* Pegar en src/styles/components.css (después de .fav-icon-box) */
-
 /* SOLO acceso directo de Favoritos + hero cuando tiene is-named-favorites */
 .favorites-shortcut.is-named-favorites .fav-icon-box,
 .playlist-hero-cover.is-named-favorites,
@@ -7,12 +5,23 @@
 .playlist-cover-box.is-named-favorites,
 #playlist-hero-cover.is-named-favorites,
 #playlist-cover.is-named-favorites {
-  background: linear-gradient(145deg, #f6d56a 0%, #e8b923 42%, #c9920a 100%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12) !important;
-  color: #fff !important;
-  filter: none !important;
+ background:
+   linear-gradient(135deg, #ffe987 0%, #f6c742 48%, #d89c12 100%) !important;
+ box-shadow:
+   inset 0 1px 0 rgba(255, 255, 255, 0.42),
+   inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+   0 5px 14px rgba(0, 0, 0, 0.14) !important;
+ color: #fff !important;
+ filter: none !important;
+}
+
+:root[data-vibrant-accents="true"] .favorites-shortcut.is-named-favorites .fav-icon-box {
+ background:
+   linear-gradient(135deg, #ffe987 0%, #f6c742 48%, #d89c12 100%) !important;
+ box-shadow:
+   inset 0 1px 0 rgba(255, 255, 255, 0.42),
+   inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+   0 5px 14px rgba(0, 0, 0, 0.14) !important;
 }
 
 /* Glifo estrella Phosphor (U+E46A) */

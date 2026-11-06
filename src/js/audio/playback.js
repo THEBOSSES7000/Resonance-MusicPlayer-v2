@@ -17,7 +17,33 @@ import { resetPlayCountSession } from './playCount.js';
 import { needsHtmlAudioEffects, setPlaybackPitch, setPlaybackSpeed } from './effects.js';
 
 export let audio = primaryAudio;
+let crossfadeCoverReadyPromise = null;
 
+function announceAudioCrossfadeStart() {
+  const detail = {};
+  document.dispatchEvent(new CustomEvent('pn-audio-crossfade-start', { detail }));
+  if (!detail.waitForFullscreenFade) {
+    crossfadeCoverReadyPromise = null;
+    return;
+  }
+  const fadePromise = Promise.resolve(detail.waitForFullscreenFade);
+  crossfadeCoverReadyPromise = fadePromise;
+  void fadePromise.then(() => {
+    if (crossfadeCoverReadyPromise === fadePromise) crossfadeCoverReadyPromise = null;
+  });
+}
+
+function paintTrackCover(cover, track) {
+  if (crossfadeCoverReadyPromise && document.body.classList.contains('now-playing-fs')) {
+    void crossfadeCoverReadyPromise.then(() => {
+      if (state.activeQueue[state.currentTrackIndex] === track) {
+        paintPlayerCover(cover, track);
+      }
+    });
+    return;
+  }
+  paintPlayerCover(cover, track);
+}
 
 /** Pausa la reproducción actual sin vaciar la cola (pista ausente / click en desaparecida). */
 export async function pausePlaybackForMissingTrack() {
@@ -247,6 +273,7 @@ export async function crossfadeToNext(index) {
     return false;
   }
   audioVars.crossfadeInProgress = true;
+  announceAudioCrossfadeStart();
   const generation = ++audioVars.crossfadeGeneration;
   const outgoingDeck = audio;
   const incomingDeck = otherDeck(outgoingDeck);
@@ -365,6 +392,7 @@ async function nativeCrossfadeToNext(index) {
   const generation = ++audioVars.crossfadeGeneration;
   audioVars.crossfadeVisualActive = true;
   audioVars.lyricsCrossfadeFreeze = false;
+  announceAudioCrossfadeStart();
   updateCrossfadeIndicator();
 
   try {
@@ -403,7 +431,7 @@ async function nativeCrossfadeToNext(index) {
 
     if (st.durationSeconds > 0) track.duration = st.durationSeconds;
 
-    paintPlayerCover(resolveCoverUrl(track), track);
+    paintTrackCover(resolveCoverUrl(track), track);
     void loadWaveformForTrack(track);
     void Promise.all([
       ensureSongLyrics(track),
@@ -415,7 +443,7 @@ async function nativeCrossfadeToNext(index) {
         updateAudioQuality(track);
         updateLyricsButtonVisibility(track);
         updateLyricsUI?.();
-        paintPlayerCover(cover || resolveCoverUrl(track), track);
+        paintTrackCover(cover || resolveCoverUrl(track), track);
       } catch (_) {}
     }).catch(() => {});
 
@@ -738,7 +766,7 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
     targetDeck.src = audioSrc;
   }
 
-  paintPlayerCover(resolveCoverUrl(track), track);
+  paintTrackCover(resolveCoverUrl(track), track);
 
   const wavePath = track?.file?.path || track?.path || '';
   if (trackChanged || wavePath !== audioVars.waveformPeaksPath || !audioVars.waveformPeaks) {
@@ -755,7 +783,7 @@ export async function loadSong(index, autoPlay = true, recordHistory = true, tar
       updateAudioQuality(track);
       updateLyricsButtonVisibility(track);
       updateLyricsUI?.();
-      paintPlayerCover(cover || resolveCoverUrl(track), track);
+      paintTrackCover(cover || resolveCoverUrl(track), track);
     } catch (_) {}
   }).catch(err => console.warn('No se pudieron cargar letras/specs/carátula:', err));
 

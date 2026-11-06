@@ -164,7 +164,7 @@ export function applyMultiVoiceLyrics(enabled) {
   if (input) input.checked = isEnabled;
   document.documentElement.dataset.lyricsMultiVoiceEnabled = String(isEnabled);
   document.querySelectorAll('.lyrics-multi-voice-option').forEach(option => {
-    option.classList.toggle('is-disabled', !isEnabled);
+    option.hidden = !isEnabled;
     const control = option.querySelector('input, select');
     if (control) control.disabled = !isEnabled;
   });
@@ -219,7 +219,7 @@ export function initLyricsFocusModeSettings() {
 
   const syncHideChromeRow = () => {
     const on = hideChromeInput ? hideChromeInput.checked : readStoredBoolean('pn_lyrics_hide_chrome_enabled', false);
-    if (hideChromeTimeoutRow) hideChromeTimeoutRow.style.display = on ? '' : 'none';
+    if (hideChromeTimeoutRow) hideChromeTimeoutRow.hidden = !on;
   };
 
   if (hideChromeInput) {

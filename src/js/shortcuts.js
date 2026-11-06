@@ -18,7 +18,7 @@ import {
 } from './ui.js';
 import { toggleLyricsTranslation } from './lyrics.js';
 import { refreshImmersiveBackgroundState, syncImmersiveBackgroundFromCover } from '../visual_plus/liquid_background.js';
-import { refreshLiquidBackgroundState, syncLiquidBackgroundFromCover } from '../visual_plus/blurred_background.js';
+import { refreshLiquidBackgroundState } from '../visual_plus/blurred_background.js';
 import { switchAndSaveTheme, loadVisualPlusSettings, saveVisualPlusSettings } from './settings/visualPlusStorage.js';
 import { switchThemeWithProfiles, snapshotThemeOptions, migrateVisualPlusThemeId as migrateThemeProfile } from './settings/visualPlusThemeProfiles.js';
 
@@ -262,7 +262,6 @@ const VISUAL_PLUS_THEME_ORDER = [
   'ps3_wave',
   'wave_sound',
   'liquid',
-  'blurred',
 ];
 
 const VISUAL_PLUS_THEME_LABELS = {
@@ -272,14 +271,10 @@ const VISUAL_PLUS_THEME_LABELS = {
   ps3_wave: 'Ondas',
   wave_sound: 'Wave Sound',
   liquid: 'Fondo líquido',
-  blurred: 'Fondo difuminado',
-  liquid_gradient: 'Fondo difuminado',
-  liquid_immersive: 'Fondo líquido',
 };
 
 function migrateVisualPlusThemeId(theme) {
-  if (theme === 'liquid_immersive') return 'liquid';
-  if (theme === 'liquid_gradient') return 'blurred';
+  if (theme === 'liquid_immersive' || theme === 'liquid_gradient' || theme === 'blurred') return 'liquid';
   return theme;
 }
 
@@ -347,8 +342,6 @@ function writeVisualPlusConfig(settings) {
   if (cover && normalized.enabled) {
     if (normalized.theme === 'liquid') {
       void syncImmersiveBackgroundFromCover(cover).catch(() => {});
-    } else if (normalized.theme === 'blurred') {
-      void syncLiquidBackgroundFromCover(cover).catch(() => {});
     }
   }
   syncVisualPlusUiControls(normalized);

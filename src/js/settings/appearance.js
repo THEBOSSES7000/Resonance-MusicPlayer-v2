@@ -9,6 +9,8 @@ const AVAILABLE_THEMES = ['purple', 'purple-aurora', 'blue', 'blue-boreal', 'tea
 
 const PROGRESS_STYLES = ['solid', 'waveform'];
 
+const PROGRESS_ANIMATION_STYLES = ['uniform', 'continuous', 'shimmer'];
+
 const INTERFACE_SCALES = [75, 85, 100, 110, 125];
 
 const PLAYER_RIGHT_CONTROL_SIZES = ['small', 'normal', 'large'];
@@ -108,14 +110,28 @@ function applyProgressStyle(style) {
     option.setAttribute('aria-pressed', String(option.dataset.progressStyle === selectedStyle));
   });
   syncTopProgressAvailability();
+  syncAnimatedProgressAvailability();
 }
 
 function syncTopProgressAvailability() {
   const isClassic = (localStorage.getItem('pn_progress_style') || 'solid') === 'solid';
+  const isUniformAnimation = isClassic
+    && readStoredBoolean('pn_progress_animation_enabled')
+    && (localStorage.getItem('pn_progress_animation_style') || 'uniform') === 'uniform';
+  const isContinuousAnimation = isClassic
+    && readStoredBoolean('pn_progress_animation_enabled')
+    && (localStorage.getItem('pn_progress_animation_style') || 'uniform') === 'continuous';
+  const isShimmerAnimation = isClassic
+    && readStoredBoolean('pn_progress_animation_enabled')
+    && (localStorage.getItem('pn_progress_animation_style') || 'uniform') === 'shimmer';
+  const canUseTopProgress = isClassic && !isUniformAnimation;
   const useTopProgress = readStoredBoolean('pn_progress_at_top');
-  document.getElementById('bottom-player')?.classList.toggle('progress-at-top', isClassic && useTopProgress);
+  const bottomPlayer = document.getElementById('bottom-player');
+  bottomPlayer?.classList.toggle('progress-at-top', canUseTopProgress && useTopProgress);
+  bottomPlayer?.classList.toggle('progress-at-top-continuous', canUseTopProgress && useTopProgress && isContinuousAnimation);
+  bottomPlayer?.classList.toggle('progress-at-top-shimmer', canUseTopProgress && useTopProgress && isShimmerAnimation);
   const option = document.querySelector('.progress-at-top-option');
-  if (option) option.hidden = !isClassic;
+  if (option) option.hidden = !canUseTopProgress;
   const input = document.getElementById('progress-at-top');
   if (input) input.checked = useTopProgress;
 }
@@ -123,6 +139,40 @@ function syncTopProgressAvailability() {
 function applyTopProgress(enabled) {
   localStorage.setItem('pn_progress_at_top', String(Boolean(enabled)));
   syncTopProgressAvailability();
+}
+
+function syncAnimatedProgressAvailability() {
+  const isClassic = (localStorage.getItem('pn_progress_style') || 'solid') === 'solid';
+  const toggleRow = document.getElementById('progress-animation-toggle-row');
+  const styleRow = document.getElementById('progress-animation-style-row');
+  const enabledInput = document.getElementById('progress-animation-enabled');
+  const styleSelect = document.getElementById('progress-animation-style');
+  const enabled = isClassic && readStoredBoolean('pn_progress_animation_enabled');
+  const storedStyle = localStorage.getItem('pn_progress_animation_style') || 'uniform';
+  const style = PROGRESS_ANIMATION_STYLES.includes(storedStyle) ? storedStyle : 'uniform';
+
+  if (toggleRow) toggleRow.hidden = !isClassic;
+  if (enabledInput) enabledInput.checked = readStoredBoolean('pn_progress_animation_enabled');
+  if (styleRow) styleRow.hidden = !enabled;
+  if (styleSelect) styleSelect.value = style;
+
+  const progressContainer = document.getElementById('progress-container');
+  if (progressContainer) {
+    progressContainer.dataset.animated = String(enabled);
+    progressContainer.dataset.animationStyle = style;
+  }
+  syncTopProgressAvailability();
+}
+
+function applyProgressAnimation(enabled) {
+  localStorage.setItem('pn_progress_animation_enabled', String(Boolean(enabled)));
+  syncAnimatedProgressAvailability();
+}
+
+function applyProgressAnimationStyle(style) {
+  const selectedStyle = PROGRESS_ANIMATION_STYLES.includes(style) ? style : 'uniform';
+  localStorage.setItem('pn_progress_animation_style', selectedStyle);
+  syncAnimatedProgressAvailability();
 }
 
 function applyWaveformSettings() {
@@ -140,18 +190,8 @@ function applyWaveformSettings() {
 }
 
 export function initAppearanceSettings() {
-  const vibrantAccentsInput = document.getElementById('vibrant-accents-enabled');
-  const applyVibrantAccents = enabled => {
-    const isEnabled = Boolean(enabled);
-    if (vibrantAccentsInput) vibrantAccentsInput.checked = isEnabled;
-    document.documentElement.toggleAttribute('data-vibrant-accents', isEnabled);
-    if (isEnabled) document.documentElement.dataset.vibrantAccents = 'true';
-    localStorage.setItem('pn_vibrant_accents', String(isEnabled));
-  };
-  applyVibrantAccents(readStoredBoolean('pn_vibrant_accents'));
-  vibrantAccentsInput?.addEventListener('change', () => {
-    applyVibrantAccents(vibrantAccentsInput.checked);
-  });
+  document.documentElement.removeAttribute('data-vibrant-accents');
+  localStorage.setItem('pn_vibrant_accents', 'false');
 
   const showTitlebarBrand = document.getElementById('show-sidebar-brand');
   const titlebarBrandPreferenceKey = 'pn_show_resonance_brand';
@@ -248,6 +288,13 @@ export function initAppearanceSettings() {
     option.addEventListener('click', () => applyProgressStyle(option.dataset.progressStyle));
   });
   applyTopProgress(readStoredBoolean('pn_progress_at_top'));
+  syncAnimatedProgressAvailability();
+  document.getElementById('progress-animation-enabled')?.addEventListener('change', event => {
+    applyProgressAnimation(event.currentTarget.checked);
+  });
+  document.getElementById('progress-animation-style')?.addEventListener('change', event => {
+    applyProgressAnimationStyle(event.currentTarget.value);
+  });
   document.getElementById('progress-at-top')?.addEventListener('change', event => {
     applyTopProgress(event.currentTarget.checked);
   });

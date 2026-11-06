@@ -29,8 +29,7 @@ function readVisualPlusSettings() {
       return { enabled: false, theme: 'shooting_stars', liquidSpeed: 100, liquidStatic: false };
     }
     let theme = parsed.theme;
-    if (theme === 'liquid_immersive') theme = 'liquid';
-    if (theme === 'liquid_gradient') theme = 'blurred';
+    if (theme === 'liquid_immersive' || theme === 'liquid_gradient' || theme === 'blurred') theme = 'liquid';
     // Migrar static/speed compartidos hacia claves propias si faltan
     const liquidStatic = typeof parsed.liquidStatic === 'boolean' ? parsed.liquidStatic : false;
     const liquidSpeed = Number.isFinite(Number(parsed.liquidSpeed)) ? Number(parsed.liquidSpeed) : 100;

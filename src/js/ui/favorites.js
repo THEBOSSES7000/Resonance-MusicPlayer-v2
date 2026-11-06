@@ -8,6 +8,7 @@ import { favCountEl, favIcon, playerFavBtn, playerSourceLabel, playlistHeroTitle
 import { updateNowPlayingFsHeader } from './nowPlayingFs.js';
 import { renderPlaylistDetailView } from './playlistDetail.js';
 import { renderSearchResultsContent } from './search.js';
+import { showLibraryToast } from './libraryToast.js';
 
 export function normalizeSongPath(song) {
   const path = song?.file?.path || song?.path || '';
@@ -137,6 +138,14 @@ export async function toggleFavoriteForSelection(song, clickedElement = null) {
   updateFavoritesCount();
   updateFavIcon();
   updateSelectionBar();
+  const favoriteName = getFavoritesDisplayName();
+  const actionText = nextValue ? 'agregada a' : 'quitada de';
+  showLibraryToast(
+    songs.length === 1
+      ? `Canción ${actionText} ${favoriteName}`
+      : `${songs.length} canciones ${nextValue ? 'agregadas a' : 'quitadas de'} ${favoriteName}`,
+    { type: 'success' }
+  );
 }
 
 export function toggleCurrentSongFavorite() {
@@ -149,6 +158,12 @@ export function toggleCurrentSongFavorite() {
   refreshSongCardFavoriteIndicators();
   updateFavoritesCount();
   updateFavIcon();
+  showLibraryToast(
+    song.isFavorite
+      ? `Canción agregada a ${getFavoritesDisplayName()}`
+      : `Canción quitada de ${getFavoritesDisplayName()}`,
+    { type: 'success' }
+  );
 }
 
 function refreshSongCardFavoriteIndicators() {

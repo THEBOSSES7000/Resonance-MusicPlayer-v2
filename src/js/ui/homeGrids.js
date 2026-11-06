@@ -10,7 +10,7 @@ import { loadArtistPortraits } from './artists.js';
 import { isPlaybackPaused } from '../audioPlayer.js';
 import { uiVars } from './sharedState.js';
 import { albumsMinTrackCount } from './init.js';
-import { getSoundWaveHTML } from './uiUtils.js';
+import { syncSoundWave } from './uiUtils.js';
 
 export function renderGrids() {
   if (libraryArtistsCache.source !== state.localMusicFiles) {
@@ -120,7 +120,7 @@ export function syncLibraryAlbumIndicators(currentSong, isPlaying) {
     card.classList.toggle('is-playing-elsewhere', isCurrentAlbum && state.activeContextId !== card.dataset.albumContext);
     if (indicator) {
       indicator.hidden = !isCurrentAlbum;
-      indicator.innerHTML = isCurrentAlbum ? getSoundWaveHTML(!isPlaying) : '';
+      syncSoundWave(indicator, isCurrentAlbum, !isPlaying);
     }
   });
 }

@@ -27,6 +27,7 @@ export const audioVars = {
   showRemainingTime: false,
   crossfadeIndicatorEnabled: localStorage.getItem('pn_audio_crossfade_indicator_enabled') !== 'false',
   crossfadeVisualActive: false,
+  fullscreenCrossfadeFadePromise: null,
   sleepTimerMode: null,
   sleepTimerRemainingTracks: 0,
   sleepTimerDeadline: 0,

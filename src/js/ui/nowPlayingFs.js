@@ -9,6 +9,7 @@ import { openPlaylistPicker } from './playlistPicker.js';
 import { showSongDetails } from './songDetails.js';
 import { renderContextMenu } from './contextMenu.js';
 import { closeDiscordRpcContextMenu } from '../discordRpc.js';
+import { audioVars } from '../audio/sharedState.js';
 
 let coverExpandedBeforeLyrics = false;
 
@@ -43,6 +44,9 @@ export function toggleExpandedCover(forceState) {
 }
 
 const NP_FS_LAYOUT_KEY = 'pn_now_playing_fs_layout';
+const NP_FS_PREFERRED_LAYOUT_KEY = 'pn_now_playing_fs_preferred_layout';
+const FS_LAYOUT_FADE_OUT_MS = 440;
+const FS_LAYOUT_FADE_IN_MS = 580;
 
 export function getNowPlayingFsLayout() {
   try {
@@ -54,10 +58,12 @@ export function getNowPlayingFsLayout() {
 
 let npFsLayoutToken = 0;
 let npFsLayoutSyncTimer = null;
+let npFsLayoutSyncToken = 0;
 let npFsLayoutBusy = false;
 let npFsLayoutQueued = null;
-/** True mientras el dock/letras están ocultos a propósito (no tocar Visual+). */
+/** True mientras la interfaz de pantalla completa está oculta (Visual+ permanece visible). */
 let npFsContentHidden = false;
+let npFsFadeOutPromise = null;
 
 function delayMs(ms) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -77,8 +83,53 @@ function isAudioCrossfadeActive() {
   return false;
 }
 
+function getCrossfadeWaitLimitMs() {
+  try {
+    if (localStorage.getItem('pn_audio_crossfade_enabled') !== 'true') return 1000;
+    const duration = Number(localStorage.getItem('pn_audio_crossfade_duration')) || 4;
+    return Math.max(1000, Math.min(12, duration) * 1000 + 300);
+  } catch (_) {
+    return 4300;
+  }
+}
+
+function waitForAudioCrossfade() {
+  const deadline = Date.now() + getCrossfadeWaitLimitMs();
+  return new Promise(resolve => {
+    const check = () => {
+      if (!isAudioCrossfadeActive() || Date.now() >= deadline) {
+        resolve();
+        return;
+      }
+      window.setTimeout(check, 80);
+    };
+    check();
+  });
+}
+
 function isFsAdaptLyricsEnabled() {
   return localStorage.getItem('pn_now_playing_fs_adapt_lyrics') === 'true';
+}
+
+function onAudioCrossfadeStart(event) {
+  if (!document.body.classList.contains('now-playing-fs') || !isFsAdaptLyricsEnabled()) return;
+
+  npFsLayoutToken++;
+  npFsLayoutSyncToken++;
+  npFsLayoutBusy = false;
+  npFsLayoutQueued = null;
+  if (npFsLayoutSyncTimer) {
+    window.clearTimeout(npFsLayoutSyncTimer);
+    npFsLayoutSyncTimer = null;
+  }
+  const fadeOut = hideFsMovingContent();
+  audioVars.fullscreenCrossfadeFadePromise = fadeOut;
+  void fadeOut.then(() => {
+    if (audioVars.fullscreenCrossfadeFadePromise === fadeOut) {
+      audioVars.fullscreenCrossfadeFadePromise = null;
+    }
+  });
+  if (event.detail) event.detail.waitForFullscreenFade = fadeOut;
 }
 
 function setFsLayoutClasses(mode) {
@@ -87,22 +138,27 @@ function setFsLayoutClasses(mode) {
   document.body.classList.toggle('np-fs-centered', m === 'centered');
 }
 
-/** Oculta solo dock + letras (captura, antes de que cambie la carátula). */
+/** Inicia el fade-out y permite aplazar la nueva carátula hasta que termine. */
 function hideFsMovingContent() {
   document.body.classList.remove('np-fs-layout-fade-in');
   document.body.classList.add('np-fs-layout-fade-out');
   npFsContentHidden = true;
+  npFsFadeOutPromise = delayMs(FS_LAYOUT_FADE_OUT_MS + 60);
+  return npFsFadeOutPromise;
 }
 
 function showFsMovingContent() {
   document.body.classList.remove('np-fs-layout-fade-out');
   document.body.classList.add('np-fs-layout-fade-in');
   npFsContentHidden = false;
+  npFsFadeOutPromise = null;
+  audioVars.fullscreenCrossfadeFadePromise = null;
 }
 
 function clearFsFadeClasses() {
   document.body.classList.remove('np-fs-layout-fade-out', 'np-fs-layout-fade-in');
   npFsContentHidden = false;
+  npFsFadeOutPromise = null;
 }
 
 /**
@@ -115,6 +171,9 @@ async function transitionNowPlayingFsLayout(mode, { persist = true, alreadyHidde
   if (same && !alreadyHidden && !npFsContentHidden) {
     if (persist) {
       try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+      if (m === 'default' || m === 'swapped') {
+        try { localStorage.setItem(NP_FS_PREFERRED_LAYOUT_KEY, m); } catch (_) {}
+      }
     }
     return;
   }
@@ -122,13 +181,13 @@ async function transitionNowPlayingFsLayout(mode, { persist = true, alreadyHidde
   const token = ++npFsLayoutToken;
   npFsLayoutBusy = true;
 
-  // 1) Ocultar del todo (fade corto)
+  // 1) Desvanecer toda la interfaz móvil antes de cambiar su disposición.
   if (!alreadyHidden && !npFsContentHidden) {
-    hideFsMovingContent();
-    await delayMs(320);
-  } else {
-    // Ya oculto por capture: asegurar que el fade-out terminó
-    await delayMs(npFsContentHidden ? 300 : 50);
+    await hideFsMovingContent();
+  } else if (npFsContentHidden && npFsFadeOutPromise) {
+    await npFsFadeOutPromise;
+  } else if (!npFsContentHidden) {
+    await delayMs(50);
   }
   if (token !== npFsLayoutToken) return;
 
@@ -136,23 +195,23 @@ async function transitionNowPlayingFsLayout(mode, { persist = true, alreadyHidde
   setFsLayoutClasses(m);
   if (persist) {
     try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+    if (m === 'default' || m === 'swapped') {
+      try { localStorage.setItem(NP_FS_PREFERRED_LAYOUT_KEY, m); } catch (_) {}
+    }
   }
   try { updateNowPlayingFsHeader(); } catch (_) {}
   try { applyNpFsVolumeBar(); } catch (_) {}
   try { resyncLyricsScrollForFullscreen?.(); } catch (_) {}
 
-  // Dar tiempo a layout/carátula/Visual+ a estabilizar (canvas resize, letras, etc.)
+  // Dar al navegador un frame para calcular la geometría nueva antes del fade-in.
   void document.body.offsetWidth;
   try { window.dispatchEvent(new Event('resize')); } catch (_) {}
-  await delayMs(50);
+  await new Promise(resolve => requestAnimationFrame(() => resolve()));
   try { resyncLyricsScrollForFullscreen?.(); } catch (_) {}
-  // Hold invisible ~0.85s para que no se vea el “gris” ni el swap a medias
-  await delayMs(850);
-  if (token !== npFsLayoutToken) return;
 
-  // 3) Fade in más pausado
+  // 3) Mostrar el contenido ya colocado en su nueva posición.
   showFsMovingContent();
-  await delayMs(420);
+  await delayMs(FS_LAYOUT_FADE_IN_MS);
   if (token !== npFsLayoutToken) return;
 
   clearFsFadeClasses();
@@ -174,6 +233,9 @@ function applyNowPlayingFsLayout(mode, { persist = true, animate = true } = {}) 
     setFsLayoutClasses(m);
     if (persist) {
       try { localStorage.setItem(NP_FS_LAYOUT_KEY, m); } catch (_) {}
+      if (m === 'default' || m === 'swapped') {
+        try { localStorage.setItem(NP_FS_PREFERRED_LAYOUT_KEY, m); } catch (_) {}
+      }
     }
     try { applyNpFsVolumeBar(); } catch (_) {}
     if (document.body.classList.contains('now-playing-fs')) {
@@ -205,9 +267,13 @@ function resolveAdaptLayoutTarget() {
   const hasLyrics = trackHasDisplayableLyrics(song);
   let preferred = 'default';
   try {
-    const stored = localStorage.getItem(NP_FS_LAYOUT_KEY);
-    if (stored === 'swapped' || stored === 'default') preferred = stored;
-    else if (stored === 'centered') preferred = 'default';
+    const storedPreferred = localStorage.getItem(NP_FS_PREFERRED_LAYOUT_KEY);
+    const storedLayout = localStorage.getItem(NP_FS_LAYOUT_KEY);
+    if (storedPreferred === 'swapped' || storedPreferred === 'default') {
+      preferred = storedPreferred;
+    } else if (storedLayout === 'swapped' || storedLayout === 'default') {
+      preferred = storedLayout;
+    }
   } catch (_) {}
   return hasLyrics ? preferred : 'centered';
 }
@@ -217,8 +283,18 @@ export function syncNowPlayingFsLayoutForLyrics() {
   if (!document.body.classList.contains('now-playing-fs')) return;
   if (!isFsAdaptLyricsEnabled()) return;
 
-  const run = () => {
-    const target = resolveAdaptLayoutTarget();
+  const token = ++npFsLayoutSyncToken;
+  const run = async () => {
+    npFsLayoutSyncTimer = null;
+    let target = resolveAdaptLayoutTarget();
+    if (target === getCurrentFsLayoutMode() && !npFsContentHidden) return;
+    if (isAudioCrossfadeActive() && !npFsContentHidden) await waitForAudioCrossfade();
+    if (
+      token !== npFsLayoutSyncToken ||
+      !document.body.classList.contains('now-playing-fs') ||
+      !isFsAdaptLyricsEnabled()
+    ) return;
+    target = resolveAdaptLayoutTarget();
     applyNowPlayingFsLayout(target, {
       persist: false,
       animate: true,
@@ -226,18 +302,7 @@ export function syncNowPlayingFsLayoutForLyrics() {
   };
 
   if (npFsLayoutSyncTimer) window.clearTimeout(npFsLayoutSyncTimer);
-  const wait = isAudioCrossfadeActive() ? 420 : 30;
-  npFsLayoutSyncTimer = window.setTimeout(run, wait);
-}
-
-/** Capture: ocultar carátula/letras ANTES de que otros handlers cambien la imagen. */
-function onTrackChangedHideFsContentFirst() {
-  if (!document.body.classList.contains('now-playing-fs')) return;
-  if (!isFsAdaptLyricsEnabled()) return;
-  // Ocultar de inmediato (aunque el layout final sea el mismo, evita ver el swap de carátula)
-  hideFsMovingContent();
-  npFsLayoutBusy = true;
-  // El sync (bubble) hará el resto y el fade-in
+  npFsLayoutSyncTimer = window.setTimeout(() => { void run(); }, 30);
 }
 
 
@@ -326,10 +391,28 @@ export function setNowPlayingFullscreen(enabled) {
     btn.setAttribute('aria-pressed', String(Boolean(enabled)));
   }
   if (enabled) {
-    applyNowPlayingFsLayout(getNowPlayingFsLayout());
+    npFsLayoutSyncToken++;
+    if (npFsLayoutSyncTimer) {
+      window.clearTimeout(npFsLayoutSyncTimer);
+      npFsLayoutSyncTimer = null;
+    }
+    const initialLayout = isFsAdaptLyricsEnabled()
+      ? resolveAdaptLayoutTarget()
+      : getNowPlayingFsLayout();
+    applyNowPlayingFsLayout(initialLayout, { persist: false, animate: false });
     try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
   } else {
+    npFsLayoutToken++;
+    npFsLayoutSyncToken++;
+    npFsLayoutBusy = false;
+    npFsLayoutQueued = null;
+    if (npFsLayoutSyncTimer) {
+      window.clearTimeout(npFsLayoutSyncTimer);
+      npFsLayoutSyncTimer = null;
+    }
+    npFsContentHidden = false;
     document.body.classList.remove('np-fs-swapped', 'np-fs-centered', 'np-fs-layout-animating');
+    document.body.classList.remove('np-fs-layout-fade-out', 'np-fs-layout-fade-in');
   }
   updateNowPlayingFsHeader();
   try { applyNpFsVolumeBar(); } catch (_) {}
@@ -502,7 +585,7 @@ export function updatePlayerState(isPlaying, coverUrl, accentColor) {
 document.addEventListener('pn-lyrics-view-updated', () => {
   try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
 });
-document.addEventListener('pn-track-changed', onTrackChangedHideFsContentFirst, true);
+document.addEventListener('pn-audio-crossfade-start', onAudioCrossfadeStart);
 document.addEventListener('pn-track-changed', () => {
   try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}
 });

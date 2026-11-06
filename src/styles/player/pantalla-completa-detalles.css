@@ -1,23 +1,17 @@
-/* Fade solo piezas móviles; hold invisible estable; Visual+ intacto */
-body.now-playing-fs .lyrics-overlay.open .lyrics-dock,
-body.now-playing-fs .lyrics-overlay.open .lyrics-scroll-container,
-body.now-playing-fs .lyrics-overlay.open .lyrics-floating-actions {
-  transition: opacity 0.35s ease;
+/* Desvanecer toda la interfaz de pantalla completa, dejando Visual+ intacto. */
+body.now-playing-fs .lyrics-overlay.open > :not(#visual-plus-liquid-bg):not(#visual-plus-canvas) {
+  transition: opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
 }
-body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-dock,
-body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-scroll-container,
-body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open .lyrics-floating-actions {
+body.now-playing-fs.np-fs-layout-fade-out .lyrics-overlay.open > :not(#visual-plus-liquid-bg):not(#visual-plus-canvas) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  transition: opacity 0.32s ease, visibility 0s linear 0.32s;
+  transition: opacity 0.44s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.44s;
 }
-body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-dock,
-body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-scroll-container,
-body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open .lyrics-floating-actions {
+body.now-playing-fs.np-fs-layout-fade-in .lyrics-overlay.open > :not(#visual-plus-liquid-bg):not(#visual-plus-canvas) {
   opacity: 1 !important;
   visibility: visible !important;
-  transition: opacity 0.42s ease, visibility 0s linear 0s;
+  transition: opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
 }
 
 /* Visual+ nunca se atenúa ni se oculta con el cambio de layout */

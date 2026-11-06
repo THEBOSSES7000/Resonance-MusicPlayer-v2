@@ -7,7 +7,7 @@ import { setPlaybackPitch, setPlaybackSpeed, setPreservePitch } from './effects.
 import { initializeProgressWaveforms } from './waveform.js';
 import { initWindowsMediaControlListener, notifyDiscordPresence, updateTaskbarPlaybackProgress, updateWindowSongTitle, updateWindowsMediaPlayback, updateWindowsMediaPosition } from './windowIntegration.js';
 import { audioDecks, currentArtistEl, currentTitleTextEl, playIcon, progressContainer, volIcon, volumeBox, volumeRange } from './dom.js';
-import { lastProgressRatio, setProgressVisual, updateAudioQuality, updateProgressTimes, updateSeekPosition } from './progressUI.js';
+import { clearProgressPreview, lastProgressRatio, setProgressVisual, updateAudioQuality, updateProgressPreview, updateProgressTimes, updateSeekPosition } from './progressUI.js';
 import { paintPlayerCover } from './playerCover.js';
 import { audio, handleTrackEffects, nextSong, prevSong, setRepeatMode, setShuffleEnabled, togglePlay, updateRepeatButton, updateTitleMarquee } from './playback.js';
 import { navigateToView, persistPlaybackSession, renderGrids, syncPlayingUI, updateSyncedLyricsProgress } from '../ui.js';
@@ -301,6 +301,7 @@ export function initAudioPlayer() {
   progressContainer.setAttribute('aria-valuemax', '100');
   progressContainer.setAttribute('aria-valuenow', '0');
 
+  let progressReleaseTimer = null;
   progressContainer.addEventListener('pointerdown', event => {
     const dur = getPlaybackDuration();
     if (event.button !== 0 || !Number.isFinite(dur) || dur <= 0) return;
@@ -323,21 +324,33 @@ export function initAudioPlayer() {
     progressContainer.setPointerCapture(event.pointerId);
     progressContainer.classList.add('is-seeking');
     updateSeekPosition(event.clientX, { commit: false });
+    updateProgressPreview(event.clientX);
   });
   progressContainer.addEventListener('pointermove', event => {
+    updateProgressPreview(event.clientX);
     if (!audioVars.isSeeking || event.pointerId !== audioVars.activeSeekPointerId) return;
     updateSeekPosition(event.clientX);
+  });
+  progressContainer.addEventListener('pointerleave', () => {
+    if (!audioVars.isSeeking) clearProgressPreview();
   });
 
   const finishSeeking = event => {
     if (!audioVars.isSeeking || event.pointerId !== audioVars.activeSeekPointerId) return;
     updateSeekPosition(event.clientX, { commit: true });
+    updateProgressPreview(event.clientX);
     audioVars.isSeeking = false;
     audioVars.activeSeekPointerId = null;
     progressContainer.classList.remove('is-seeking');
     if (progressContainer.hasPointerCapture(event.pointerId)) {
       progressContainer.releasePointerCapture(event.pointerId);
     }
+    progressContainer.classList.add('is-seeking-release');
+    if (progressReleaseTimer !== null) window.clearTimeout(progressReleaseTimer);
+    progressReleaseTimer = window.setTimeout(() => {
+      progressContainer.classList.remove('is-seeking-release');
+      progressReleaseTimer = null;
+    }, 360);
     const shouldResume = audioVars.resumeAfterSeeking;
     audioVars.resumeAfterSeeking = false;
     if (shouldResume) {
