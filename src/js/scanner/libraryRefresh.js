@@ -11,6 +11,7 @@ import { loadedLyricsSongs } from './lyricsCache.js';
 import { renderDirectories } from '../settings.js';
 import { processAudioFiles } from './processFiles.js';
 import { showLibraryToast } from '../ui/libraryToast.js';
+import { invalidateLibraryEntityCaches } from '../ui/libraryEntities.js';
 
 export async function configureMusicWatcher() {
   if (!isTauriRuntime()) return;
@@ -41,6 +42,7 @@ export async function refreshLibraryMetadata() {
     clearCoverUrlCache();
     const metadataErrors = await loadSongMetadata(state.localMusicFiles, 'Refrescando carátulas y metadatos');
     rebuildSongsIndex();
+    invalidateLibraryEntityCaches();
     const cacheSaved = await saveNativeLibraryCache(true);
     renderGrids();
     renderQueue();

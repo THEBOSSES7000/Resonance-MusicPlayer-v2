@@ -83,21 +83,13 @@ export function bindSearchAndContent() {
   if (mainContent) {
     let virtualScrollRaf = 0;
     mainContent.addEventListener('scroll', () => {
-      // Ventana virtual: actualizar filas visibles aunque no estemos al final
-      if (
-        uiVars.trackListVirtual &&
-        !uiVars.isLoadingMoreTrackRows &&
-        ['all-music', 'playlist', 'favorites', 'folder-detail', 'album-detail', 'artist'].includes(state.currentView)
-      ) {
+      const isTrackListView = ['all-music', 'playlist', 'favorites', 'folder-detail', 'album-detail', 'artist'].includes(state.currentView);
+      if (uiVars.trackListVirtual && isTrackListView && !uiVars.isLoadingMoreTrackRows) {
         if (virtualScrollRaf) cancelAnimationFrame(virtualScrollRaf);
         virtualScrollRaf = requestAnimationFrame(() => {
           virtualScrollRaf = 0;
           if (uiVars.isLoadingMoreTrackRows) return;
-          const prev = state.currentView === 'all-music' ? state.musicVisibleCount : uiVars.detailVisibleCount;
-          uiVars.isLoadingMoreTrackRows = true;
-          void renderPlaylistDetailView({ append: false, previousVisibleCount: prev })
-            .catch(() => {})
-            .finally(() => { uiVars.isLoadingMoreTrackRows = false; });
+          uiVars.trackListVirtual?.render();
         });
       }
 
@@ -142,16 +134,6 @@ export function bindSearchAndContent() {
         ? state.musicVisibleCount
         : uiVars.detailVisibleCount;
       const totalInList = Array.isArray(uiVars.renderedTrackList) ? uiVars.renderedTrackList.length : 0;
-
-      // Lista virtualizada: al scrollear, re-pintar la ventana visible (sin acumular DOM)
-      if (uiVars.trackListVirtual && totalInList > 0) {
-        if (!uiVars.isLoadingMoreTrackRows) {
-          uiVars.isLoadingMoreTrackRows = true;
-          void renderPlaylistDetailView({ append: false, previousVisibleCount })
-            .catch(error => console.error('No se pudo actualizar la ventana de la lista:', error))
-            .finally(() => { uiVars.isLoadingMoreTrackRows = false; });
-        }
-      }
 
       // Ampliar el rango "descubierto" al acercarse al final (sigue haciendo falta para listas enormes)
       if (totalInList > 0 && previousVisibleCount >= totalInList) return;

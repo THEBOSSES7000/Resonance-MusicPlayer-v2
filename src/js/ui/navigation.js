@@ -30,6 +30,7 @@ function purgeHiddenViewsMemory(targetView) {
     uiVars.renderedTrackContextId = null;
     uiVars.renderedTrackContextTitle = '';
     uiVars.detailVisibleContextKey = '';
+    uiVars.trackListVirtual = null;
     uiVars.detailVisibleCount = 50;
     state.musicVisibleCount = 50;
     if (playlistTracksBody) {

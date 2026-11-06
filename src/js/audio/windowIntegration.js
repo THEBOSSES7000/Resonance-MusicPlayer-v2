@@ -23,6 +23,11 @@ export function notifyDiscordPresence(force = false, clearTrack = false) {
       artist: track?.artist || '',
       album: track?.album || '',
       filePath: track?.file?.path || '',
+      coverPath: track?.coverPath && track.coverPath !== 'none'
+        ? track.coverPath
+        : (track?.coverUrl && !/^(?:blob:|data:|https?:|asset:|tauri:)/i.test(track.coverUrl)
+          ? track.coverUrl
+          : ''),
       playing: Boolean(track && !isPlaybackPaused()),
       positionSeconds: track ? getPlaybackPosition() : 0,
       durationSeconds: track ? getPlaybackDuration() : 0,

@@ -19,6 +19,7 @@ function readVisualPlusSettings() {
         theme: 'shooting_stars',
         liquidSpeed: 100,
         liquidStatic: false,
+        liquidQuality: 'balanced',
         blurredSpeed: 100,
         blurredStatic: false,
         colorDiversity: 55,
@@ -26,7 +27,7 @@ function readVisualPlusSettings() {
     }
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') {
-      return { enabled: false, theme: 'shooting_stars', liquidSpeed: 100, liquidStatic: false };
+      return { enabled: false, theme: 'shooting_stars', liquidSpeed: 100, liquidStatic: false, liquidQuality: 'balanced' };
     }
     let theme = parsed.theme;
     if (theme === 'liquid_immersive' || theme === 'liquid_gradient' || theme === 'blurred') theme = 'liquid';
@@ -38,6 +39,7 @@ function readVisualPlusSettings() {
     return {
       liquidSpeed: 100,
       liquidStatic: false,
+      liquidQuality: 'balanced',
       blurredSpeed: 100,
       blurredStatic: false,
       colorDiversity: 55,
@@ -45,11 +47,20 @@ function readVisualPlusSettings() {
       theme,
       liquidStatic,
       liquidSpeed,
+      liquidQuality: ['performance', 'balanced', 'quality'].includes(parsed.liquidQuality)
+        ? parsed.liquidQuality
+        : 'balanced',
       blurredStatic,
       blurredSpeed,
     };
   } catch (_) {
-    return { enabled: false, theme: 'shooting_stars', liquidSpeed: 100, liquidStatic: false };
+    return {
+      enabled: false,
+      theme: 'shooting_stars',
+      liquidSpeed: 100,
+      liquidStatic: false,
+      liquidQuality: 'balanced',
+    };
   }
 }
 
@@ -120,7 +131,11 @@ function resizeCanvas() {
   const root = getRoot();
   if (!root) return;
   const rect = root.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const settings = readVisualPlusSettings();
+  const quality = settings.liquidQuality;
+  const qualityScale = quality === 'performance' ? 0.75 : quality === 'quality' ? 1.25 : 1;
+  const maxPixelRatio = quality === 'performance' ? 1 : quality === 'quality' ? 2.5 : 2;
+  const dpr = Math.min((window.devicePixelRatio || 1) * qualityScale, maxPixelRatio);
   const w = Math.max(1, Math.floor(rect.width * dpr));
   const h = Math.max(1, Math.floor(rect.height * dpr));
   if (canvas.width !== w || canvas.height !== h) {
@@ -184,9 +199,12 @@ function applySpeedFromSettings() {
   const settings = readVisualPlusSettings();
   if (!kawarp) return;
   const speed = liquidAnimationSpeed(settings);
+  const blurPasses = settings.liquidQuality === 'performance'
+    ? 4
+    : settings.liquidQuality === 'quality' ? 12 : 8;
   try {
     if (typeof kawarp.setOptions === 'function') {
-      kawarp.setOptions({ animationSpeed: speed });
+      kawarp.setOptions({ animationSpeed: speed, blurPasses });
     } else if ('animationSpeed' in kawarp) {
       kawarp.animationSpeed = speed;
     }

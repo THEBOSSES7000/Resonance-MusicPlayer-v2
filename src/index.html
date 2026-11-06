@@ -2370,7 +2370,7 @@
             <label class="interface-setting-row discord-rpc-artwork-setting setting-dependent" id="discord-rpc-artwork-setting" hidden>
               <div>
                 <strong>Imagen de la canción en Discord</strong>
-                <p>La opción local sube la portada a Catbox para alojarla; su URL se guarda en la caché de Resonance.</p>
+                <p>La opción local sube la carátula a Catbox para alojarla; se guarda su URL en la caché de Resonance.</p>
               </div>
               <select class="settings-select" id="discord-rpc-artwork-mode">
                 <option value="artwork">Carátula de la canción</option>
@@ -2378,6 +2378,16 @@
                 <option value="default">Icono predeterminado</option>
               </select>
             </label>
+            <div class="discord-rpc-artwork-tools">
+              <p class="discord-rpc-artwork-status" id="discord-rpc-artwork-status" role="status" aria-live="polite"></p>
+              <button type="button" class="btn-secondary discord-rpc-artwork-history-button" id="discord-rpc-artwork-history-button" hidden>
+                Mostrar historial de subida de carátula
+              </button>
+              <div class="discord-rpc-artwork-history" id="discord-rpc-artwork-history" hidden>
+                <p class="settings-hint">Canciones cuya carátula local no se pudo alojar.</p>
+                <ul id="discord-rpc-artwork-history-list"></ul>
+              </div>
+            </div>
             <p class="discord-rpc-setting-status" id="discord-rpc-setting-status" role="status"></p>
           </div>
           <div class="settings-card">
@@ -2828,6 +2838,18 @@
                 </label>
               </div>
 <div class="visual-plus-effect-options" id="visual-plus-liquid-settings" hidden>
+                <div class="visual-plus-liquid-quality">
+                  <label class="visual-plus-range-row" for="visual-plus-liquid-quality">
+                    <span><strong>Calidad del fondo líquido</strong><output id="visual-plus-liquid-quality-value">Equilibrado</output></span>
+                    <input id="visual-plus-liquid-quality" type="range" min="0" max="2" step="1" value="1" aria-describedby="visual-plus-liquid-quality-description">
+                  </label>
+                  <div class="visual-plus-quality-labels" aria-hidden="true">
+                    <span>Rendimiento</span>
+                    <span>Equilibrado</span>
+                    <span>Calidad</span>
+                  </div>
+                  <p class="settings-hint" id="visual-plus-liquid-quality-description" aria-live="polite">Equilibra el detalle visual y el uso de recursos.</p>
+                </div>
                 <div class="audio-setting-row">
                   <div class="audio-setting-description">
                     <strong>Fondo líquido estático</strong>

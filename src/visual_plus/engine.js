@@ -28,6 +28,8 @@ let audioAnalysisConfigurer = null;
 
 let audioAnalysisActive = false;
 
+const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
+
 function refreshCachedThemeColor() {
   vp.cachedThemeColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--accent-light')
@@ -150,6 +152,7 @@ function canAnimate() {
     (vp.theme !== 'atmospheric' || vp.firefliesEnabled || vp.rainEnabled) &&
     vp.intersecting &&
     document.visibilityState === 'visible' &&
+    !reducedMotionQuery?.matches &&
     lyricsOverlay?.classList.contains('open') &&
     !settingsOverlay?.classList.contains('open') &&
     vp.width > 0 &&
@@ -376,6 +379,7 @@ export function initShootingStars(readAudioLevel = () => 0, configureAudioAnalys
   lifecycleObserver.observe(settingsOverlay, { attributes: true, attributeFilter: ['class'] });
 
   document.addEventListener('visibilitychange', syncAnimation);
+  reducedMotionQuery?.addEventListener?.('change', syncAnimation);
   window.addEventListener('resize', () => {
     if (lyricsOverlay.classList.contains('open')) resizeCanvas();
     syncAnimation();

@@ -4,7 +4,7 @@ import { ensureTrackSortDirState, loadTrackSortModeForView, trackSortMul, update
 import { matchesListSearch, matchesTrackFilter, syncTrackFilterContext } from './trackFilters.js';
 import { formatTime, state } from '../state.js';
 import { uiVars } from './sharedState.js';
-import { artistAlbumsSection, artistBioToggle, artistDisambiguation, artistFacts, artistLoadMoreButton, artistLoadMoreWrap, artistRelatedSection, artistTagsContainer, btnCollectionOptions, btnPlayAllFavorites, collectionOptionsMenu, collectionOptionsWrap, currentTrackSortLabel, playlistBadgeType, playlistHeroAuthor, playlistHeroBanner, playlistHeroCount, playlistHeroCover, playlistHeroDesc, playlistHeroDuration, playlistHeroTitle, playlistTracksBody, trackSortMenu, tracksFilterBar } from './dom.js';
+import { artistAlbumsSection, artistBioToggle, artistDisambiguation, artistFacts, artistLoadMoreButton, artistLoadMoreWrap, artistRelatedSection, artistTagsContainer, btnCollectionOptions, btnPlayAllFavorites, collectionOptionsMenu, collectionOptionsWrap, currentTrackSortLabel, mainContent, playlistBadgeType, playlistHeroAuthor, playlistHeroBanner, playlistHeroCount, playlistHeroCover, playlistHeroDesc, playlistHeroDuration, playlistHeroTitle, playlistTracksBody, trackSortMenu, tracksFilterBar } from './dom.js';
 import { pnStartPointerDrag, updateTrackReorderToggle } from './dragReorder.js';
 import { queueDetailShowHistory } from './init.js';
 import { albumContextId, artistContextId, matchingAlbumSongs, matchingArtistSongs, buildArtistMetaHtml, buildAlbumMetaHtml } from './libraryEntities.js';
@@ -22,6 +22,22 @@ import { updateQueuePositionIndicator } from './queueHistory.js';
 import { updatePlaylistRowTitleMarquee } from './playback.js';
 
 export const ARTIST_TRACK_PAGE_SIZE = 15;
+
+const VIRTUAL_TRACK_LIST_THRESHOLD = 200;
+const VIRTUAL_TRACK_LIST_OVERSCAN = 12;
+
+function getVirtualTrackRange(total, rowHeight) {
+  if (!mainContent || !playlistTracksBody || total <= 0) {
+    return { start: 0, end: Math.min(total, 60) };
+  }
+  const scrollportTop = mainContent.getBoundingClientRect().top + mainContent.clientTop;
+  const bodyTop = playlistTracksBody.getBoundingClientRect().top;
+  const firstVisible = Math.floor((scrollportTop - bodyTop) / rowHeight);
+  const lastVisible = Math.ceil((scrollportTop + mainContent.clientHeight - bodyTop) / rowHeight);
+  const start = Math.max(0, Math.min(total, firstVisible - VIRTUAL_TRACK_LIST_OVERSCAN));
+  const end = Math.max(start, Math.min(total, lastVisible + VIRTUAL_TRACK_LIST_OVERSCAN));
+  return { start, end };
+}
 
 export async function renderPlaylistDetailView({ append = false, previousVisibleCount = 0 } = {}) {
   loadTrackSortModeForView();
@@ -406,6 +422,7 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
 
   if (songs.length === 0) {
     uiVars.renderedTrackList = [];
+    uiVars.trackListVirtual = null;
     const emptyMsg = uiVars.activeTrackFilter.field !== 'all' && (isFolder || isFav || isMusic || state.currentView === 'playlist')
       ? "No hay canciones que coincidan con el filtro actual."
       : isFolder
@@ -473,15 +490,25 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
               : isQueue ? (state.activeQueueTitle || 'Cola de reproducción')
                 : 'Cola de reproducción');
 
-  const rawSongIndexMap = new Map();
-  for (let i = 0; i < rawSongs.length; i++) {
-    rawSongIndexMap.set(rawSongs[i], i);
-  }
+  const usesCustomTrackOrder = (isFav || state.currentView === 'playlist') &&
+    state.trackSortMode === 'custom' &&
+    uiVars.activeTrackFilter.field === 'all' &&
+    !playlist?.smartFilter &&
+    !isMusic && !isFolder && !isArtist &&
+    (state.currentView !== 'playlist' || state.playlistTrackDragReorderEnabled);
+  const rawSongIndexMap = isQueue || usesCustomTrackOrder
+    ? new Map(rawSongs.map((song, index) => [song, index]))
+    : null;
 
-  songsToDisplay.slice(firstSongToRender).forEach((song, pageIndex) => {
-    const idx = firstSongToRender + pageIndex;
+  const renderRow = (idx, fixedHeight = 0) => {
+    const song = songsToDisplay[idx];
     const row = document.createElement('div');
     row.className = 'playlist-table-row';
+    if (fixedHeight > 0) {
+      row.style.height = `${fixedHeight}px`;
+      row.style.boxSizing = 'border-box';
+      row.style.flex = '0 0 auto';
+    }
     if (song.unavailable) {
       row.classList.add('is-unavailable');
       row.title = 'Archivo no disponible (¿disco desconectado o movido?)';
@@ -490,7 +517,7 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     row.dataset.songId = song.id != null ? String(song.id) : '';
     row.dataset.trackIdx = String(idx);
     row.dataset.songPath = String(song.file?.path || song.path || '');
-    let sourceIdx = rawSongIndexMap.get(song);
+    const sourceIdx = rawSongIndexMap?.get(song) ?? idx;
     row.dataset.sourceTrackIdx = sourceIdx !== undefined ? String(sourceIdx) : '-1';
 
     if (isQueue) {
@@ -516,10 +543,7 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
           });
         }
       }
-    } else if ((isFav || state.currentView === 'playlist') &&
-        state.trackSortMode === 'custom' && uiVars.activeTrackFilter.field === 'all' &&
-        !playlist?.smartFilter && !isMusic && !isFolder && !isArtist &&
-        (state.currentView !== 'playlist' || state.playlistTrackDragReorderEnabled)) {
+    } else if (usesCustomTrackOrder) {
       row.draggable = false;
       row.style.cursor = 'grab';
       row.dataset.sourceTrackIdx = row.dataset.sourceTrackIdx || String(sourceIdx ?? '');
@@ -571,5 +595,51 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     const thumbImg = row.querySelector('.row-thumb-img');
     if (thumbImg) bindListSongCover(thumbImg, song);
     updatePlaylistRowTitleMarquee(row, Boolean(isCurrent && !isPlaybackPaused()));
-  });
+  };
+
+  const canVirtualize = Boolean(mainContent) &&
+    !isQueue &&
+    !usesCustomTrackOrder &&
+    songsToDisplay.length > VIRTUAL_TRACK_LIST_THRESHOLD;
+  if (canVirtualize) {
+    const priorVirtual = uiVars.trackListVirtual;
+    const priorRows = [...playlistTracksBody.querySelectorAll('.playlist-table-row')].slice(0, 20);
+    const measuredHeight = priorRows.length
+      ? priorRows.reduce((total, row) => total + row.getBoundingClientRect().height, 0) / priorRows.length
+      : 0;
+    const rowHeight = measuredHeight || priorVirtual?.rowHeight || 60;
+    const renderWindow = () => {
+      const { start, end } = getVirtualTrackRange(songsToDisplay.length, rowHeight);
+      clearContainerCovers(playlistTracksBody);
+      playlistTracksBody.replaceChildren();
+
+      const topSpacer = document.createElement('div');
+      topSpacer.className = 'track-list-virtual-spacer';
+      topSpacer.setAttribute('aria-hidden', 'true');
+      topSpacer.style.height = `${start * rowHeight}px`;
+      playlistTracksBody.appendChild(topSpacer);
+      for (let index = start; index < end; index += 1) {
+        renderRow(index, rowHeight);
+      }
+      const bottomSpacer = document.createElement('div');
+      bottomSpacer.className = 'track-list-virtual-spacer';
+      bottomSpacer.setAttribute('aria-hidden', 'true');
+      bottomSpacer.style.height = `${(songsToDisplay.length - end) * rowHeight}px`;
+      playlistTracksBody.appendChild(bottomSpacer);
+
+      uiVars.trackListVirtual = {
+        start,
+        end,
+        total: songsToDisplay.length,
+        rowHeight,
+        render: renderWindow
+      };
+    };
+    renderWindow();
+  } else {
+    uiVars.trackListVirtual = null;
+    for (let index = firstSongToRender; index < songsToDisplay.length; index += 1) {
+      renderRow(index);
+    }
+  }
 }

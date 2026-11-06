@@ -6,6 +6,7 @@ import { getProfileOverride } from './profileEditor.js';
 import { bindLazyCover } from './covers.js';
 import { navigateToView } from './navigation.js';
 import { escapeHtml } from './uiUtils.js';
+import { invalidateLibrarySongSearch } from './librarySearch.js';
 
 const LIBRARY_ENTITY_MAX_ENTRIES = 200;
 
@@ -14,9 +15,13 @@ export let libraryArtistsCache = { source: null, data: null, timestamp: 0 };
 
 let libraryAlbumsCache = { source: null, data: null, timestamp: 0 };
 
+let libraryAlbumSongCountsCache = { source: null, data: null, timestamp: 0 };
+
 export function invalidateLibraryEntityCaches() {
   libraryArtistsCache = { source: null, data: null, timestamp: 0 };
   libraryAlbumsCache = { source: null, data: null, timestamp: 0 };
+  libraryAlbumSongCountsCache = { source: null, data: null, timestamp: 0 };
+  invalidateLibrarySongSearch();
 }
 
 export function artistContextId(artistName) {
@@ -52,6 +57,38 @@ export function matchingAlbumSongs(artistName, albumTitle) {
   });
 }
 
+function getLibraryAlbumSongCounts() {
+  const now = Date.now();
+  if (libraryAlbumSongCountsCache.source === state.localMusicFiles &&
+      libraryAlbumSongCountsCache.data &&
+      now - libraryAlbumSongCountsCache.timestamp < 120000) {
+    return libraryAlbumSongCountsCache.data;
+  }
+
+  const counts = new Map();
+  state.localMusicFiles.forEach(song => {
+    const album = String(song.album || '').trim().toLocaleLowerCase();
+    if (!album) return;
+
+    const artistCredit = String(song.artist || '').trim();
+    const artists = new Set([
+      artistCredit.toLocaleLowerCase(),
+      ...artistsFromCredit(artistCredit).map(name => name.toLocaleLowerCase())
+    ]);
+    artists.forEach(artist => {
+      const key = JSON.stringify([album, artist]);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+  });
+
+  libraryAlbumSongCountsCache = {
+    source: state.localMusicFiles,
+    data: counts,
+    timestamp: now
+  };
+  return counts;
+}
+
 function getAlbumsMinTrackCount() {
   const raw = localStorage.getItem('pn_albums_min_tracks') || '0';
   return ['0', '3', '4', '5', '6'].includes(raw) ? Number(raw) : 0;
@@ -64,7 +101,11 @@ function isBlockAlbumsBelowFilterEnabled() {
 export function isAlbumNavigationBlocked(artistName, albumTitle) {
   const minTracks = getAlbumsMinTrackCount();
   if (!isBlockAlbumsBelowFilterEnabled() || minTracks === 0) return false;
-  return matchingAlbumSongs(artistName, albumTitle).length <= minTracks;
+  const key = JSON.stringify([
+    String(albumTitle || '').trim().toLocaleLowerCase(),
+    String(artistName || '').trim().toLocaleLowerCase()
+  ]);
+  return (getLibraryAlbumSongCounts().get(key) || 0) <= minTracks;
 }
 
 function escapeAttr(value) {

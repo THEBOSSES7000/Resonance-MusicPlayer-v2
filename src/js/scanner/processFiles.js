@@ -13,6 +13,7 @@ import { renderDirectories } from '../settings.js';
 import { playFromContext, renderFoldersUI, renderGrids, renderHistoryUI, renderPlaylistDetailView, renderPlaylistsHubUI, renderPlaylistsUI, renderQueue, renderSearchResultsContent, showConfirmDialog, updateFavoritesCount } from '../ui.js';
 import { addNativeMusicDirectory, refreshNativeMusicLibrary } from './libraryRefresh.js';
 import { showLibraryToast } from '../ui/libraryToast.js';
+import { invalidateLibraryEntityCaches } from '../ui/libraryEntities.js';
 
 export async function processAudioFiles(matchedFiles, baseFolderName, options = {}) {
   const scan = beginLibraryScan();
@@ -170,6 +171,7 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
 
   localStorage.setItem('pn_folders_info', JSON.stringify(state.configuredFolders));
   rebuildSongsIndex();
+  invalidateLibraryEntityCaches();
   if (hasChanges) {
     // Viene de un escaneo real: aquí sí es válido que la biblioteca guardada se reduzca (carpeta quitada, archivos borrados)
     await saveNativeLibraryCache(true, { allowShrink: true });
@@ -241,6 +243,7 @@ export async function rescanConfiguredMusic() {
       const failures = await loadSongMetadata(songsToRefresh, 'Actualizando biblioteca');
       state.localMusicFiles.sort((a, b) => (b.file?.lastModified || 0) - (a.file?.lastModified || 0));
       ensureStableIdsForLibrary();
+      invalidateLibraryEntityCaches();
       renderGrids();
       renderQueue();
       renderHistoryUI();

@@ -9,6 +9,7 @@ import { parseLyricsText } from '../scanner.js';
 import { getSongByIdOrPath, reindexSong, state } from '../state.js';
 import { invalidateLyricsTranslationCache } from './translation.js';
 import { audio, getPlaybackPosition, isPlaybackPaused, loadSong, seekPlayback } from '../audioPlayer.js';
+import { invalidateLibraryEntityCaches } from '../ui/libraryEntities.js';
 
 export async function saveTrackEdits() {
   if (!editTargetSong) return;
@@ -202,6 +203,7 @@ export async function saveTrackEdits() {
   }
 
   invalidateLyricsTranslationCache(song);
+  invalidateLibraryEntityCaches();
   try {
     const favKeys = new Set(JSON.parse(localStorage.getItem('pn_favorites_keys') || '[]'));
     if (favKeys.has(oldFavKey) && oldFavKey !== newFavKey) {

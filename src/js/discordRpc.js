@@ -7,18 +7,19 @@ const ARTWORK_CACHE_LIMIT = 60;
 
 function getCachedArtwork(key) {
   if (!ITUNES_ARTWORK_CACHE.has(key)) return undefined;
-  const value = ITUNES_ARTWORK_CACHE.get(key);
+  const entry = ITUNES_ARTWORK_CACHE.get(key);
   ITUNES_ARTWORK_CACHE.delete(key);
-  ITUNES_ARTWORK_CACHE.set(key, value);
-  return value;
+  if (!entry || entry.expiresAt <= Date.now()) return undefined;
+  ITUNES_ARTWORK_CACHE.set(key, entry);
+  return entry.url;
 }
 
-function cacheArtwork(key, value) {
+function cacheArtwork(key, url, ttlMs = 24 * 60 * 60 * 1000) {
   ITUNES_ARTWORK_CACHE.delete(key);
   while (ITUNES_ARTWORK_CACHE.size >= ARTWORK_CACHE_LIMIT) {
     ITUNES_ARTWORK_CACHE.delete(ITUNES_ARTWORK_CACHE.keys().next().value);
   }
-  ITUNES_ARTWORK_CACHE.set(key, value);
+  ITUNES_ARTWORK_CACHE.set(key, { url, expiresAt: Date.now() + ttlMs });
 }
 
 const elements = {
@@ -32,6 +33,10 @@ const elements = {
   settingStatus: document.getElementById('discord-rpc-setting-status'),
   artworkSetting: document.getElementById('discord-rpc-artwork-setting'),
   artworkMode: document.getElementById('discord-rpc-artwork-mode'),
+  artworkStatus: document.getElementById('discord-rpc-artwork-status'),
+  artworkHistoryButton: document.getElementById('discord-rpc-artwork-history-button'),
+  artworkHistory: document.getElementById('discord-rpc-artwork-history'),
+  artworkHistoryList: document.getElementById('discord-rpc-artwork-history-list'),
 };
 
 let playbackSnapshot = {
@@ -45,6 +50,9 @@ let playbackSnapshot = {
 };
 let lastRpcUpdateAt = 0;
 let presenceRevision = 0;
+let presenceUpdateInFlight = false;
+let presenceUpdateQueued = false;
+let artworkHistoryLoaded = false;
 
 function isEnabled() {
   return localStorage.getItem(SETTING_KEY) === 'true';
@@ -68,7 +76,22 @@ function setStatus(message, isError = false) {
 }
 
 function getTrackKey(track) {
-  return `${track.artist.trim().toLocaleLowerCase()}:::${track.title.trim().toLocaleLowerCase()}`;
+  const normalize = value => String(value || '').trim().toLocaleLowerCase();
+  return `${normalize(track.artist)}:::${normalize(track.title)}`;
+}
+
+function normalizeArtworkText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function isMatchingItunesResult(result, track) {
+  return normalizeArtworkText(result?.trackName) === normalizeArtworkText(track.title) &&
+    normalizeArtworkText(result?.artistName) === normalizeArtworkText(track.artist);
 }
 
 async function lookupItunesArtwork(track) {
@@ -89,7 +112,7 @@ async function lookupItunesArtwork(track) {
       let response;
       try {
         response = await fetch(
-          `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`,
+          `https://itunes.apple.com/search?term=${query}&entity=song&limit=25`,
           { signal: controller.signal }
         );
       } finally {
@@ -97,17 +120,17 @@ async function lookupItunesArtwork(track) {
       }
       if (!response.ok) throw new Error(`iTunes respondió ${response.status}.`);
       const data = await response.json();
-      const artworkUrl = data.results?.[0]?.artworkUrl100;
+      const match = data.results?.find(result => isMatchingItunesResult(result, track));
+      const artworkUrl = match?.artworkUrl100;
       if (typeof artworkUrl !== 'string' || !artworkUrl.startsWith('https://')) {
-        cacheArtwork(key, 'music_default');
+        cacheArtwork(key, 'music_default', 10 * 60 * 1000);
         return 'music_default';
       }
-      const highResolutionUrl = artworkUrl.replace(/\/100x100bb(?=\.jpg(?:\?|$))/i, '/512x512bb');
+      const highResolutionUrl = artworkUrl.replace(/\/\d+x\d+bb(?=\.jpg(?:\?|$))/i, '/512x512bb');
       cacheArtwork(key, highResolutionUrl);
       return highResolutionUrl;
     } catch (error) {
       console.warn('No se pudo buscar la carátula de la pista en iTunes:', error);
-      cacheArtwork(key, 'music_default');
       return 'music_default';
     } finally {
       ITUNES_ARTWORK_REQUESTS.delete(key);
@@ -117,18 +140,125 @@ async function lookupItunesArtwork(track) {
   return request;
 }
 
-async function updateNativePresence(revision = presenceRevision) {
+async function updateNativePresenceOnce(revision) {
   const invoke = window.__TAURI__?.core?.invoke;
   if (!invoke || !isEnabled()) return;
-  const snapshot = { ...playbackSnapshot };
   const mode = artworkMode();
-  snapshot.artworkMode = mode;
-  snapshot.largeImage = mode === 'artwork' && snapshot.title
-    ? await lookupItunesArtwork(snapshot)
+  const artworkTrack = { ...playbackSnapshot };
+  const largeImage = mode === 'artwork' && artworkTrack.title
+    ? await lookupItunesArtwork(artworkTrack)
     : 'music_default';
   if (revision !== presenceRevision || !isEnabled()) return;
+  const snapshot = {
+    ...playbackSnapshot,
+    artworkMode: mode,
+    largeImage
+  };
   await invoke('update_discord_presence', { update: snapshot });
   lastRpcUpdateAt = Date.now();
+}
+
+async function updateNativePresence(revision = presenceRevision) {
+  if (presenceUpdateInFlight) {
+    presenceUpdateQueued = true;
+    return;
+  }
+  presenceUpdateInFlight = true;
+  try {
+    let currentRevision = revision;
+    do {
+      presenceUpdateQueued = false;
+      await updateNativePresenceOnce(currentRevision);
+      currentRevision = presenceRevision;
+    } while (presenceUpdateQueued && isEnabled());
+  } finally {
+    presenceUpdateInFlight = false;
+    if (presenceUpdateQueued && isEnabled()) {
+      presenceUpdateQueued = false;
+      void updateNativePresence(presenceRevision).catch(error => {
+        console.error('No se pudo actualizar Discord Rich Presence:', error);
+      });
+    }
+  }
+}
+
+function syncArtworkHistoryVisibility() {
+  const localModeSelected = artworkMode() === 'local';
+  if (elements.artworkHistoryButton) {
+    elements.artworkHistoryButton.hidden = !isEnabled() || !localModeSelected;
+  }
+  if ((!localModeSelected || !isEnabled()) && elements.artworkHistory) {
+    elements.artworkHistory.hidden = true;
+    if (elements.artworkHistoryButton) {
+      elements.artworkHistoryButton.textContent = 'Mostrar historial de subida de carátula';
+    }
+  }
+}
+
+async function refreshArtworkHistory() {
+  if (!elements.artworkHistoryList) return;
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (!invoke) {
+    elements.artworkHistoryList.replaceChildren();
+    const item = document.createElement('li');
+    item.textContent = 'El historial solo está disponible en la aplicación de escritorio.';
+    elements.artworkHistoryList.appendChild(item);
+    return;
+  }
+  elements.artworkHistoryButton?.setAttribute('aria-busy', 'true');
+  try {
+    const failures = await invoke('get_discord_cover_upload_errors');
+    elements.artworkHistoryList.replaceChildren();
+    if (!Array.isArray(failures) || failures.length === 0) {
+      const item = document.createElement('li');
+      item.textContent = 'No hay errores de subida registrados.';
+      elements.artworkHistoryList.appendChild(item);
+      artworkHistoryLoaded = true;
+      return;
+    }
+    failures.forEach(failure => {
+      const item = document.createElement('li');
+      const title = document.createElement('strong');
+      title.textContent = failure.title || 'Canción desconocida';
+      const artist = document.createElement('span');
+      artist.textContent = failure.artist || 'Artista desconocido';
+      const error = document.createElement('span');
+      error.textContent = failure.error || 'Error desconocido al subir la carátula.';
+      const date = document.createElement('span');
+      const dateValue = Number(failure.failedAt);
+      date.textContent = Number.isFinite(dateValue) && dateValue > 0
+        ? new Date(dateValue * 1000).toLocaleString()
+        : '';
+      item.append(title, artist, error, date);
+      elements.artworkHistoryList.appendChild(item);
+    });
+    artworkHistoryLoaded = true;
+  } catch (error) {
+    console.error('No se pudo consultar el historial de subidas de carátulas:', error);
+    elements.artworkHistoryList.replaceChildren();
+    const item = document.createElement('li');
+    item.textContent = error instanceof Error ? error.message : String(error);
+    elements.artworkHistoryList.appendChild(item);
+  } finally {
+    elements.artworkHistoryButton?.removeAttribute('aria-busy');
+  }
+}
+
+function setArtworkStatus(payload) {
+  if (!elements.artworkStatus) return;
+  const songName = [payload?.title, payload?.artist].filter(Boolean).join(' — ');
+  const prefix = songName ? `${songName}: ` : '';
+  const messages = {
+    uploading: `${prefix}buscando y subiendo carátula…`,
+    success: `${prefix}carátula alojada correctamente.`,
+    missing: `${prefix}${payload?.error || 'no se encontró una carátula local.'}`,
+    error: `${prefix}${payload?.error || 'no se pudo subir la carátula.'}`
+  };
+  elements.artworkStatus.textContent = messages[payload?.status] || '';
+  elements.artworkStatus.classList.toggle('is-error', payload?.status === 'error');
+  if (elements.artworkHistory && !elements.artworkHistory.hidden) {
+    void refreshArtworkHistory();
+  }
 }
 
 export async function setDiscordRpcEnabled(enabled) {
@@ -151,6 +281,7 @@ export async function setDiscordRpcEnabled(enabled) {
     throw error;
   }
   localStorage.setItem(SETTING_KEY, String(enabled));
+  syncArtworkHistoryVisibility();
   setStatus(enabled ? 'Conectado con Discord.' : 'Discord Rich Presence desactivado.');
   if (enabled) {
     try {
@@ -183,6 +314,7 @@ export function openDiscordRpcContextMenu(x, y) {
 export function initDiscordRpc() {
   updateToggles(isEnabled());
   if (elements.artworkMode) elements.artworkMode.value = artworkMode();
+  syncArtworkHistoryVisibility();
 
   elements.settingsToggle?.addEventListener('change', async () => {
     const enabled = elements.settingsToggle.checked;
@@ -205,6 +337,7 @@ export function initDiscordRpc() {
       ? elements.artworkMode.value
       : 'artwork';
     localStorage.setItem(ARTWORK_MODE_SETTING_KEY, mode);
+    syncArtworkHistoryVisibility();
     if (isEnabled()) {
       presenceRevision += 1;
       void updateNativePresence(presenceRevision).catch(error => {
@@ -213,6 +346,22 @@ export function initDiscordRpc() {
       });
     }
   });
+  elements.artworkHistoryButton?.addEventListener('click', () => {
+    if (!elements.artworkHistory) return;
+    const shouldShow = elements.artworkHistory.hidden;
+    elements.artworkHistory.hidden = !shouldShow;
+    elements.artworkHistoryButton.textContent = shouldShow
+      ? 'Ocultar historial de subida de carátula'
+      : 'Mostrar historial de subida de carátula';
+    if (shouldShow || !artworkHistoryLoaded) void refreshArtworkHistory();
+  });
+  if (window.__TAURI__?.event?.listen) {
+    void window.__TAURI__.event.listen('discord-cover-upload-status', event => {
+      setArtworkStatus(event.payload || {});
+    }).catch(error => {
+      console.error('No se pudo escuchar el estado de subida de carátulas:', error);
+    });
+  }
   elements.visualPlusMenuToggle?.addEventListener('change', () => {
     if (!elements.visualPlusSettingsToggle) {
       console.error('No se encontró el control principal de Visual+.');
@@ -247,8 +396,10 @@ export function initDiscordRpc() {
   });
   document.addEventListener('pn-discord-presence-update', event => {
     const prevPlaying = Boolean(playbackSnapshot.playing);
+    const previousTrackKey = `${playbackSnapshot.filePath || ''}:::${getTrackKey(playbackSnapshot)}`;
     playbackSnapshot = { ...playbackSnapshot, ...event.detail };
-    presenceRevision += 1;
+    const nextTrackKey = `${playbackSnapshot.filePath || ''}:::${getTrackKey(playbackSnapshot)}`;
+    if (previousTrackKey !== nextTrackKey) presenceRevision += 1;
     const force = Boolean(event.detail?.force);
     const playing = Boolean(playbackSnapshot.playing);
     const playStateChanged = prevPlaying !== playing;
@@ -272,6 +423,10 @@ export function initDiscordRpc() {
     if (event.key === 'Escape') closeDiscordRpcContextMenu();
   });
   window.addEventListener('resize', closeDiscordRpcContextMenu);
+
+  void import('./audio/windowIntegration.js')
+    .then(({ notifyDiscordPresence }) => notifyDiscordPresence(true))
+    .catch(error => console.error('No se pudo sincronizar la pista actual con Discord:', error));
 
   if (isEnabled()) {
     void setDiscordRpcEnabled(true).catch(error => {

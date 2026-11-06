@@ -550,6 +550,12 @@
   flex-direction: column;
 }
 
+.track-list-virtual-spacer {
+  flex: 0 0 auto;
+  width: 100%;
+  pointer-events: none;
+}
+
 .playlist-table-row {
   display: grid;
   grid-template-columns: 46px minmax(220px, 2.5fr) minmax(140px, 1.8fr) minmax(130px, 1.2fr) 60px;

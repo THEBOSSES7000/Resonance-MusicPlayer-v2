@@ -27,6 +27,6 @@ export const uiVars = {
   renderedTrackContextTitle: '',
   lastMusicBrainzRequestAt: 0,
   musicBrainzRequestQueue: Promise.resolve(),
-  /** @type {null | { start: number, end: number, total: number, rowHeight: number }} */
+  /** @type {null | { start: number, end: number, total: number, rowHeight: number, render: () => void }} */
   trackListVirtual: null
 };

@@ -349,8 +349,44 @@
   accent-color: var(--accent-purple);
 }
 .visual-plus-range-row { max-width: 480px; }
+.visual-plus-liquid-quality { display: grid; gap: 0.2rem; }
+.visual-plus-liquid-quality .visual-plus-range-row input[type="range"] { max-width: 100%; }
+.visual-plus-quality-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 480px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+.visual-plus-quality-labels span:nth-child(2) { text-align: center; }
+.visual-plus-quality-labels span:last-child { text-align: right; }
+.visual-plus-liquid-quality .settings-hint { margin: 0.25rem 0 0; opacity: 0.8; font-size: 0.82rem; }
 
 .visual-plus-range-row input:disabled { cursor: not-allowed; opacity: 0.5; }
+.discord-rpc-artwork-tools { display: grid; gap: 0.55rem; padding: 0 1rem 0.75rem; }
+.discord-rpc-artwork-status { margin: 0; color: var(--text-muted); font-size: 0.82rem; }
+.discord-rpc-artwork-history-button {
+  justify-self: start;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.discord-rpc-artwork-history-button:hover { border-color: var(--accent-purple); color: var(--accent-light); }
+.discord-rpc-artwork-history { display: grid; gap: 0.55rem; }
+.discord-rpc-artwork-history[hidden],
+.discord-rpc-artwork-history-button[hidden] { display: none; }
+.discord-rpc-artwork-history .settings-hint { margin: 0; color: var(--text-muted); font-size: 0.78rem; }
+.discord-rpc-artwork-history ul { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.discord-rpc-artwork-history li { padding: 0.65rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: 0.55rem; }
+.discord-rpc-artwork-history li strong { display: block; color: var(--text-main); font-size: 0.84rem; }
+.discord-rpc-artwork-history li span { display: block; margin-top: 0.2rem; color: var(--text-muted); font-size: 0.78rem; overflow-wrap: anywhere; }
 .settings-scan-progress { width: 100%; max-width: 380px; }
 .library-scan-cancel { align-self: flex-start; padding: 0.35rem 0.7rem; font-size: 0.78rem; }
 .library-scan-cancel[hidden] { display: none; }

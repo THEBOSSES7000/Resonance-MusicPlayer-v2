@@ -11,7 +11,7 @@ import { renderSearchResultsContent } from './search.js';
 import { syncLiquidAnimationPlayState } from '../../visual_plus/blurred_background.js';
 import { syncImmersiveAnimationPlayState } from '../../visual_plus/liquid_background.js';
 import { syncLyricsDockButtonStates, syncLyricsDockPlayIcon } from './lyricsDock.js';
-import { albumContextId, artistContextId, syncPlayerAlbumLinkState } from './libraryEntities.js';
+import { albumContextId, artistContextId, invalidateLibraryEntityCaches, syncPlayerAlbumLinkState } from './libraryEntities.js';
 import { syncSoundWave } from './uiUtils.js';
 import { syncLibraryAlbumIndicators } from './homeGrids.js';
 import { sameQuickSongReference } from './collections.js';
@@ -110,6 +110,7 @@ export async function ensureSongMetadata(song) {
       } finally {
         song.metadataLoaded = true;
         delete song.metadataPromise;
+        invalidateLibraryEntityCaches();
         updateSongCardsDOM(song);
         if (state.currentView === 'favorites' || state.currentView === 'playlist' || state.currentView === 'all-music' || state.currentView === 'folder-detail') {
           renderPlaylistDetailView();

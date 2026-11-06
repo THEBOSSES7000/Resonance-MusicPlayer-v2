@@ -55,6 +55,7 @@ const DEFAULTS = {
   wsGlowColor: '#6ea8ff',
   liquidSpeed: 100,
   liquidStatic: false,
+  liquidQuality: 'balanced',
 };
 
 export const VISUAL_PLUS_THEME_OPTION_KEYS = {
@@ -81,7 +82,7 @@ export const VISUAL_PLUS_THEME_OPTION_KEYS = {
     'wsReactivity', 'wsIntensity', 'wsPeakGlow', 'wsOpacity', 'wsPeakGlowIntensity',
     'wsUiVeil', 'wsUiVeilOpacity', 'wsGlowColorMode', 'wsGlowColor',
   ],
-  liquid: ['liquidSpeed', 'liquidStatic'],
+  liquid: ['liquidSpeed', 'liquidStatic', 'liquidQuality'],
 };
 
 export function migrateVisualPlusThemeId(theme) {

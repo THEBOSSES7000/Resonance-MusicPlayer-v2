@@ -174,6 +174,7 @@ pub fn run() {
             settings::save_window_bounds,
             discord::set_discord_rpc_enabled,
             discord::update_discord_presence,
+            discord::get_discord_cover_upload_errors,
             music_directories::add_music_directory,
             music_directories::select_music_file,
             exports::save_m3u8_file,

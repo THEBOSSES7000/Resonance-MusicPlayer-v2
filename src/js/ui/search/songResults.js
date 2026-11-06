@@ -11,15 +11,12 @@ import { escapeHtml } from '../uiUtils.js';
 import { updateQueuePositionIndicator } from '../queueHistory.js';
 import { updatePlaylistRowTitleMarquee } from '../playback.js';
 import { isPlaybackPaused } from '../../audioPlayer.js';
+import { searchLibrarySongs } from '../librarySearch.js';
 
 /** Resultados de búsqueda de la pestaña «Canciones». */
 export function renderSongSearchResults(append, previousVisibleCount, q, displayQuery) {
     if (!append) {
-      uiVars.renderedSearchSongsList = state.localMusicFiles.filter(s =>
-        (s.title && s.title.toLowerCase().includes(q)) ||
-        (s.artist && s.artist.toLowerCase().includes(q)) ||
-        (s.album && s.album.toLowerCase().includes(q))
-      );
+      uiVars.renderedSearchSongsList = searchLibrarySongs(q);
     }
     const matches = uiVars.renderedSearchSongsList;
 

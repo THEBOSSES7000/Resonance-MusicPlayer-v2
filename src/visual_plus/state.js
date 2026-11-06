@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   theme: 'shooting_stars',
   liquidSpeed: 100,
   liquidStatic: false,
+  liquidQuality: 'balanced',
   colorDiversity: 55,
   starCount: 120,
   starBrightness: 100,

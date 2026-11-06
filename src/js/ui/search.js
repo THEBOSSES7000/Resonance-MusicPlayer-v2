@@ -17,6 +17,7 @@ import { albumsMinTrackCount } from './init.js';
 import { syncLibraryAlbumIndicators } from './homeGrids.js';
 import { isPlaybackPaused } from '../audioPlayer.js';
 import { renderQueueSearchResults } from './search/queueResults.js';
+import { searchLibrarySongs } from './librarySearch.js';
 
 let lastSearchRenderedQuery = '';
 
@@ -62,15 +63,7 @@ export function renderSearchSuggestions(query) {
     return;
   }
 
-  const songMatches = [];
-  for (let i = 0; i < state.localMusicFiles.length; i++) {
-    const song = state.localMusicFiles[i];
-    if ([song.title, song.artist, song.album].some(value =>
-      value && value.toLocaleLowerCase().includes(normalizedQuery)
-    )) {
-      songMatches.push(song);
-    }
-  }
+  const songMatches = searchLibrarySongs(normalizedQuery);
   const playlistMatches = state.playlists.filter(playlist =>
     [playlist.title, playlist.description].some(value =>
       value && value.toLocaleLowerCase().includes(normalizedQuery)

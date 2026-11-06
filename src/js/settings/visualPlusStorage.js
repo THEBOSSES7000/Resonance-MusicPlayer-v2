@@ -15,6 +15,7 @@ export const DEFAULT_VISUAL_PLUS = {
   sophisticatedLyrics: false,
   liquidSpeed: 100,
   liquidStatic: false,
+  liquidQuality: 'balanced',
   starCount: 120,
   starBrightness: 100,
   shootingStarCount: 2,
@@ -114,6 +115,9 @@ export function loadVisualPlusSettings() {
   const profile = settings.themeProfiles[settings.theme];
   if (profile && typeof profile === 'object') {
     Object.assign(settings, profile);
+  }
+  if (!['performance', 'balanced', 'quality'].includes(settings.liquidQuality)) {
+    settings.liquidQuality = 'balanced';
   }
   return settings;
 }

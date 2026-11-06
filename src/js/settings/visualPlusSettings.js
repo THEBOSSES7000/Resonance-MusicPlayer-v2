@@ -10,6 +10,7 @@ const DEFAULT_VISUAL_PLUS_SETTINGS = {
   theme: 'shooting_stars',
   liquidSpeed: 100,
   liquidStatic: false,
+  liquidQuality: 'balanced',
   sophisticatedLyrics: false,
   starCount: 120,
   starBrightness: 100,
@@ -94,6 +95,7 @@ function readVisualPlusSettings() {
   if (!settings.ps3WaveColorMode) settings.ps3WaveColorMode = 'classic';
   if (settings.liquidSpeed != null) settings.liquidSpeed = Math.round(Number(settings.liquidSpeed)) || 100;
   if (typeof settings.liquidStatic !== 'boolean') settings.liquidStatic = false;
+  if (!['performance', 'balanced', 'quality'].includes(settings.liquidQuality)) settings.liquidQuality = 'balanced';
   delete settings.blurredSpeed;
   delete settings.blurredStatic;
   delete settings.colorDiversity;
@@ -128,6 +130,7 @@ function readVisualPlusSettings() {
       !Number.isInteger(settings.shootingSpeed) || settings.shootingSpeed < 50 || settings.shootingSpeed > 200 ||
       !Number.isInteger(settings.liquidSpeed) || settings.liquidSpeed < 25 || settings.liquidSpeed > 200 ||
       typeof settings.liquidStatic !== 'boolean' ||
+      !['performance', 'balanced', 'quality'].includes(settings.liquidQuality) ||
       !Number.isInteger(settings.trailLength) || settings.trailLength < 80 || settings.trailLength > 260 ||
       !Number.isInteger(settings.particleCount) || settings.particleCount < 20 || settings.particleCount > 150 ||
       !Number.isInteger(settings.particleSpeed) || settings.particleSpeed < 10 || settings.particleSpeed > 80 ||
@@ -180,6 +183,9 @@ export function initVisualPlusSettings() {
   const sophisticatedLyricsToggle = document.getElementById('visual-plus-sophisticated-lyrics');
   const starAudioReactiveToggle = document.getElementById('visual-plus-star-audio-reactive');
   const liquidStaticToggle = document.getElementById('visual-plus-liquid-static');
+  const liquidQualityInput = document.getElementById('visual-plus-liquid-quality');
+  const liquidQualityValue = document.getElementById('visual-plus-liquid-quality-value');
+  const liquidQualityDescription = document.getElementById('visual-plus-liquid-quality-description');
   const ps3BgColorModeSelect = document.getElementById('visual-plus-ps3-bg-color-mode');
   const ps3BgColorInput = document.getElementById('visual-plus-ps3-bg-color');
   const ps3WaveColorModeSelect = document.getElementById('visual-plus-ps3-wave-color-mode');
@@ -439,6 +445,20 @@ export function initVisualPlusSettings() {
     output.textContent = formatValue(settings[key]);
   };
   const visualPlusOptions = document.getElementById('visual-plus-options');
+  const liquidQualityOptions = [
+    { value: 'performance', label: 'Rendimiento', description: 'Reduce la resolución y el desenfoque para ahorrar GPU.' },
+    { value: 'balanced', label: 'Equilibrado', description: 'Equilibra el detalle visual y el uso de recursos.' },
+    { value: 'quality', label: 'Calidad', description: 'Aumenta la resolución y el desenfoque; requiere más GPU.' }
+  ];
+  const syncLiquidQualityControl = () => {
+    if (!liquidQualityInput) return;
+    const index = Math.max(0, liquidQualityOptions.findIndex(option => option.value === settings.liquidQuality));
+    const selected = liquidQualityOptions[index];
+    liquidQualityInput.value = String(index);
+    liquidQualityInput.disabled = !settings.enabled || settings.theme !== 'liquid';
+    if (liquidQualityValue) liquidQualityValue.textContent = selected.label;
+    if (liquidQualityDescription) liquidQualityDescription.textContent = selected.description;
+  };
   const syncEffectOptions = () => {
     const particlesSelected = settings.theme === 'reactive_particles';
     const atmosphericSelected = settings.theme === 'atmospheric';
@@ -462,6 +482,7 @@ export function initVisualPlusSettings() {
     if (liquidStaticToggle) {
       liquidStaticToggle.disabled = !settings.enabled || !isLiquidOnly;
     }
+    syncLiquidQualityControl();
     if (particlesSettings) particlesSettings.hidden = !settings.enabled || !particlesSelected;
     if (atmosphericSettings) atmosphericSettings.hidden = !settings.enabled || !atmosphericSelected;
     if (particleColorRow) particleColorRow.hidden = settings.particleColorMode !== 'custom';
@@ -511,6 +532,16 @@ export function initVisualPlusSettings() {
     });
     input.addEventListener('change', () => persistVisualPlusSettings(settings));
   });
+  liquidQualityInput?.addEventListener('input', () => {
+    const selected = liquidQualityOptions[Number(liquidQualityInput.value)];
+    if (!selected) return;
+    settings = { ...settings, liquidQuality: selected.value };
+    syncLiquidQualityControl();
+    document.dispatchEvent(new CustomEvent('pn-visual-plus-settings-changed', {
+      detail: { ...settings }
+    }));
+  });
+  liquidQualityInput?.addEventListener('change', () => persistVisualPlusSettings(settings));
   particleColorModeSelect?.addEventListener('change', () => {
     settings.particleColorMode = particleColorModeSelect.value;
     syncEffectOptions();
