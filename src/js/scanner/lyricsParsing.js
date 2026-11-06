@@ -5,37 +5,66 @@ export function parseLyricsText(raw) {
   const rawLines = raw.split(/\r?\n/);
   const timeRegex = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
   const tagRegex = /^\[(ti|ar|al|by|offset|length|re|ve|au|x-translation):.*\]$/i;
+  const voiceRegex = /(?:\[(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)(?:\s*:[^\]]*)?\]|<(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)>|\{(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\}|\((?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\))/gi;
+  const voicePrefixRegex = /^((?:\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]\s*)*)(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\s*:\s*/i;
 
   const syncedLines = [];
   const plainLines = [];
   let hasTimestamp = false;
+  const voiceIndexes = new Map();
   const parseTimestamp = match => {
     const minutes = Number.parseInt(match[1], 10);
     const seconds = Number.parseInt(match[2], 10);
     const fraction = match[3] || '0';
     return minutes * 60 + seconds + Number.parseInt(fraction.padEnd(3, '0'), 10) / 1000;
   };
+  const stripLyricBrackets = text => text.replace(/[\[\]]/g, '');
 
   for (const line of rawLines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     if (tagRegex.test(trimmed)) continue;
 
-    const lineTimes = [...trimmed.matchAll(timeRegex)].map(parseTimestamp);
-    const timedWords = parseInlineLyricWords(trimmed);
+    const voiceMatches = [...trimmed.matchAll(voiceRegex)];
+    const voicePrefix = trimmed.match(voicePrefixRegex);
+    const voice = voicePrefix?.[2] || (voiceMatches.length
+      ? voiceMatches[voiceMatches.length - 1].slice(1).find(Boolean)
+      : null);
+    const lyricText = trimmed.replace(voiceRegex, '').replace(voicePrefixRegex, '$1').trim();
+    if (!lyricText) continue;
+
+    const lineTimes = [...lyricText.matchAll(timeRegex)].map(parseTimestamp);
+    const timedWords = parseInlineLyricWords(lyricText);
     if (lineTimes.length > 0 || timedWords) {
       hasTimestamp = true;
-      const text = timedWords?.text || trimmed.replace(timeRegex, '').trim();
-      const words = timedWords?.words;
+      const text = stripLyricBrackets(timedWords?.text || lyricText.replace(timeRegex, '').trim()).trim();
+      const words = timedWords?.words?.map(word => ({
+        ...word,
+        text: stripLyricBrackets(word.text)
+      }));
       const times = lineTimes.length > 0 ? lineTimes : [words[0].time];
       for (const time of times) {
-        syncedLines.push({ time, text: text || '•••', ...(words ? { words } : {}) });
+        syncedLines.push({
+          time,
+          text: text || '•••',
+          ...(voice ? { voice } : {}),
+          ...(words ? { words } : {})
+        });
       }
     } else {
-      plainLines.push(trimmed);
-      syncedLines.push({ time: null, text: trimmed });
+      const text = stripLyricBrackets(lyricText).trim();
+      if (!text) continue;
+      plainLines.push(text);
+      syncedLines.push({ time: null, text, ...(voice ? { voice } : {}) });
     }
   }
+
+  syncedLines.forEach(line => {
+    if (line.voice && !voiceIndexes.has(line.voice)) {
+      voiceIndexes.set(line.voice, voiceIndexes.size + 1);
+    }
+    if (line.voice) line.voiceIndex = voiceIndexes.get(line.voice);
+  });
 
   if (hasTimestamp) {
     syncedLines.sort((a, b) => {
@@ -46,11 +75,13 @@ export function parseLyricsText(raw) {
 
     return {
       isSynced: true,
+      hasMultipleVoices: voiceIndexes.size > 1,
       lines: syncedLines.filter(l => l.text.length > 0)
     };
   } else {
     return {
       isSynced: false,
+      hasMultipleVoices: voiceIndexes.size > 1,
       lines: plainLines
     };
   }

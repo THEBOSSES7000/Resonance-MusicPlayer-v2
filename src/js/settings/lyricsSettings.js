@@ -158,6 +158,38 @@ export function applyWordTimedLyricsAnimation(enabled) {
   document.dispatchEvent(new CustomEvent('pn-lyrics-active-row-animation-changed'));
 }
 
+export function applyMultiVoiceLyrics(enabled) {
+  const isEnabled = Boolean(enabled);
+  const input = document.getElementById('lyrics-multi-voice-enabled');
+  if (input) input.checked = isEnabled;
+  document.documentElement.dataset.lyricsMultiVoiceEnabled = String(isEnabled);
+  document.querySelectorAll('.lyrics-multi-voice-option').forEach(option => {
+    option.classList.toggle('is-disabled', !isEnabled);
+    const control = option.querySelector('input, select');
+    if (control) control.disabled = !isEnabled;
+  });
+  localStorage.setItem('pn_lyrics_multi_voice_enabled_v2', String(isEnabled));
+  document.dispatchEvent(new CustomEvent('pn-lyrics-multi-voice-settings-changed'));
+}
+
+export function applyMultiVoiceColors(enabled) {
+  const isEnabled = Boolean(enabled);
+  const input = document.getElementById('lyrics-voice-colors-enabled');
+  if (input) input.checked = isEnabled;
+  document.documentElement.dataset.lyricsVoiceColors = String(isEnabled);
+  localStorage.setItem('pn_lyrics_voice_colors_enabled', String(isEnabled));
+  document.dispatchEvent(new CustomEvent('pn-lyrics-multi-voice-settings-changed'));
+}
+
+export function applyMultiVoiceLayout(layout) {
+  const selectedLayout = layout === 'voice-one-right' ? 'voice-one-right' : 'voice-one-left';
+  const input = document.getElementById('lyrics-voice-layout');
+  if (input) input.value = selectedLayout;
+  document.documentElement.dataset.lyricsMultiVoiceLayout = selectedLayout;
+  localStorage.setItem('pn_lyrics_multi_voice_layout', selectedLayout);
+  document.dispatchEvent(new CustomEvent('pn-lyrics-multi-voice-settings-changed'));
+}
+
 export function initLyricsFocusModeSettings() {
   const autoCloseInput = document.getElementById('lyrics-auto-close-empty-enabled');
   const hideChromeInput = document.getElementById('lyrics-hide-chrome-enabled');

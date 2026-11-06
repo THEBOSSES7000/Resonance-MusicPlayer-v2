@@ -135,7 +135,8 @@ function cloneOriginalLyrics(line) {
 }
 
 function replaceLyricsLineLayers(line, baseLayers) {
-  line.replaceChildren(...baseLayers);
+  const voiceBar = line.querySelector('.lyric-voice-bar');
+  line.replaceChildren(...(voiceBar ? [voiceBar, ...baseLayers] : baseLayers));
 }
 
 function restoreOriginalLyrics() {

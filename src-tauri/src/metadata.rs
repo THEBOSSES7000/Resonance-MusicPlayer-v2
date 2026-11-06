@@ -55,6 +55,261 @@ pub struct TrackTextMetadata {
     pub album: Option<String>,
 }
 
+fn read_id3_synchronized_lyrics(path: &Path) -> Result<Option<String>, String> {
+    use lofty::id3::v2::{FrameFlags, SyncTextContentType, SynchronizedTextFrame, TimestampFormat};
+    use std::io::{ErrorKind, Read, Seek, SeekFrom};
+
+    if !path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("mp3"))
+    {
+        return Ok(None);
+    }
+
+    let mut file = fs::File::open(path)
+        .map_err(|error| format!("No se pudieron leer letras sincronizadas: {error}"))?;
+    let mut header = [0; 10];
+    match file.read_exact(&mut header) {
+        Ok(()) => {}
+        Err(error) if error.kind() == ErrorKind::UnexpectedEof => return Ok(None),
+        Err(error) => return Err(format!("No se pudieron leer letras sincronizadas: {error}")),
+    }
+    if &header[..3] != b"ID3" || !(2..=4).contains(&header[3]) {
+        return Ok(None);
+    }
+
+    let version = header[3];
+    if version == 2 && header[5] & 0x40 != 0 {
+        return Ok(None);
+    }
+    if header[6..10].iter().any(|byte| byte & 0x80 != 0) {
+        return Ok(None);
+    }
+    let tag_size = header[6..10]
+        .iter()
+        .fold(0_u64, |size, byte| (size << 7) | u64::from(byte & 0x7f));
+    let tag_end = 10_u64.saturating_add(tag_size);
+    let file_size = file
+        .metadata()
+        .map_err(|error| format!("No se pudieron leer letras sincronizadas: {error}"))?
+        .len();
+    if tag_end > file_size {
+        return Ok(None);
+    }
+
+    let mut offset = 10_u64;
+    if version >= 3 && header[5] & 0x40 != 0 {
+        let mut size_bytes = [0; 4];
+        file.read_exact(&mut size_bytes)
+            .map_err(|error| format!("Cabecera ID3 extendida no válida: {error}"))?;
+        let extended_size = if version == 4 {
+            size_bytes
+                .iter()
+                .fold(0_u64, |size, byte| (size << 7) | u64::from(byte & 0x7f))
+        } else {
+            u64::from(u32::from_be_bytes(size_bytes)).saturating_add(4)
+        };
+        offset = offset.saturating_add(extended_size);
+    }
+
+    let tag_unsynchronised = header[5] & 0x80 != 0;
+    let mut frames = Vec::new();
+    let frame_header_size = if version == 2 { 6_u64 } else { 10_u64 };
+    while offset.saturating_add(frame_header_size) <= tag_end {
+        let (frame_id, frame_size, frame_flags, supported_format) = if version == 2 {
+            let mut frame_header = [0; 6];
+            file.seek(SeekFrom::Start(offset))
+                .and_then(|_| file.read_exact(&mut frame_header))
+                .map_err(|error| format!("Cabecera ID3 no válida: {error}"))?;
+            if frame_header[..3].iter().all(|byte| *byte == 0) {
+                break;
+            }
+            let size =
+                u32::from_be_bytes([0, frame_header[3], frame_header[4], frame_header[5]]) as u64;
+            (
+                frame_header[..3].to_vec(),
+                size,
+                FrameFlags::default(),
+                true,
+            )
+        } else {
+            let mut frame_header = [0; 10];
+            file.seek(SeekFrom::Start(offset))
+                .and_then(|_| file.read_exact(&mut frame_header))
+                .map_err(|error| format!("Cabecera ID3 no válida: {error}"))?;
+            if frame_header[..4].iter().all(|byte| *byte == 0) {
+                break;
+            }
+            let size = if version == 4 {
+                frame_header[4..8]
+                    .iter()
+                    .fold(0_u64, |size, byte| (size << 7) | u64::from(byte & 0x7f))
+            } else {
+                u64::from(u32::from_be_bytes(frame_header[4..8].try_into().unwrap()))
+            };
+            let format_flags = frame_header[9];
+            let supported_format = if version == 4 {
+                format_flags & (0x40 | 0x08 | 0x04 | 0x01) == 0
+            } else {
+                format_flags & (0x80 | 0x40 | 0x20) == 0
+            };
+            let flags = FrameFlags {
+                unsynchronisation: version == 4 && format_flags & 0x02 != 0,
+                ..FrameFlags::default()
+            };
+            (frame_header[..4].to_vec(), size, flags, supported_format)
+        };
+
+        let data_offset = offset.saturating_add(frame_header_size);
+        if frame_size == 0 || data_offset.saturating_add(frame_size) > tag_end {
+            break;
+        }
+
+        if supported_format && (frame_id.as_slice() == b"SYLT" || frame_id.as_slice() == b"SLT") {
+            const MAX_SYNC_FRAME_SIZE: u64 = 4 * 1024 * 1024;
+            if frame_size <= MAX_SYNC_FRAME_SIZE {
+                let mut data = vec![0; frame_size as usize];
+                file.seek(SeekFrom::Start(data_offset))
+                    .and_then(|_| file.read_exact(&mut data))
+                    .map_err(|error| format!("No se pudo leer un frame SYLT: {error}"))?;
+                if tag_unsynchronised || frame_flags.unsynchronisation {
+                    let mut decoded = Vec::with_capacity(data.len());
+                    let mut index = 0;
+                    while index < data.len() {
+                        decoded.push(data[index]);
+                        if data[index] == 0xff
+                            && data.get(index + 1) == Some(&0)
+                            && data
+                                .get(index + 2)
+                                .map_or(true, |next| *next == 0 || *next >= 0xe0)
+                        {
+                            index += 1;
+                        }
+                        index += 1;
+                    }
+                    data = decoded;
+                }
+                if let Ok(frame) = SynchronizedTextFrame::parse(&data, frame_flags) {
+                    if matches!(
+                        frame.content_type,
+                        SyncTextContentType::Lyrics | SyncTextContentType::TextTranscription
+                    ) && !frame.content.is_empty()
+                    {
+                        frames.push(frame);
+                    }
+                }
+            }
+        }
+        offset = data_offset.saturating_add(frame_size);
+    }
+
+    if frames.is_empty() {
+        return Ok(None);
+    }
+
+    let separate_voices = frames.len() > 1;
+    let mut lines = Vec::new();
+    for (frame_index, frame) in frames.iter().enumerate() {
+        let word_synchronised = frame
+            .content
+            .iter()
+            .filter(|(_, text)| !text.trim().is_empty())
+            .all(|(_, text)| !text.chars().any(char::is_whitespace));
+        let voice = if separate_voices {
+            format!("[voice:{}]", frame_index + 1)
+        } else {
+            String::new()
+        };
+        let mut word_line = String::new();
+        let word_count = frame
+            .content
+            .iter()
+            .filter(|(_, text)| !text.trim().is_empty())
+            .count();
+        let mut words_written = 0;
+        for (timestamp, text) in &frame.content {
+            let text = text.trim();
+            if text.is_empty() {
+                continue;
+            }
+            let milliseconds = match frame.timestamp_format {
+                TimestampFormat::MS => u64::from(*timestamp),
+                TimestampFormat::MPEG => u64::from(*timestamp) * 1000 / 75,
+            };
+            let minutes = milliseconds / 60_000;
+            let seconds = (milliseconds / 1000) % 60;
+            let fraction = milliseconds % 1000;
+            if word_synchronised {
+                word_line.push_str(&format!("<{minutes:02}:{seconds:02}.{fraction:03}>{text}"));
+                words_written += 1;
+                if words_written < word_count {
+                    word_line.push(' ');
+                }
+            } else {
+                lines.push(format!(
+                    "[{minutes:02}:{seconds:02}.{fraction:03}]{voice}{text}"
+                ));
+            }
+        }
+        if !word_line.is_empty() {
+            lines.push(format!("{voice}{word_line}"));
+        }
+    }
+    Ok(Some(lines.join("\n")))
+}
+
+#[cfg(test)]
+mod synchronized_lyrics_tests {
+    use super::read_id3_synchronized_lyrics;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT_TEST_FILE: AtomicU64 = AtomicU64::new(0);
+
+    fn append_sync_frame(tag: &mut Vec<u8>, description: &str, text: &str, milliseconds: u32) {
+        let mut frame = vec![3, b'e', b'n', b'g', 2, 1];
+        frame.extend_from_slice(description.as_bytes());
+        frame.push(0);
+        frame.extend_from_slice(text.as_bytes());
+        frame.push(0);
+        frame.extend_from_slice(&milliseconds.to_be_bytes());
+
+        tag.extend_from_slice(b"SYLT");
+        tag.extend_from_slice(&(frame.len() as u32).to_be_bytes());
+        tag.extend_from_slice(&[0, 0]);
+        tag.extend_from_slice(&frame);
+    }
+
+    #[test]
+    fn extracts_word_timing_and_separate_voices_from_sylt_frames() {
+        let mut tag = b"ID3\x04\x00\x00\x00\x00\x00\x00".to_vec();
+        let frame_offset = tag.len();
+        append_sync_frame(&mut tag, "voice1", "hello", 500);
+        append_sync_frame(&mut tag, "voice2", "world", 500);
+
+        let tag_size = (tag.len() - frame_offset) as u32;
+        tag[6] = ((tag_size >> 21) & 0x7f) as u8;
+        tag[7] = ((tag_size >> 14) & 0x7f) as u8;
+        tag[8] = ((tag_size >> 7) & 0x7f) as u8;
+        tag[9] = (tag_size & 0x7f) as u8;
+
+        let sequence = NEXT_TEST_FILE.fetch_add(1, Ordering::Relaxed);
+        let path: PathBuf = std::env::temp_dir().join(format!(
+            "resonance-sylt-test-{}-{sequence}.mp3",
+            std::process::id()
+        ));
+        fs::write(&path, tag).unwrap();
+        let result = read_id3_synchronized_lyrics(&path);
+        let _ = fs::remove_file(&path);
+        let lyrics = result.unwrap().unwrap();
+
+        assert!(lyrics.contains("[voice:1]<00:00.500>hello"));
+        assert!(lyrics.contains("[voice:2]<00:00.500>world"));
+    }
+}
+
 #[tauri::command]
 pub fn read_track_text_metadata(app: AppHandle, path: String) -> Result<TrackTextMetadata, String> {
     use lofty::prelude::*;
@@ -168,7 +423,14 @@ pub fn scan_path_metadata_with_context(
     };
 
     let lyrics = if include_lyrics {
-        read_tag(&ItemKey::Lyrics)
+        match read_id3_synchronized_lyrics(&file_path) {
+            Ok(Some(lyrics)) => Some(lyrics),
+            Ok(None) => read_tag(&ItemKey::Lyrics),
+            Err(error) => {
+                eprintln!("{error}");
+                read_tag(&ItemKey::Lyrics)
+            }
+        }
     } else {
         None
     };

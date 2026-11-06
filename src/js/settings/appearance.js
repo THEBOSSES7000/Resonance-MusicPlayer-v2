@@ -3,7 +3,7 @@
 import { themeOptions } from './dom.js';
 import { configureProgressWaveform, setProgressStyle } from '../audioPlayer.js';
 import { applyFavoritesDisplayName, applyListTrackNumbersVisibility } from '../ui.js';
-import { LYRIC_SETTINGS, applyActiveRowAnimation, applyActiveRowFillDirection, applyLyricAlignment, applyLyricItalic, applyLyricSettings, applyLyricsFont, applyLyricsMotion, applyLyricsTransition, applyWordTimedLyricsAnimation, initLyricsFocusModeSettings } from './lyricsSettings.js';
+import { LYRIC_SETTINGS, applyActiveRowAnimation, applyActiveRowFillDirection, applyLyricAlignment, applyLyricItalic, applyLyricSettings, applyLyricsFont, applyLyricsMotion, applyLyricsTransition, applyMultiVoiceColors, applyMultiVoiceLayout, applyMultiVoiceLyrics, applyWordTimedLyricsAnimation, initLyricsFocusModeSettings } from './lyricsSettings.js';
 
 const AVAILABLE_THEMES = ['purple', 'purple-aurora', 'blue', 'blue-boreal', 'teal', 'teal-jade'];
 
@@ -357,6 +357,18 @@ export function initAppearanceSettings() {
   document.getElementById('lyrics-word-timing-enabled')?.addEventListener('change', event => {
     applyWordTimedLyricsAnimation(event.currentTarget.checked);
   });
+  applyMultiVoiceLyrics(readStoredBoolean('pn_lyrics_multi_voice_enabled_v2', true));
+  document.getElementById('lyrics-multi-voice-enabled')?.addEventListener('change', event => {
+    applyMultiVoiceLyrics(event.currentTarget.checked);
+  });
+  applyMultiVoiceColors(readStoredBoolean('pn_lyrics_voice_colors_enabled', true));
+  document.getElementById('lyrics-voice-colors-enabled')?.addEventListener('change', event => {
+    applyMultiVoiceColors(event.currentTarget.checked);
+  });
+  applyMultiVoiceLayout(localStorage.getItem('pn_lyrics_multi_voice_layout') || 'voice-one-left');
+  document.getElementById('lyrics-voice-layout')?.addEventListener('change', event => {
+    applyMultiVoiceLayout(event.currentTarget.value);
+  });
 
   document.getElementById('btn-reset-lyrics-settings')?.addEventListener('click', () => {
     LYRIC_SETTINGS.forEach(({ id }) => {
@@ -372,5 +384,8 @@ export function initAppearanceSettings() {
     applyActiveRowAnimation(false);
     applyActiveRowFillDirection('horizontal');
     applyWordTimedLyricsAnimation(false);
+    applyMultiVoiceLyrics(true);
+    applyMultiVoiceColors(true);
+    applyMultiVoiceLayout('voice-one-left');
   });
 }

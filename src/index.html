@@ -2264,6 +2264,34 @@
                 <span class="slider"></span>
               </label>
             </div>
+            <div class="settings-divider"></div>
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Mostrar letras de varias voces</strong>
+                <p>Detecta marcadores de voz incrustados (por ejemplo, [v1] y [v2]) y presenta cada parte vocal por separado cuando estén disponibles.</p>
+              </div>
+              <label class="switch" aria-label="Mostrar letras sincronizadas de varias voces">
+                <input id="lyrics-multi-voice-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="audio-setting-row lyrics-multi-voice-option" id="lyrics-voice-color-setting">
+              <div class="audio-setting-description">
+                <strong>Barras laterales de color por voz</strong>
+                <p>Muestra una barra con un color fijo para identificar cada voz; el lado coincide con su posición.</p>
+              </div>
+              <label class="switch" aria-label="Diferenciar voces con color">
+                <input id="lyrics-voice-colors-enabled" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <label class="setting-range-row lyrics-multi-voice-option" id="lyrics-voice-layout-setting" for="lyrics-voice-layout">
+              <span><strong>Distribución horizontal de voces</strong></span>
+              <select id="lyrics-voice-layout" class="settings-select" aria-label="Distribución horizontal de voces">
+                <option value="voice-one-left">Voz 1 a la izquierda; las demás a la derecha</option>
+                <option value="voice-one-right">Voz 1 a la derecha; las demás a la izquierda</option>
+              </select>
+            </label>
             <label class="setting-range-row" for="lyrics-sync-motion">
               <span><strong>Movimiento del renglón activo</strong></span>
               <select id="lyrics-sync-motion" class="settings-select" aria-label="Movimiento del renglón activo">

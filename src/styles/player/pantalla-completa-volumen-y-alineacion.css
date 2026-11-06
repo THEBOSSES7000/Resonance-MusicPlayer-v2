@@ -300,11 +300,37 @@ body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.acti
   text-align: var(--np-fs-lyrics-align, var(--lyrics-sync-text-align, center)) !important;
   transform: none !important;
 }
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync[data-voice-side="left"],
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active[data-voice-side="left"] {
+  width: min(72%, 560px) !important;
+  max-width: min(72%, 560px) !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
+  text-align: left !important;
+  transform-origin: left center !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync[data-voice-side="right"],
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active[data-voice-side="right"] {
+  width: min(72%, 560px) !important;
+  max-width: min(72%, 560px) !important;
+  margin-right: 0 !important;
+  margin-left: auto !important;
+  text-align: right !important;
+  transform-origin: right center !important;
+}
 body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync .lyric-line-original,
 body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active .lyric-line-original {
   text-align: inherit !important;
   width: 100% !important;
   transform-origin: var(--lyrics-sync-transform-origin, center center) !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync[data-voice-side="left"] > .lyric-line-original,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active[data-voice-side="left"] > .lyric-line-original {
+  transform-origin: left center !important;
+}
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync[data-voice-side="right"] > .lyric-line-original,
+body.now-playing-fs .lyrics-overlay.open .lyrics-lines-box .lyric-line-sync.active[data-voice-side="right"] > .lyric-line-original {
+  transform-origin: right center !important;
 }
 body.now-playing-fs[data-np-fs-lyrics-align="left"] .lyrics-overlay.open .lyrics-lines-box {
   --lyrics-sync-transform-origin: left center;

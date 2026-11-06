@@ -2,7 +2,7 @@
 
 import { extractImageBuffer, finalizeExtractedMetadata, parseReplayGainDb, parseTrackNumber } from './tagUtils.js';
 import { estimateMp3Duration, parseM4A, parseOgg, parseWav } from './formatParsers.js';
-import { decodeId3Lyrics, decodeId3Text, parseFlac } from './id3Flac.js';
+import { decodeId3Lyrics, decodeId3SynchronizedLyrics, decodeId3Text, parseFlac } from './id3Flac.js';
 
 export async function extractMetadata(file) {
   const result = {
@@ -19,6 +19,7 @@ export async function extractMetadata(file) {
     replayGainDb: null,
     duration: null,
   };
+  const synchronizedLyricFrames = [];
 
   if (!file || typeof file.slice !== 'function') return result;
 
@@ -92,6 +93,10 @@ export async function extractMetadata(file) {
           }
           else if (frameId === "PIC" && !result.coverUrl) result.coverUrl = extractImageBuffer(frameData);
           else if (frameId === "ULT" && !result.lyrics) result.lyrics = decodeId3Lyrics(frameData);
+          else if (frameId === "SLT") {
+            const synchronizedLyrics = decodeId3SynchronizedLyrics(frameData);
+            if (synchronizedLyrics) synchronizedLyricFrames.push(synchronizedLyrics);
+          }
 
           offset += 6 + frameSize;
         }
@@ -129,8 +134,12 @@ export async function extractMetadata(file) {
           else if (frameId === "APIC" && !result.coverUrl) {
             result.coverUrl = extractImageBuffer(frameData);
           }
-          else if ((frameId === "USLT" || frameId === "SYLT") && !result.lyrics) {
+          else if (frameId === "USLT" && !result.lyrics) {
             result.lyrics = decodeId3Lyrics(frameData);
+          }
+          else if (frameId === "SYLT") {
+            const synchronizedLyrics = decodeId3SynchronizedLyrics(frameData);
+            if (synchronizedLyrics) synchronizedLyricFrames.push(synchronizedLyrics);
           }
 
           offset += 10 + frameSize;
@@ -145,6 +154,22 @@ export async function extractMetadata(file) {
       result.channels = 2;
       result.sampleRate = 44100;
       result.bitDepth = 16;
+
+      if (synchronizedLyricFrames.length) {
+        const hasSeparateVoiceFrames = synchronizedLyricFrames.length > 1;
+        const lines = synchronizedLyricFrames.flatMap((frame, frameIndex) => {
+          const voice = frame.description || `Voice ${frameIndex + 1}`;
+          return (frame.lyrics?.lines || []).map(line => ({
+            ...line,
+            ...(hasSeparateVoiceFrames && !line.voice ? { voice, voiceIndex: frameIndex + 1 } : {})
+          }));
+        }).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+        result.lyrics = {
+          isSynced: synchronizedLyricFrames.some(frame => frame.lyrics?.isSynced),
+          hasMultipleVoices: hasSeparateVoiceFrames || lines.some(line => line.voiceIndex),
+          lines
+        };
+      }
     }
     if (ext === '.mp3') result.duration = await estimateMp3Duration(file, audioStart);
   } catch (err) {

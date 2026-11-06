@@ -617,6 +617,7 @@
 .lyrics-fill-direction-settings { margin: -0.2rem 0 0; }
 .lyrics-fill-direction-settings[hidden],
 .lyrics-word-timing-setting[hidden] { display: none; }
+.lyrics-multi-voice-option.is-disabled { opacity: 0.5; }
 .settings-card-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.65rem; padding-top: 0.3rem; }
 .library-cache-summary { padding: 0.2rem 0; }
 .library-cache-summary > strong { font-size: 0.84rem; }

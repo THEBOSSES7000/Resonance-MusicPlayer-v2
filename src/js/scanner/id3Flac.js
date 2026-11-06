@@ -55,6 +55,69 @@ export function decodeId3Lyrics(frameData) {
   return parseLyricsText(rawLyrics);
 }
 
+export function decodeId3SynchronizedLyrics(frameData) {
+  if (frameData.length < 10) return null;
+  const encoding = frameData[0];
+  const timestampFormat = frameData[4];
+  if (![0, 1, 2, 3].includes(encoding) || ![1, 2].includes(timestampFormat)) return null;
+
+  const isUtf16 = encoding === 1 || encoding === 2;
+  let offset = 6;
+  const readTerminatedText = () => {
+    const start = offset;
+    if (isUtf16) {
+      while (offset + 1 < frameData.length) {
+        if (frameData[offset] === 0 && frameData[offset + 1] === 0) break;
+        offset += 2;
+      }
+      if (offset + 1 >= frameData.length) return null;
+    } else {
+      while (offset < frameData.length && frameData[offset] !== 0) offset++;
+      if (offset >= frameData.length) return null;
+    }
+
+    const textData = new Uint8Array(offset - start + 1);
+    textData[0] = encoding;
+    textData.set(frameData.subarray(start, offset), 1);
+    const text = decodeId3Text(textData);
+    offset += isUtf16 ? 2 : 1;
+    return text;
+  };
+
+  const description = readTerminatedText();
+  if (description === null) return null;
+  const entries = [];
+  const view = new DataView(frameData.buffer, frameData.byteOffset, frameData.byteLength);
+  while (offset < frameData.length) {
+    const text = readTerminatedText();
+    if (text === null || offset + 4 > frameData.length) break;
+    const timestamp = view.getUint32(offset, false);
+    offset += 4;
+    const milliseconds = timestampFormat === 2 ? timestamp : timestamp * 1000 / 75;
+    if (text.trim()) entries.push({ text: text.trim(), milliseconds });
+  }
+  if (!entries.length) return null;
+
+  const isWordSynced = entries.every(entry => !/\s/.test(entry.text));
+  const formatTimestamp = milliseconds => {
+    const total = Math.max(0, Math.round(milliseconds));
+    const minutes = Math.floor(total / 60000);
+    const seconds = Math.floor(total / 1000) % 60;
+    const fraction = String(total % 1000).padStart(3, '0');
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${fraction}`;
+  };
+  const lyricsText = isWordSynced
+    ? entries.map((entry, index) =>
+      `<${formatTimestamp(entry.milliseconds)}>${entry.text}${index + 1 < entries.length ? ' ' : ''}`
+    ).join('')
+    : entries.map(entry => `[${formatTimestamp(entry.milliseconds)}]${entry.text}`).join('\n');
+
+  return {
+    description: description.trim(),
+    lyrics: parseLyricsText(lyricsText)
+  };
+}
+
 export async function parseFlac(file) {
   const result = {
     title: null,
