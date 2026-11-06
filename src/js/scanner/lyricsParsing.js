@@ -4,7 +4,7 @@ export function parseLyricsText(raw) {
   if (!raw || !raw.trim()) return null;
   const rawLines = raw.split(/\r?\n/);
   const timeRegex = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
-  const tagRegex = /^\[(ti|ar|al|by|offset|length|re|ve|au):.*\]$/i;
+  const tagRegex = /^\[(ti|ar|al|by|offset|length|re|ve|au|x-translation):.*\]$/i;
 
   const syncedLines = [];
   const plainLines = [];

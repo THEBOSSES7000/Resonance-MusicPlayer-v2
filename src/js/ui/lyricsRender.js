@@ -450,11 +450,9 @@ export function updateActiveRowFill(currentTime) {
     ? getParsedLineWordTimings(activeLyricElement)
     : [];
 
-  const direction = selectedDirection === 'vertical'
-    ? 'vertical'
-    : wordTimings.length > 0
-      ? 'timed-words'
-      : selectedDirection;
+  const direction = wordTimings.length > 0
+    ? 'timed-words'
+    : selectedDirection;
   activeLyricElement.classList.add('has-active-row-fill');
   activeLyricElement.classList.toggle('has-sophisticated-lyrics', sophisticated);
   activeLyricElement.dataset.fillDirection = direction;

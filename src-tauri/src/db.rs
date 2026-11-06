@@ -33,7 +33,10 @@ fn open_db_fresh(app: &AppHandle) -> Result<Connection, String> {
 }
 
 /// Ejecuta un cierre sobre la conexión global (la crea si hace falta).
-pub fn with_db<R>(app: &AppHandle, f: impl FnOnce(&mut Connection) -> Result<R, String>) -> Result<R, String> {
+pub fn with_db<R>(
+    app: &AppHandle,
+    f: impl FnOnce(&mut Connection) -> Result<R, String>,
+) -> Result<R, String> {
     let path = db_path(app)?;
     let path_key = path.to_string_lossy().to_string();
     let mut guard = GLOBAL_DB
@@ -271,7 +274,11 @@ fn upsert_track_row(conn: &Connection, track: &serde_json::Value) -> Result<(), 
             f("replayGainDb"),
             if json_bool(obj, "isFavorite") { 1 } else { 0 },
             if json_bool(obj, "unavailable") { 1 } else { 0 },
-            if json_bool(obj, "metadataLoaded") { 1 } else { 0 },
+            if json_bool(obj, "metadataLoaded") {
+                1
+            } else {
+                0
+            },
             i("favoriteAddedAt"),
             i("playCount").unwrap_or(0),
         ],
@@ -439,23 +446,51 @@ pub fn load_all_tracks(conn: &Connection) -> Result<Vec<serde_json::Value>, Stri
     Ok(out)
 }
 
-pub fn save_playlists_payload(conn: &mut Connection, playlists: &[serde_json::Value]) -> Result<(), String> {
+pub fn save_playlists_payload(
+    conn: &mut Connection,
+    playlists: &[serde_json::Value],
+) -> Result<(), String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute("DELETE FROM playlist_tracks", []).map_err(|e| e.to_string())?;
-    tx.execute("DELETE FROM playlists", []).map_err(|e| e.to_string())?;
+    let existing_ids: std::collections::HashSet<String> = {
+        let mut stmt = tx
+            .prepare("SELECT id FROM playlists")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<_, _>>()
+            .map_err(|e| e.to_string())?;
+        rows
+    };
+    let mut retained_ids = std::collections::HashSet::new();
 
     {
         let mut ins_pl = tx
             .prepare(
                 r#"INSERT INTO playlists (id, title, description, cover_url, smart_filter, author, created_at, sort_order, extra_json)
-                   VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)"#,
+                   VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+                   ON CONFLICT(id) DO UPDATE SET
+                       title=excluded.title,
+                       description=excluded.description,
+                       cover_url=excluded.cover_url,
+                       smart_filter=excluded.smart_filter,
+                       author=excluded.author,
+                       created_at=excluded.created_at,
+                       sort_order=excluded.sort_order,
+                       extra_json=excluded.extra_json"#,
             )
             .map_err(|e| e.to_string())?;
         let mut ins_tr = tx
             .prepare(
-                r#"INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_path, position)
-                   VALUES (?1,?2,?3)"#,
+                r#"INSERT INTO playlist_tracks (playlist_id, track_path, position)
+                   VALUES (?1,?2,?3)
+                   ON CONFLICT(playlist_id, track_path) DO UPDATE SET
+                       position=excluded.position
+                   WHERE playlist_tracks.position != excluded.position"#,
             )
+            .map_err(|e| e.to_string())?;
+        let mut del_tr = tx
+            .prepare("DELETE FROM playlist_tracks WHERE playlist_id = ?1 AND track_path = ?2")
             .map_err(|e| e.to_string())?;
 
         for (order, pl) in playlists.iter().enumerate() {
@@ -463,14 +498,26 @@ pub fn save_playlists_payload(conn: &mut Connection, playlists: &[serde_json::Va
                 Some(o) => o,
                 None => continue,
             };
-            let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let id = obj
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             if id.is_empty() {
                 continue;
             }
+            retained_ids.insert(id.clone());
             let smart = obj.get("smartFilter").map(|v| v.to_string());
             let mut extra = obj.clone();
             for k in [
-                "id", "title", "description", "coverUrl", "smartFilter", "author", "songs", "createdAt",
+                "id",
+                "title",
+                "description",
+                "coverUrl",
+                "smartFilter",
+                "author",
+                "songs",
+                "createdAt",
             ] {
                 extra.remove(k);
             }
@@ -494,6 +541,19 @@ pub fn save_playlists_payload(conn: &mut Connection, playlists: &[serde_json::Va
                 ])
                 .map_err(|e| e.to_string())?;
 
+            let existing_paths: Vec<String> = {
+                let mut stmt = tx
+                    .prepare("SELECT track_path FROM playlist_tracks WHERE playlist_id = ?1")
+                    .map_err(|e| e.to_string())?;
+                let rows = stmt
+                    .query_map(params![id], |row| row.get(0))
+                    .map_err(|e| e.to_string())?
+                    .collect::<Result<_, _>>()
+                    .map_err(|e| e.to_string())?;
+                rows
+            };
+            let mut songs_to_save = Vec::new();
+            let mut desired_paths = std::collections::HashSet::new();
             if let Some(songs) = obj.get("songs").and_then(|v| v.as_array()) {
                 for (pos, song) in songs.iter().enumerate() {
                     let path = song
@@ -502,26 +562,98 @@ pub fn save_playlists_payload(conn: &mut Connection, playlists: &[serde_json::Va
                         .and_then(|v| v.as_str())
                         .or_else(|| song.as_str())
                         .unwrap_or("");
-                    if path.is_empty() {
+                    let path = if path.is_empty() {
                         let title = song.get("title").and_then(|v| v.as_str()).unwrap_or("");
                         let artist = song.get("artist").and_then(|v| v.as_str()).unwrap_or("");
                         if title.is_empty() {
                             continue;
                         }
-                        let pseudo = format!("ref:{title}:::{artist}");
-                        ins_tr
-                            .execute(params![id, pseudo, pos as i64])
-                            .map_err(|e| e.to_string())?;
-                        continue;
+                        format!("ref:{title}:::{artist}")
+                    } else {
+                        path.to_string()
+                    };
+                    if desired_paths.insert(path.clone()) {
+                        songs_to_save.push((path, pos as i64));
                     }
-                    ins_tr
-                        .execute(params![id, path, pos as i64])
+                }
+            }
+            for path in existing_paths {
+                if !desired_paths.contains(&path) {
+                    del_tr
+                        .execute(params![id, path])
                         .map_err(|e| e.to_string())?;
                 }
+            }
+            for (path, position) in songs_to_save {
+                ins_tr
+                    .execute(params![id, path, position])
+                    .map_err(|e| e.to_string())?;
             }
         }
     }
 
+    for id in existing_ids {
+        if !retained_ids.contains(&id) {
+            tx.execute("DELETE FROM playlists WHERE id = ?1", params![id])
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn relocate_track_payload(
+    conn: &mut Connection,
+    old_path: &str,
+    track: &serde_json::Value,
+) -> Result<(), String> {
+    let new_path = track
+        .get("path")
+        .and_then(serde_json::Value::as_str)
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| "La ruta nueva de la pista está vacía.".to_string())?;
+    let name = track.get("name").and_then(serde_json::Value::as_str);
+    let directory_path = track
+        .get("directoryPath")
+        .and_then(serde_json::Value::as_str);
+    let relative_path = track
+        .get("relativePath")
+        .and_then(serde_json::Value::as_str);
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    if old_path != new_path {
+        let destination_exists: bool = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM tracks WHERE path = ?1)",
+                params![new_path],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        if destination_exists {
+            tx.execute("DELETE FROM tracks WHERE path = ?1", params![old_path])
+                .map_err(|e| e.to_string())?;
+        } else {
+            tx.execute(
+                "UPDATE tracks
+                 SET path = ?1, name = ?2, directory_path = ?3, relative_path = ?4
+                 WHERE path = ?5",
+                params![new_path, name, directory_path, relative_path, old_path],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        tx.execute(
+            "UPDATE OR IGNORE playlist_tracks SET track_path = ?1 WHERE track_path = ?2",
+            params![new_path, old_path],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "DELETE FROM playlist_tracks WHERE track_path = ?1",
+            params![old_path],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    upsert_track_row(&tx, track)?;
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -541,16 +673,31 @@ pub fn load_playlists_payload(conn: &Connection) -> Result<Vec<serde_json::Value
             let extra: Option<String> = row.get(8)?;
             let mut obj = serde_json::Map::new();
             obj.insert("id".into(), serde_json::json!(id.clone()));
-            obj.insert("title".into(), serde_json::json!(row.get::<_, Option<String>>(1)?));
-            obj.insert("description".into(), serde_json::json!(row.get::<_, Option<String>>(2)?));
-            obj.insert("coverUrl".into(), serde_json::json!(row.get::<_, Option<String>>(3)?));
+            obj.insert(
+                "title".into(),
+                serde_json::json!(row.get::<_, Option<String>>(1)?),
+            );
+            obj.insert(
+                "description".into(),
+                serde_json::json!(row.get::<_, Option<String>>(2)?),
+            );
+            obj.insert(
+                "coverUrl".into(),
+                serde_json::json!(row.get::<_, Option<String>>(3)?),
+            );
             if let Some(s) = smart {
                 if let Ok(v) = serde_json::from_str(&s) {
                     obj.insert("smartFilter".into(), v);
                 }
             }
-            obj.insert("author".into(), serde_json::json!(row.get::<_, Option<String>>(5)?));
-            obj.insert("createdAt".into(), serde_json::json!(row.get::<_, Option<i64>>(6)?));
+            obj.insert(
+                "author".into(),
+                serde_json::json!(row.get::<_, Option<String>>(5)?),
+            );
+            obj.insert(
+                "createdAt".into(),
+                serde_json::json!(row.get::<_, Option<i64>>(6)?),
+            );
             if let Some(e) = extra {
                 if let Ok(serde_json::Value::Object(map)) = serde_json::from_str(&e) {
                     for (k, v) in map {
@@ -623,7 +770,9 @@ pub async fn db_get_play_counts(app: AppHandle) -> Result<serde_json::Value, Str
                 .map_err(|e| e.to_string())?;
             let mut map = serde_json::Map::new();
             let rows = stmt
-                .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))
+                .query_map([], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+                })
                 .map_err(|e| e.to_string())?;
             for row in rows {
                 let (path, count) = row.map_err(|e| e.to_string())?;
@@ -708,28 +857,46 @@ pub async fn db_update_track_fields(
                 .map_err(|e| e.to_string())?;
             }
             if let Some(v) = title {
-                tx.execute("UPDATE tracks SET title = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET title = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             if let Some(v) = artist {
-                tx.execute("UPDATE tracks SET artist = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET artist = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             if let Some(v) = album {
-                tx.execute("UPDATE tracks SET album = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET album = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             if let Some(v) = duration {
-                tx.execute("UPDATE tracks SET duration = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET duration = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             if let Some(v) = cover_url {
-                tx.execute("UPDATE tracks SET cover_url = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET cover_url = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             if let Some(v) = play_count {
-                tx.execute("UPDATE tracks SET play_count = ?1 WHERE path = ?2", params![v, key])
-                    .map_err(|e| e.to_string())?;
+                tx.execute(
+                    "UPDATE tracks SET play_count = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
+                .map_err(|e| e.to_string())?;
             }
             tx.commit().map_err(|e| e.to_string())?;
             Ok(())
@@ -742,4 +909,121 @@ pub async fn db_update_track_fields(
 #[tauri::command]
 pub async fn db_upsert_track(app: AppHandle, track: serde_json::Value) -> Result<(), String> {
     run_blocking(move || with_db(&app, |conn| upsert_track_row(conn, &track))).await
+}
+
+/// Reubica una pista y actualiza sus datos de ubicación junto con las referencias en playlists.
+#[tauri::command]
+pub async fn db_relocate_track(
+    app: AppHandle,
+    old_path: String,
+    track: serde_json::Value,
+) -> Result<(), String> {
+    run_blocking(move || with_db(&app, |conn| relocate_track_payload(conn, &old_path, &track)))
+        .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{init_schema, relocate_track_payload, save_playlists_payload, upsert_tracks};
+    use rusqlite::Connection;
+
+    fn test_connection() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory database should open");
+        init_schema(&conn).expect("database schema should initialize");
+        conn
+    }
+
+    #[test]
+    fn playlist_saves_apply_track_diffs_and_reorder_positions() {
+        let mut conn = test_connection();
+        let initial = serde_json::json!([{
+            "id": "playlist",
+            "title": "Original",
+            "songs": [{"path": "a"}, {"path": "b"}, {"path": "c"}]
+        }]);
+        save_playlists_payload(&mut conn, initial.as_array().unwrap())
+            .expect("initial playlist should save");
+
+        let changed = serde_json::json!([{
+            "id": "playlist",
+            "title": "Updated",
+            "songs": [{"path": "c"}, {"path": "a"}, {"path": "d"}]
+        }]);
+        save_playlists_payload(&mut conn, changed.as_array().unwrap())
+            .expect("playlist diff should save");
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT track_path, position FROM playlist_tracks
+                 WHERE playlist_id = 'playlist' ORDER BY position",
+            )
+            .expect("track query should prepare");
+        let tracks: Vec<(String, i64)> = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .expect("track query should run")
+            .collect::<Result<_, _>>()
+            .expect("track rows should decode");
+        assert_eq!(
+            tracks,
+            vec![("c".into(), 0), ("a".into(), 1), ("d".into(), 2)]
+        );
+        let title: String = conn
+            .query_row(
+                "SELECT title FROM playlists WHERE id = 'playlist'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("updated playlist should remain");
+        assert_eq!(title, "Updated");
+    }
+
+    #[test]
+    fn relocating_track_updates_location_and_playlist_references() {
+        let mut conn = test_connection();
+        let original = serde_json::json!([{
+            "path": "old/song.mp3",
+            "name": "song.mp3",
+            "directoryPath": "old",
+            "relativePath": "Music/song.mp3"
+        }]);
+        upsert_tracks(&mut conn, original.as_array().unwrap()).expect("initial track should save");
+        let playlist = serde_json::json!([{
+            "id": "playlist",
+            "songs": [{"path": "old/song.mp3"}]
+        }]);
+        save_playlists_payload(&mut conn, playlist.as_array().unwrap())
+            .expect("playlist should save");
+
+        let relocated = serde_json::json!({
+            "path": "new/renamed.mp3",
+            "name": "renamed.mp3",
+            "directoryPath": "new",
+            "relativePath": "Music/New/renamed.mp3"
+        });
+        relocate_track_payload(&mut conn, "old/song.mp3", &relocated)
+            .expect("track should relocate");
+
+        let location: (String, String, String, String) = conn
+            .query_row(
+                "SELECT path, name, directory_path, relative_path FROM tracks",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .expect("relocated track should remain");
+        assert_eq!(
+            location,
+            (
+                "new/renamed.mp3".into(),
+                "renamed.mp3".into(),
+                "new".into(),
+                "Music/New/renamed.mp3".into()
+            )
+        );
+        let playlist_path: String = conn
+            .query_row("SELECT track_path FROM playlist_tracks", [], |row| {
+                row.get(0)
+            })
+            .expect("playlist reference should remain");
+        assert_eq!(playlist_path, "new/renamed.mp3");
+    }
 }

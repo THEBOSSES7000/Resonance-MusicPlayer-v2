@@ -193,6 +193,7 @@ pub fn run() {
             db::db_set_play_count,
             db::db_update_track_fields,
             db::db_upsert_track,
+            db::db_relocate_track,
             exports::save_playlist_cover,
             library_cache::get_library_cache_size,
             library_cache::clear_library_cache,

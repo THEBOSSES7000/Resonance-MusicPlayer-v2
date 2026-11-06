@@ -3,11 +3,12 @@
 import { closeTrackEditor, dataUrlToBase64Parts, editTargetSong, refreshSongViews, setEditStatus } from './trackEditor.js';
 import { getUi } from './uiBridge.js';
 import { lyricsVars } from './sharedState.js';
+import { audioVars } from '../audio/sharedState.js';
 import { isTauri, isTrackInLinkedMusicDirectory } from './utils.js';
 import { parseLyricsText } from '../scanner.js';
 import { getSongByIdOrPath, reindexSong, state } from '../state.js';
 import { invalidateLyricsTranslationCache } from './translation.js';
-import { getPlaybackPosition, isPlaybackPaused, loadSong, seekPlayback } from '../audioPlayer.js';
+import { audio, getPlaybackPosition, isPlaybackPaused, loadSong, seekPlayback } from '../audioPlayer.js';
 
 export async function saveTrackEdits() {
   if (!editTargetSong) return;
@@ -48,6 +49,42 @@ export async function saveTrackEdits() {
   }
   const filePath = song.file?.path;
   const canWriteToDisk = isTauri() && filePath && isTrackInLinkedMusicDirectory(filePath);
+  let playbackSnapshot = null;
+  if (canWriteToDisk) {
+    const current = state.currentTrackIndex >= 0 ? state.activeQueue[state.currentTrackIndex] : null;
+    const currentPath = current?.file?.path || current?.path || '';
+    const editedPath = String(filePath).replace(/\\/g, '/').toLowerCase();
+    const sameTrack = current && (
+      current === song ||
+      current === editTargetSong ||
+      (current.id && song.id && current.id === song.id) ||
+      (currentPath && currentPath.replace(/\\/g, '/').toLowerCase() === editedPath)
+    );
+    if (sameTrack) {
+      const wasPaused = isPlaybackPaused();
+      let resumeAt = getPlaybackPosition();
+      if (!wasPaused) {
+        try {
+          if (isTauri() && audioVars.nativeAudioActive) {
+            const status = await window.__TAURI__.core.invoke('native_audio_pause', { fadeOutSecs: 0 });
+            resumeAt = Number(status?.positionSeconds) || resumeAt;
+          } else {
+            audio.pause();
+            resumeAt = Number(audio.currentTime) || resumeAt;
+          }
+        } catch (error) {
+          console.error('No se pudo pausar la pista antes de editarla:', error);
+          setEditStatus('No se pudo pausar la reproducción antes de editar.', true);
+          return;
+        }
+      }
+      playbackSnapshot = {
+        index: state.currentTrackIndex,
+        wasPaused,
+        resumeAt: Math.max(0, Number(resumeAt) || 0)
+      };
+    }
+  }
   if (isTauri() && filePath && !canWriteToDisk) {
     console.info('La pista está fuera de las carpetas vinculadas; los cambios no se escribirán en disco.');
   }
@@ -67,6 +104,17 @@ export async function saveTrackEdits() {
       });
     } catch (error) {
       console.error('Error escribiendo tags:', error);
+      if (playbackSnapshot && !playbackSnapshot.wasPaused) {
+        try {
+          if (audioVars.nativeAudioActive) {
+            await window.__TAURI__.core.invoke('native_audio_play', { fadeInSecs: 0 });
+          } else {
+            await audio.play();
+          }
+        } catch (resumeError) {
+          console.warn('No se pudo reanudar la pista tras fallar la edición:', resumeError);
+        }
+      }
       setEditStatus('No se pudo escribir en disco: ' + error, true);
       return;
     }
@@ -170,31 +218,16 @@ export async function saveTrackEdits() {
   refreshSongViews(song);
   await ui.refreshSongDetailsIfOpen(song);
 
-  // Si esta pista se está reproduciendo, reabrir el archivo tras reescribir tags.
-  // Escribir portada/tags cambia el tamaño del encabezado (p.ej. ID3) y el decoder
-  // puede quedar desfasado (~segundos de silencio o arranque tarde) hasta recargar.
-  if (canWriteToDisk && filePath) {
-    const current = state.currentTrackIndex >= 0 ? state.activeQueue[state.currentTrackIndex] : null;
-    const currentPath = current?.file?.path || current?.path || '';
-    const editedPath = String(filePath).replace(/\\/g, '/').toLowerCase();
-    const sameTrack = current && (
-      current === song ||
-      current === canonical ||
-      (current.id && song.id && current.id === song.id) ||
-      (currentPath && currentPath.replace(/\\/g, '/').toLowerCase() === editedPath)
-    );
-    if (sameTrack) {
-      try {
-        const wasPaused = isPlaybackPaused();
-        const resumeAt = Math.max(0, Number(getPlaybackPosition()) || 0);
-        const idx = state.currentTrackIndex;
-        await loadSong(idx, !wasPaused, false);
-        if (resumeAt > 0.35) {
-          try { await seekPlayback(resumeAt); } catch (_) {}
-        }
-      } catch (error) {
-        console.warn('No se pudo recargar la pista tras editar metadata:', error);
+  // Recargar el archivo solo después de escribirlo evita que el decoder lea mientras
+  // cambia su encabezado (p. ej. al reemplazar una portada ID3).
+  if (playbackSnapshot) {
+    try {
+      await loadSong(playbackSnapshot.index, !playbackSnapshot.wasPaused, false);
+      if (playbackSnapshot.resumeAt > 0.35) {
+        try { await seekPlayback(playbackSnapshot.resumeAt); } catch (_) {}
       }
+    } catch (error) {
+      console.warn('No se pudo recargar la pista tras editar metadata:', error);
     }
   }
 

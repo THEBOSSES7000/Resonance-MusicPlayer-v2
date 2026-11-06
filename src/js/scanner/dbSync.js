@@ -31,7 +31,7 @@ export function dbUpdateTrackFields(song, fields = {}) {
 }
 
 /** Upsert completo de una pista (tras reubicar / metadatos nuevos). */
-export function dbUpsertTrack(song) {
+export function dbUpsertTrack(song, oldPath = null) {
   const path = song?.file?.path || song?.path;
   if (!path) return Promise.resolve();
   const track = {
@@ -60,7 +60,10 @@ export function dbUpsertTrack(song) {
     favoriteAddedAt: song.favoriteAddedAt ?? null,
     playCount: song.playCount || 0,
   };
-  return invoke('db_upsert_track', { track }).catch(err => {
-    console.warn('[dbSync] db_upsert_track:', err);
+  const command = oldPath && oldPath !== path ? 'db_relocate_track' : 'db_upsert_track';
+  const args = command === 'db_relocate_track' ? { oldPath, track } : { track };
+  return invoke(command, args).catch(err => {
+    console.warn(`[dbSync] ${command}:`, err);
+    throw err;
   });
 }

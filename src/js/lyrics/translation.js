@@ -120,6 +120,12 @@ function getCurrentPlaybackSong() {
 }
 
 function cloneOriginalLyrics(line) {
+  if (line.dataset.originalText !== undefined) {
+    const original = document.createElement('span');
+    original.className = 'lyric-line-original';
+    original.textContent = line.dataset.originalText;
+    return original;
+  }
   const existing = line.querySelector('.lyric-line-original');
   if (existing) return existing.cloneNode(true);
   const original = document.createElement('span');

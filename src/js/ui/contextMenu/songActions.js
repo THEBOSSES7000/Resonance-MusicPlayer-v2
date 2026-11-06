@@ -317,10 +317,29 @@ export async function findAndRelinkSong(song) {
   if (!selectedPath) return;
 
   const oldPath = normalizeSongPath(song);
+  const oldDatabasePath = song.file?.path || song.path;
   const baseName = selectedPath.split(/[/\\]/).pop() || selectedPath;
   if (!song.file || typeof song.file !== 'object') song.file = {};
   song.file.path = selectedPath;
   song.file.name = baseName;
+  const normalizedSelectedPath = selectedPath.replace(/\\/g, '/');
+  const directory = (state.nativeMusicDirectories || []).find(item => {
+    const root = String(item.path || '').replace(/\\/g, '/').replace(/\/+$/, '');
+    const candidate = normalizedSelectedPath.toLocaleLowerCase();
+    const normalizedRoot = root.toLocaleLowerCase();
+    return candidate === normalizedRoot || candidate.startsWith(`${normalizedRoot}/`);
+  });
+  if (directory) {
+    const root = String(directory.path).replace(/\\/g, '/').replace(/\/+$/, '');
+    const relative = normalizedSelectedPath.slice(root.length).replace(/^\/+/, '');
+    song.file.directoryPath = directory.path;
+    song.file.webkitRelativePath = `${directory.name}/${relative}`;
+    song.folderName = directory.name;
+  } else {
+    const separator = Math.max(selectedPath.lastIndexOf('/'), selectedPath.lastIndexOf('\\'));
+    song.file.directoryPath = separator >= 0 ? selectedPath.slice(0, separator) : '';
+    song.file.webkitRelativePath = baseName;
+  }
   song.file.isNativeFile = true;
   song.path = selectedPath;
   song.unavailable = false;
@@ -358,7 +377,7 @@ export async function findAndRelinkSong(song) {
 
   try {
     const { dbUpsertTrack } = await import('../../scanner/dbSync.js');
-    await dbUpsertTrack(song);
+    await dbUpsertTrack(song, oldDatabasePath);
   } catch (_) {
     try { await saveNativeLibraryCache(true, { full: true }); } catch (_) {}
   }
