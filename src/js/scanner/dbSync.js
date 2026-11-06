@@ -1,9 +1,12 @@
 // Biblioteca · Sincronización puntual con SQLite (sin reescribir toda la biblioteca).
 
+import { enqueueDbWrite } from './dbQueue.js';
+
+/** Todas las escrituras puntuales pasan por la cola única (mismo orden que se pidieron). */
 function invoke(cmd, args) {
   const fn = window.__TAURI__?.core?.invoke;
   if (!fn) return Promise.resolve(null);
-  return fn(cmd, args);
+  return enqueueDbWrite(() => fn(cmd, args));
 }
 
 /** Actualiza solo campos cambiados de una pista en SQLite. */

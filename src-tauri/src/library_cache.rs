@@ -18,15 +18,30 @@ pub fn library_cache_directory(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn get_cached_music_library(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
-    // Fuente de verdad: SQLite (conexión reutilizada; migra library.json si hace falta)
-    crate::db::with_db(&app, |conn| crate::db::load_all_tracks(conn))
+pub async fn get_cached_music_library(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
+    // Fuente de verdad: SQLite (conexión reutilizada; migra library.json si hace falta).
+    // Se ejecuta fuera del hilo principal para no congelar la ventana al leer bibliotecas grandes.
+    crate::db::run_blocking(move || crate::db::with_db(&app, |conn| crate::db::load_all_tracks(conn))).await
 }
 
+/// Guarda pistas en la base de datos (y extrae las carátulas que falten).
+/// `partial` = true: solo actualiza las pistas recibidas (no borra ninguna); lo normal.
+/// `partial` = false: reemplazo completo (borra las que ya no están, con protección contra borrados masivos).
 #[tauri::command]
-pub fn save_cached_music_library(
+pub async fn save_cached_music_library(
+    app: AppHandle,
+    tracks: Vec<serde_json::Value>,
+    allow_shrink: Option<bool>,
+    partial: Option<bool>,
+) -> Result<Vec<Option<String>>, String> {
+    crate::db::run_blocking(move || save_cached_music_library_blocking(app, tracks, allow_shrink, partial)).await
+}
+
+fn save_cached_music_library_blocking(
     app: AppHandle,
     mut tracks: Vec<serde_json::Value>,
+    allow_shrink: Option<bool>,
+    partial: Option<bool>,
 ) -> Result<Vec<Option<String>>, String> {
     use base64::Engine;
     use lofty::prelude::*;
@@ -169,7 +184,14 @@ pub fn save_cached_music_library(
         })
         .collect();
     // Persistir en SQLite (transaccional; reemplaza el antiguo library.json)
-    crate::db::with_db(&app, |conn| crate::db::replace_all_tracks(conn, &tracks))?;
+    let partial = partial.unwrap_or(false);
+    crate::db::with_db(&app, |conn| {
+        if partial {
+            crate::db::upsert_tracks(conn, &tracks)
+        } else {
+            crate::db::replace_all_tracks(conn, &tracks, allow_shrink.unwrap_or(false))
+        }
+    })?;
     Ok(cover_paths)
 }
 
@@ -196,17 +218,33 @@ pub fn get_library_cache_size(app: AppHandle) -> Result<u64, String> {
 }
 
 #[tauri::command]
-pub fn clear_library_cache(app: AppHandle) -> Result<(), String> {
+pub async fn clear_library_cache(app: AppHandle) -> Result<(), String> {
+    crate::db::run_blocking(move || clear_library_cache_blocking(app)).await
+}
+
+fn clear_library_cache_blocking(app: AppHandle) -> Result<(), String> {
     let path = library_cache_directory(&app)?;
-    // Borrar también la DB si se pide limpiar caché
-    let db_file = path.join("library.db");
-    if db_file.exists() {
-        let _ = fs::remove_file(&db_file);
-        let _ = fs::remove_file(path.join("library.db-wal"));
-        let _ = fs::remove_file(path.join("library.db-shm"));
-    }
+    // 1) Vaciar la caché de pistas DENTRO de la base de datos. El archivo no se borra: la conexión
+    //    sigue abierta (en Windows no se puede borrar) y la base también guarda las playlists.
+    crate::db::with_db(&app, |conn| crate::db::clear_cache_tables(conn))?;
+
+    // 2) Borrar el resto de la caché (carátulas, library.json antiguo...), conservando la base de datos.
+    let db_name = crate::db::DB_NAME;
+    let db_prefix = format!("{}-", db_name);
     if path.exists() {
-        fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
+        for entry in fs::read_dir(&path).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let entry_path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            if file_name == db_name || file_name.starts_with(&db_prefix) {
+                continue;
+            }
+            if entry_path.is_dir() {
+                fs::remove_dir_all(&entry_path).map_err(|error| error.to_string())?;
+            } else {
+                fs::remove_file(&entry_path).map_err(|error| error.to_string())?;
+            }
+        }
     }
     fs::create_dir_all(&path).map_err(|error| error.to_string())?;
     let legacy_directory = app

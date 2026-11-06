@@ -23,6 +23,9 @@ async function loadCachedNativeLibrary(cachedTracksInput = null) {
     state.localMusicFiles = state.localMusicFiles || [];
     state.nativeMusicDirectories = directories;
     rebuildSongsIndex();
+    // Aunque no haya pistas en caché hay que cargar las playlists: SQLite es su único almacén
+    await loadPlaylistsFromDatabase();
+    renderPlaylistsUI();
     renderGrids();
     return;
   }
@@ -155,6 +158,10 @@ export async function initializeMusicLibrary() {
     // 1) Pintar UI de inmediato con la caché (no esperar el escaneo completo)
     if (hadCachedTracks) {
       await loadCachedNativeLibrary(cachedTracks);
+    } else {
+      // Sin pistas en caché también hay que cargar las playlists: SQLite es su único almacén
+      await loadPlaylistsFromDatabase();
+      renderPlaylistsUI();
     }
     await initializePlaybackSession();
     scannerVars.hasInitializedPlaybackSession = true;

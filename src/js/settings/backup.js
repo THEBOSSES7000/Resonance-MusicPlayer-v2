@@ -1,6 +1,7 @@
 // Ajustes · Copia de seguridad de ajustes: crear, validar, exportar e importar.
 
 import { showConfirmDialog } from '../ui.js';
+import { getCompactPlaylists, isPlaylistsInDatabase } from '../state.js';
 
 const SETTINGS_BACKUP_CATEGORIES = ['preferences', 'shortcuts', 'folders', 'playlists', 'favorites'];
 
@@ -161,7 +162,12 @@ function createSettingsBackup(selectedCategories, musicDirectories = []) {
     };
   }
   if (selected.has('playlists')) {
-    categories.playlists = { value: localSettings.pn_playlists || '[]' };
+    // Si SQLite es el único almacén, las playlists ya no están en localStorage: se leen de la memoria
+    categories.playlists = {
+      value: isPlaylistsInDatabase()
+        ? JSON.stringify(getCompactPlaylists())
+        : (localSettings.pn_playlists || '[]')
+    };
   }
   if (selected.has('favorites')) {
     categories.favorites = { value: localSettings.pn_favorites_keys || '[]' };
@@ -226,7 +232,8 @@ function replaceLocalSettingsCategory(category, payload) {
   } else if (category === 'folders') {
     localStorage.setItem('pn_folders_info', payload.metadata);
   } else if (category === 'playlists') {
-    localStorage.setItem('pn_playlists', payload.value);
+    // Con SQLite como único almacén no se guarda copia en localStorage (se escribe en la base más abajo)
+    if (!isPlaylistsInDatabase()) localStorage.setItem('pn_playlists', payload.value);
   } else if (category === 'favorites') {
     localStorage.setItem('pn_favorites_keys', payload.value);
   }
@@ -262,6 +269,38 @@ export async function importSettingsBackup(file, statusElement) {
     selectedCategories.forEach(category => {
       replaceLocalSettingsCategory(category, backup.categories[category]);
     });
+    if (selectedCategories.includes('playlists') && invoke) {
+      // Al arrancar, las playlists de la base de datos mandan sobre las de localStorage:
+      // hay que guardar también allí las restauradas, o se ignorarían tras reiniciar.
+      try {
+        const restored = JSON.parse(backup.categories.playlists.value || '[]');
+        await invoke('db_save_playlists', { playlists: Array.isArray(restored) ? restored : [] });
+      } catch (error) {
+        console.warn('No se pudieron guardar las playlists restauradas en SQLite:', error);
+        // Sin base de datos, la copia local es la que se leerá al arrancar
+        try { localStorage.setItem('pn_playlists', backup.categories.playlists.value || '[]'); } catch (_) {}
+      }
+    }
+    if (selectedCategories.includes('favorites')) {
+      // Los favoritos se conservan entre sesiones en la caché de la biblioteca (base de datos), no solo en
+      // localStorage (la app reescribe esa clave al arrancar). Hay que aplicar los restaurados a las canciones
+      // y guardarlos allí, o al reiniciar volverían los favoritos anteriores.
+      try {
+        const restoredKeys = new Set(JSON.parse(backup.categories.favorites.value || '[]'));
+        const { state } = await import('../state.js');
+        const { favoriteStorageKey } = await import('../ui/favorites.js');
+        const { applyFavoriteAddedAt } = await import('../scanner/songIdentity.js');
+        const { saveNativeLibraryCache } = await import('../scanner/libraryCache.js');
+        for (const song of state.localMusicFiles) {
+          const legacyKey = `${(song.title || '').trim()}:::${(song.artist || '').trim()}`;
+          song.isFavorite = restoredKeys.has(favoriteStorageKey(song)) || restoredKeys.has(legacyKey);
+          applyFavoriteAddedAt(song);
+        }
+        await saveNativeLibraryCache(true);
+      } catch (error) {
+        console.warn('No se pudieron aplicar los favoritos restaurados a la biblioteca:', error);
+      }
+    }
     if (window.__pnFlushSettingsToDisk) {
       await window.__pnFlushSettingsToDisk();
     }

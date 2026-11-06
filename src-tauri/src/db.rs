@@ -5,7 +5,7 @@ use super::*;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::sync::Mutex;
 
-const DB_NAME: &str = "library.db";
+pub const DB_NAME: &str = "library.db";
 const SCHEMA_VERSION: i32 = 1;
 
 /// Conexión única reutilizada (evita abrir/cerrar el archivo en cada comando).
@@ -172,7 +172,7 @@ fn migrate_from_json_if_needed(app: &AppHandle, conn: &mut Connection) -> Result
     if json_path.is_file() {
         let contents = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
         if let Ok(tracks) = serde_json::from_str::<Vec<serde_json::Value>>(&contents) {
-            replace_all_tracks(conn, &tracks)?;
+            replace_all_tracks(conn, &tracks, true)?;
             eprintln!(
                 "[Resonance] Migradas {} pistas de library.json → SQLite",
                 tracks.len()
@@ -280,15 +280,52 @@ fn upsert_track_row(conn: &Connection, track: &serde_json::Value) -> Result<(), 
     Ok(())
 }
 
-/// Reemplazo completo optimizado: UPSERT de todas + borrar huérfanas (transacción).
-pub fn replace_all_tracks(conn: &mut Connection, tracks: &[serde_json::Value]) -> Result<(), String> {
+/// Ejecuta trabajo bloqueante (disco, SQLite) fuera del hilo principal de la aplicación.
+/// Así las ventanas, la bandeja y los atajos no se congelan mientras se lee o se guarda la biblioteca.
+pub async fn run_blocking<T, F>(job: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(job)
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// Guardado parcial: actualiza solo las pistas recibidas (no borra ninguna).
+pub fn upsert_tracks(conn: &mut Connection, tracks: &[serde_json::Value]) -> Result<(), String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
+    for track in tracks {
+        upsert_track_row(&*tx, track)?;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Mínimo de filas guardadas para activar la protección contra borrados masivos.
+const MASS_DELETE_MIN_ROWS: i64 = 20;
+
+/// Reemplaza la caché de pistas por la lista recibida (upsert de todas y borrado de las que ya no están).
+///
+/// Protección: si no se autoriza explícitamente (`allow_shrink`) y el borrado eliminaría más de la
+/// mitad de las pistas ya guardadas, NO se borran las huérfanas (solo se actualizan las recibidas).
+/// Así una lista vacía o parcial enviada por error no vacía la biblioteca.
+pub fn replace_all_tracks(
+    conn: &mut Connection,
+    tracks: &[serde_json::Value],
+    allow_shrink: bool,
+) -> Result<(), String> {
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let existing: i64 = tx
+        .query_row("SELECT COUNT(*) FROM tracks", [], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
     tx.execute_batch(
         "CREATE TEMP TABLE IF NOT EXISTS _keep_paths (path TEXT PRIMARY KEY);
          DELETE FROM _keep_paths;",
     )
     .map_err(|e| e.to_string())?;
 
+    let mut incoming: i64 = 0;
     {
         let mut keep = tx
             .prepare("INSERT OR IGNORE INTO _keep_paths(path) VALUES (?1)")
@@ -297,20 +334,59 @@ pub fn replace_all_tracks(conn: &mut Connection, tracks: &[serde_json::Value]) -
             if let Some(path) = track.get("path").and_then(|v| v.as_str()) {
                 if !path.is_empty() {
                     keep.execute(params![path]).map_err(|e| e.to_string())?;
+                    incoming += 1;
                 }
             }
             upsert_track_row(&*tx, track)?;
         }
     }
 
-    tx.execute(
-        "DELETE FROM tracks WHERE path NOT IN (SELECT path FROM _keep_paths)",
-        [],
-    )
-    .map_err(|e| e.to_string())?;
+    let would_delete_most =
+        !allow_shrink && existing >= MASS_DELETE_MIN_ROWS && incoming.saturating_mul(2) < existing;
+    if would_delete_most {
+        eprintln!(
+            "[Resonance] Protección: no se borraron pistas huérfanas ({} guardadas, {} recibidas).",
+            existing, incoming
+        );
+    } else {
+        tx.execute(
+            "DELETE FROM tracks WHERE path NOT IN (SELECT path FROM _keep_paths)",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
     tx.execute_batch("DELETE FROM _keep_paths;")
         .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Limpia la caché de pistas SIN perder datos del usuario.
+///
+/// - No toca las playlists y no borra el archivo de la base de datos (esta conexión lo mantiene abierto).
+/// - Las filas de canciones que son favoritas o tienen reproducciones se CONSERVAN: ahí es donde la app
+///   guarda los favoritos entre sesiones. A esas solo se les invalida el metadato (versión 0 y sin carátula)
+///   para que se vuelvan a leer del archivo.
+/// - El resto de filas se borra.
+pub fn clear_cache_tables(conn: &mut Connection) -> Result<(), String> {
+    {
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        tx.execute(
+            "DELETE FROM tracks WHERE is_favorite = 0 AND play_count = 0 AND favorite_added_at IS NULL",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE tracks SET metadata_parser_version = 0, cover_url = NULL",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+    }
+    // Reducir el tamaño del archivo en disco (mejor esfuerzo: si falla no importa).
+    // Orden importante: primero VACUUM y después el checkpoint; al revés el archivo queda en ~5 MB en vez de ~60 KB.
+    let _ = conn.execute_batch("VACUUM");
+    let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
     Ok(())
 }
 
@@ -526,48 +602,58 @@ pub fn load_playlists_payload(conn: &Connection) -> Result<Vec<serde_json::Value
 // ——— Comandos Tauri ———
 
 #[tauri::command]
-pub fn db_get_playlists(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
-    with_db(&app, |conn| load_playlists_payload(conn))
+pub async fn db_get_playlists(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
+    run_blocking(move || with_db(&app, |conn| load_playlists_payload(conn))).await
 }
 
 #[tauri::command]
-pub fn db_save_playlists(app: AppHandle, playlists: Vec<serde_json::Value>) -> Result<(), String> {
-    with_db(&app, |conn| save_playlists_payload(conn, &playlists))
+pub async fn db_save_playlists(
+    app: AppHandle,
+    playlists: Vec<serde_json::Value>,
+) -> Result<(), String> {
+    run_blocking(move || with_db(&app, |conn| save_playlists_payload(conn, &playlists))).await
 }
 
 #[tauri::command]
-pub fn db_get_play_counts(app: AppHandle) -> Result<serde_json::Value, String> {
-    with_db(&app, |conn| {
-        let mut stmt = conn
-            .prepare("SELECT path, play_count FROM tracks WHERE play_count > 0")
-            .map_err(|e| e.to_string())?;
-        let mut map = serde_json::Map::new();
-        let rows = stmt
-            .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))
-            .map_err(|e| e.to_string())?;
-        for row in rows {
-            let (path, count) = row.map_err(|e| e.to_string())?;
-            map.insert(path, serde_json::json!(count));
-        }
-        Ok(serde_json::Value::Object(map))
+pub async fn db_get_play_counts(app: AppHandle) -> Result<serde_json::Value, String> {
+    run_blocking(move || {
+        with_db(&app, |conn| {
+            let mut stmt = conn
+                .prepare("SELECT path, play_count FROM tracks WHERE play_count > 0")
+                .map_err(|e| e.to_string())?;
+            let mut map = serde_json::Map::new();
+            let rows = stmt
+                .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))
+                .map_err(|e| e.to_string())?;
+            for row in rows {
+                let (path, count) = row.map_err(|e| e.to_string())?;
+                map.insert(path, serde_json::json!(count));
+            }
+            Ok(serde_json::Value::Object(map))
+        })
     })
+    .await
 }
 
 #[tauri::command]
-pub fn db_set_play_count(app: AppHandle, path: String, count: i64) -> Result<(), String> {
-    with_db(&app, |conn| {
-        conn.execute(
-            "UPDATE tracks SET play_count = ?1 WHERE path = ?2",
-            params![count, path],
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(())
+pub async fn db_set_play_count(app: AppHandle, path: String, count: i64) -> Result<(), String> {
+    run_blocking(move || {
+        with_db(&app, |conn| {
+            conn.execute(
+                "UPDATE tracks SET play_count = ?1 WHERE path = ?2",
+                params![count, path],
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(())
+        })
     })
+    .await
 }
 
 /// Actualización puntual (favorito / unavailable / path nuevo al reubicar).
+/// Todos los cambios se aplican juntos en una transacción: o se guardan todos o ninguno.
 #[tauri::command]
-pub fn db_update_track_fields(
+pub async fn db_update_track_fields(
     app: AppHandle,
     path: String,
     is_favorite: Option<bool>,
@@ -581,74 +667,79 @@ pub fn db_update_track_fields(
     cover_url: Option<String>,
     play_count: Option<i64>,
 ) -> Result<(), String> {
-    with_db(&app, |conn| {
-        if let Some(ref np) = new_path {
-            if np != &path {
-                // Reubicar clave primaria
-                conn.execute(
-                    "UPDATE tracks SET path = ?1 WHERE path = ?2",
-                    params![np, path],
-                )
-                .map_err(|e| e.to_string())?;
-                conn.execute(
-                    "UPDATE playlist_tracks SET track_path = ?1 WHERE track_path = ?2",
-                    params![np, path],
+    run_blocking(move || {
+        with_db(&app, |conn| {
+            let tx = conn.transaction().map_err(|e| e.to_string())?;
+            if let Some(ref np) = new_path {
+                if np != &path {
+                    // Reubicar clave primaria
+                    tx.execute(
+                        "UPDATE tracks SET path = ?1 WHERE path = ?2",
+                        params![np, path],
+                    )
+                    .map_err(|e| e.to_string())?;
+                    tx.execute(
+                        "UPDATE playlist_tracks SET track_path = ?1 WHERE track_path = ?2",
+                        params![np, path],
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+            }
+            let key = new_path.as_deref().unwrap_or(path.as_str());
+            if let Some(v) = is_favorite {
+                tx.execute(
+                    "UPDATE tracks SET is_favorite = ?1 WHERE path = ?2",
+                    params![if v { 1 } else { 0 }, key],
                 )
                 .map_err(|e| e.to_string())?;
             }
-        }
-        let key = new_path.as_deref().unwrap_or(path.as_str());
-        if let Some(v) = is_favorite {
-            conn.execute(
-                "UPDATE tracks SET is_favorite = ?1 WHERE path = ?2",
-                params![if v { 1 } else { 0 }, key],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = unavailable {
-            conn.execute(
-                "UPDATE tracks SET unavailable = ?1 WHERE path = ?2",
-                params![if v { 1 } else { 0 }, key],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = favorite_added_at {
-            conn.execute(
-                "UPDATE tracks SET favorite_added_at = ?1 WHERE path = ?2",
-                params![v, key],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = title {
-            conn.execute("UPDATE tracks SET title = ?1 WHERE path = ?2", params![v, key])
+            if let Some(v) = unavailable {
+                tx.execute(
+                    "UPDATE tracks SET unavailable = ?1 WHERE path = ?2",
+                    params![if v { 1 } else { 0 }, key],
+                )
                 .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = artist {
-            conn.execute("UPDATE tracks SET artist = ?1 WHERE path = ?2", params![v, key])
+            }
+            if let Some(v) = favorite_added_at {
+                tx.execute(
+                    "UPDATE tracks SET favorite_added_at = ?1 WHERE path = ?2",
+                    params![v, key],
+                )
                 .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = album {
-            conn.execute("UPDATE tracks SET album = ?1 WHERE path = ?2", params![v, key])
-                .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = duration {
-            conn.execute("UPDATE tracks SET duration = ?1 WHERE path = ?2", params![v, key])
-                .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = cover_url {
-            conn.execute("UPDATE tracks SET cover_url = ?1 WHERE path = ?2", params![v, key])
-                .map_err(|e| e.to_string())?;
-        }
-        if let Some(v) = play_count {
-            conn.execute("UPDATE tracks SET play_count = ?1 WHERE path = ?2", params![v, key])
-                .map_err(|e| e.to_string())?;
-        }
-        Ok(())
+            }
+            if let Some(v) = title {
+                tx.execute("UPDATE tracks SET title = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(v) = artist {
+                tx.execute("UPDATE tracks SET artist = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(v) = album {
+                tx.execute("UPDATE tracks SET album = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(v) = duration {
+                tx.execute("UPDATE tracks SET duration = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(v) = cover_url {
+                tx.execute("UPDATE tracks SET cover_url = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(v) = play_count {
+                tx.execute("UPDATE tracks SET play_count = ?1 WHERE path = ?2", params![v, key])
+                    .map_err(|e| e.to_string())?;
+            }
+            tx.commit().map_err(|e| e.to_string())?;
+            Ok(())
+        })
     })
+    .await
 }
 
 /// Upsert de una sola pista (reubicar / metadatos nuevos).
 #[tauri::command]
-pub fn db_upsert_track(app: AppHandle, track: serde_json::Value) -> Result<(), String> {
-    with_db(&app, |conn| upsert_track_row(conn, &track))
+pub async fn db_upsert_track(app: AppHandle, track: serde_json::Value) -> Result<(), String> {
+    run_blocking(move || with_db(&app, |conn| upsert_track_row(conn, &track))).await
 }

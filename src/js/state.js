@@ -1,3 +1,5 @@
+import { enqueueDbWrite } from './scanner/dbQueue.js';
+
 function safeJsonParse(raw, fallback) {
   if (raw == null || raw === '') return fallback;
   try {
@@ -125,7 +127,7 @@ export function incrementPlayCount(song) {
     const path = song.file?.path || song.path;
     const invoke = window.__TAURI__?.core?.invoke;
     if (invoke && path) {
-      void invoke('db_set_play_count', { path, count }).catch(() => {});
+      void enqueueDbWrite(() => invoke('db_set_play_count', { path, count })).catch(() => {});
     }
   } catch (_) {}
 }
@@ -385,31 +387,55 @@ export function resolveSongRef(ref) {
   return null;
 }
 
+/**
+ * true cuando SQLite ya confirmó ser el único almacén de las playlists. Desde entonces no se guarda copia
+ * en localStorage ni en settings.json (antes había tres copias). Mientras no esté confirmado (o si la base
+ * de datos falla) se mantiene la copia local de seguridad.
+ */
+let playlistsInDatabase = false;
+
+export function isPlaylistsInDatabase() {
+  return playlistsInDatabase;
+}
+
+/** Playlists en formato compacto (referencias a canciones), el mismo que se guarda en la base de datos. */
+export function getCompactPlaylists() {
+  return (state.playlists || []).map(playlist => ({
+    ...playlist,
+    songs: (playlist.songs || []).map(song => compactSongRef(song)).filter(Boolean)
+  }));
+}
+
+function adoptDatabaseForPlaylists() {
+  playlistsInDatabase = true;
+  try { localStorage.removeItem('pn_playlists'); } catch (_) {}
+}
+
 export function persistPlaylists() {
   try {
-    const compact = (state.playlists || []).map(playlist => ({
-      ...playlist,
-      songs: (playlist.songs || [])
-        .map(song => compactSongRef(song))
-        .filter(Boolean)
-    }));
-    // Copia local rápida (compatibilidad / arranque offline)
-    localStorage.setItem('pn_playlists', JSON.stringify(compact));
-    // Fuente de verdad en SQLite (Tauri)
+    const compact = getCompactPlaylists();
     const invoke = window.__TAURI__?.core?.invoke;
+    // Sin Tauri, o hasta que SQLite confirme ser el almacén, se conserva la copia local de seguridad
+    if (!invoke || !playlistsInDatabase) {
+      localStorage.setItem('pn_playlists', JSON.stringify(compact));
+    }
     if (invoke) {
-      void invoke('db_save_playlists', { playlists: compact }).catch(err => {
-        console.warn('No se pudieron guardar playlists en SQLite:', err);
+      void enqueueDbWrite(() => invoke('db_save_playlists', { playlists: compact })).catch(err => {
+        console.warn('No se pudieron guardar las playlists en SQLite:', err);
+        // La base de datos falló: volver a la copia local para no perder los cambios
+        playlistsInDatabase = false;
+        try { localStorage.setItem('pn_playlists', JSON.stringify(compact)); } catch (_) {}
       });
     }
   } catch (error) {
-    console.warn('No se pudieron guardar las playlists compactas:', error);
+    console.error('No se pudieron guardar las playlists:', error);
   }
 }
 
-/** Tras cargar la biblioteca, apunta playlist.songs a los objetos canónicos reales. */
-
-/** Carga playlists desde SQLite si existen; si no, mantiene localStorage. */
+/**
+ * Carga las playlists desde SQLite. Si la base de datos está vacía pero hay playlists antiguas en
+ * localStorage / settings.json, las migra. Cuando la base responde bien, pasa a ser el único almacén.
+ */
 export async function loadPlaylistsFromDatabase() {
   const invoke = window.__TAURI__?.core?.invoke;
   if (!invoke) return false;
@@ -417,20 +443,21 @@ export async function loadPlaylistsFromDatabase() {
     const rows = await invoke('db_get_playlists');
     if (Array.isArray(rows) && rows.length > 0) {
       state.playlists = rows;
-      try {
-        localStorage.setItem('pn_playlists', JSON.stringify(rows));
-      } catch (_) {}
+      adoptDatabaseForPlaylists();
       return true;
     }
-    // DB vacía: migrar localStorage → SQLite una vez
+    // Base vacía: migrar las playlists antiguas si existen
     const local = safeJsonParse(localStorage.getItem('pn_playlists'), []);
     if (Array.isArray(local) && local.length > 0) {
-      await invoke('db_save_playlists', { playlists: local });
+      await enqueueDbWrite(() => invoke('db_save_playlists', { playlists: local }));
       state.playlists = local;
+      adoptDatabaseForPlaylists();
       return true;
     }
+    // Base sana y sin playlists (ni copia antigua): desde ahora solo se usa SQLite
+    adoptDatabaseForPlaylists();
   } catch (error) {
-    console.warn('loadPlaylistsFromDatabase:', error);
+    console.warn('No se pudieron cargar las playlists desde SQLite (se usa la copia local):', error);
   }
   return false;
 }

@@ -170,7 +170,8 @@ async function processAudioFilesInternal(matchedFiles, baseFolderName, options =
   localStorage.setItem('pn_folders_info', JSON.stringify(state.configuredFolders));
   rebuildSongsIndex();
   if (hasChanges) {
-    await saveNativeLibraryCache(true);
+    // Viene de un escaneo real: aquí sí es válido que la biblioteca guardada se reduzca (carpeta quitada, archivos borrados)
+    await saveNativeLibraryCache(true, { allowShrink: true });
   }
 
   renderDirectories();

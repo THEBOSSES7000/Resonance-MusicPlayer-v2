@@ -303,8 +303,18 @@ pub fn scan_file_metadata(
     scan_path_metadata_inner(&app, &path, include_lyrics.unwrap_or(false))
 }
 
+/// Lee los metadatos de varios archivos en paralelo. Se ejecuta fuera del hilo principal para que la
+/// ventana, la bandeja y los atajos no se congelen mientras se escanean miles de archivos.
 #[tauri::command]
-pub fn scan_files_metadata(
+pub async fn scan_files_metadata(
+    app: AppHandle,
+    paths: Vec<String>,
+    include_lyrics: Option<bool>,
+) -> Result<Vec<ScannedTrackResult>, String> {
+    crate::db::run_blocking(move || scan_files_metadata_blocking(app, paths, include_lyrics)).await
+}
+
+fn scan_files_metadata_blocking(
     app: AppHandle,
     paths: Vec<String>,
     include_lyrics: Option<bool>,

@@ -259,7 +259,7 @@ export async function removeSongFromLibrary(song) {
   });
   invalidateLibraryEntityCaches();
   persistPlaylists();
-  try { await saveNativeLibraryCache(true); } catch (_) {}
+  try { await saveNativeLibraryCache(true, { full: true }); } catch (_) {}
 
   renderGrids();
   void renderPlaylistDetailView();
@@ -360,7 +360,7 @@ export async function findAndRelinkSong(song) {
     const { dbUpsertTrack } = await import('../../scanner/dbSync.js');
     await dbUpsertTrack(song);
   } catch (_) {
-    try { await saveNativeLibraryCache(true); } catch (_) {}
+    try { await saveNativeLibraryCache(true, { full: true }); } catch (_) {}
   }
   invalidateLibraryEntityCaches();
   renderGrids();
