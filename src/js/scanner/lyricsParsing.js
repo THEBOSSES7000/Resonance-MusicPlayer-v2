@@ -7,6 +7,7 @@ export function parseLyricsText(raw) {
   const tagRegex = /^\[(ti|ar|al|by|offset|length|re|ve|au|x-translation):.*\]$/i;
   const voiceRegex = /(?:\[(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)(?:\s*:[^\]]*)?\]|<(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)>|\{(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\}|\((?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\))/gi;
   const voicePrefixRegex = /^((?:\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]\s*)*)(?:voice|voz|v)\s*[:= ]?\s*([A-Za-z0-9_-]+)\s*:\s*/i;
+  const backgroundVoicePrefixRegex = /^\[(bg|background|backing)\s*:/i;
 
   const syncedLines = [];
   const plainLines = [];
@@ -27,10 +28,16 @@ export function parseLyricsText(raw) {
 
     const voiceMatches = [...trimmed.matchAll(voiceRegex)];
     const voicePrefix = trimmed.match(voicePrefixRegex);
-    const voice = voicePrefix?.[2] || (voiceMatches.length
+    const backgroundVoicePrefix = trimmed.match(backgroundVoicePrefixRegex);
+    const voice = voicePrefix?.[2] || backgroundVoicePrefix?.[1] || (voiceMatches.length
       ? voiceMatches[voiceMatches.length - 1].slice(1).find(Boolean)
       : null);
-    const lyricText = trimmed.replace(voiceRegex, '').replace(voicePrefixRegex, '$1').trim();
+    let lyricText = trimmed
+      .replace(voiceRegex, '')
+      .replace(voicePrefixRegex, '$1')
+      .replace(backgroundVoicePrefixRegex, '');
+    if (backgroundVoicePrefix) lyricText = lyricText.replace(/\]\s*$/, '');
+    lyricText = lyricText.trim();
     if (!lyricText) continue;
 
     const lineTimes = [...lyricText.matchAll(timeRegex)].map(parseTimestamp);
@@ -99,18 +106,25 @@ export function parseInlineLyricWords(text) {
     const start = match.index + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index : value.length;
     const wordText = value.slice(start, end).replace(/\[(\d{1,2}):(\d{2})(?:[.:]\d{1,3})?\]/g, '');
-    if (!wordText.trim()) continue;
     const fraction = match[3] || '0';
     const time = Number.parseInt(match[1], 10) * 60 +
         Number.parseInt(match[2], 10) +
         Number.parseInt(fraction.padEnd(3, '0'), 10) / 1000;
+    const nextMatch = matches[index + 1];
+    const nextFraction = nextMatch?.[3] || '0';
+    const nextTime = nextMatch
+      ? Number.parseInt(nextMatch[1], 10) * 60 +
+        Number.parseInt(nextMatch[2], 10) +
+        Number.parseInt(nextFraction.padEnd(3, '0'), 10) / 1000
+      : NaN;
+    const endTime = Number.isFinite(nextTime) && nextTime > time ? nextTime : undefined;
     const parts = wordText.match(/\s+|[^\s]+/g) || [];
     parts.forEach(part => {
       if (/^\s+$/.test(part)) {
         const previous = words[words.length - 1];
         if (previous) previous.text += part;
-      } else {
-        words.push({ time, text: part });
+      } else if (part.trim()) {
+        words.push({ time, ...(endTime !== undefined ? { endTime } : {}), text: part });
       }
     });
   }

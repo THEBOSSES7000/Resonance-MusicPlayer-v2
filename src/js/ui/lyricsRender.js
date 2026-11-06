@@ -278,13 +278,16 @@ function createActiveRowFillOverlay(line, direction, wordTimings = [], sophistic
       const estimatedDuration = Number.isFinite(previousWordStart)
         ? Math.min(1.5, Math.max(0.25, wordStart - previousWordStart))
         : 0.65;
+      const explicitWordEnd = Number(word.endTime);
       const unit = document.createElement('span');
       unit.className = 'lyric-fill-unit';
       unit.dataset.wordStart = String(wordStart);
       unit._wordStart = wordStart;
-      unit._wordEnd = Number.isFinite(nextWordStart)
-        ? nextWordStart
-        : wordStart + estimatedDuration;
+      unit._wordEnd = Number.isFinite(explicitWordEnd) && explicitWordEnd > wordStart
+        ? explicitWordEnd
+        : Number.isFinite(nextWordStart)
+          ? nextWordStart
+          : wordStart + estimatedDuration;
       unit.textContent = visibleWord;
       unit.style.opacity = '0.34';
       clone.appendChild(unit);
@@ -444,6 +447,14 @@ function applySophisticatedMotion(element, progress, isEnabled, isLetter = false
   setStylePropIfChanged(element, '--lyrics-spicy-glow-blur', `${(glow * 12).toFixed(2)}px`);
 }
 
+function applyTimedWordEmphasis(element, progress) {
+  const pulse = Math.sin(Math.PI * Math.max(0, Math.min(1, progress)));
+  setStylePropIfChanged(element, '--lyrics-spicy-scale', (1 + pulse * 0.055).toFixed(4));
+  setStylePropIfChanged(element, '--lyrics-spicy-y', `${(-pulse * 0.075).toFixed(4)}em`);
+  setStylePropIfChanged(element, '--lyrics-spicy-glow', (pulse * 0.65).toFixed(3));
+  setStylePropIfChanged(element, '--lyrics-spicy-glow-blur', `${(pulse * 7).toFixed(2)}px`);
+}
+
 function getParsedLineWordTimings(lineElement) {
   if (!lineElement) return [];
   if (Array.isArray(lineElement._parsedWordTimings)) {
@@ -502,6 +513,9 @@ function computeLineStartEndTimes(lineElement) {
   const lastWordStart = timedWords.length
     ? Number(timedWords[timedWords.length - 1].time)
     : NaN;
+  const explicitLastWordEnd = timedWords.length
+    ? Number(timedWords[timedWords.length - 1].endTime)
+    : NaN;
   const previousWordStart = timedWords.slice(0, -1)
     .map(word => Number(word.time))
     .filter(wordTime => Number.isFinite(wordTime) && wordTime < lastWordStart)
@@ -509,25 +523,30 @@ function computeLineStartEndTimes(lineElement) {
   const finalWordDuration = Number.isFinite(previousWordStart)
     ? Math.min(1.5, Math.max(0.25, lastWordStart - previousWordStart))
     : 0.65;
-  const timedLyricsEnd = Number.isFinite(lastWordStart)
-    ? lastWordStart + finalWordDuration
-    : NaN;
+  const timedLyricsEnd = Number.isFinite(explicitLastWordEnd) && explicitLastWordEnd > lastWordStart
+    ? explicitLastWordEnd
+    : Number.isFinite(lastWordStart)
+      ? lastWordStart + finalWordDuration
+      : NaN;
 
-  let end = Number.isFinite(nextVoiceTime) ? nextVoiceTime : nextAnyVoiceTime;
-  if (!Number.isFinite(end) || end <= start) {
-    if (Number.isFinite(timedLyricsEnd) && timedLyricsEnd > start) {
-      end = timedLyricsEnd;
-    } else {
-      const previousTime = Number.isFinite(previousVoiceTime)
-        ? previousVoiceTime
-        : previousAnyVoiceTime;
-      const estimatedDuration = Number.isFinite(previousTime)
-        ? Math.min(6, Math.max(1.5, start - previousTime))
-        : 4;
-      end = start + estimatedDuration;
-    }
+  let end;
+  if (Number.isFinite(nextVoiceTime)) {
+    end = Number.isFinite(timedLyricsEnd)
+      ? Math.min(nextVoiceTime, timedLyricsEnd)
+      : nextVoiceTime;
+  } else if (Number.isFinite(timedLyricsEnd) && timedLyricsEnd > start) {
+    end = timedLyricsEnd;
+  } else if (Number.isFinite(nextAnyVoiceTime)) {
+    end = nextAnyVoiceTime;
+  } else {
+    const previousTime = Number.isFinite(previousVoiceTime)
+      ? previousVoiceTime
+      : previousAnyVoiceTime;
+    const estimatedDuration = Number.isFinite(previousTime)
+      ? Math.min(6, Math.max(1.5, start - previousTime))
+      : 4;
+    end = start + estimatedDuration;
   }
-  if (Number.isFinite(timedLyricsEnd) && end > timedLyricsEnd) end = timedLyricsEnd;
   if (Number.isFinite(trackDuration) && trackDuration > start) {
     end = Math.min(end, trackDuration);
   }
@@ -657,7 +676,9 @@ function updateActiveRowFillForLine(currentTime, activeLine) {
       const wordProgress = wordEnd > wordStart
         ? Math.max(0, Math.min(1, (currentTime - wordStart) / (wordEnd - wordStart)))
         : 0;
-      setUnitProgress(unit, currentTime < wordEnd ? wordProgress : 0);
+      const easedWordProgress = Math.sin(wordProgress * Math.PI / 2);
+      setUnitProgress(unit, currentTime >= wordEnd ? 1 : easedWordProgress);
+      applyTimedWordEmphasis(unit, wordProgress);
     }
   } else if (direction === 'letters' || direction === 'words') {
     const count = units.length;
