@@ -1,6 +1,7 @@
 /* —— Archivos sueltos (resolver M3U, estilo tabla) —— */
 .missing-songs-card--table {
   width: min(1180px, 98vw);
+  max-width: min(1180px, 98vw);
   max-height: min(86vh, 780px);
   display: flex;
   flex-direction: column;
@@ -67,13 +68,13 @@
   height: 1rem;
 }
 .missing-col-orphan {
-  width: 44%;
+  width: 39%;
 }
 .missing-col-replace {
-  width: 36%;
+  width: 32%;
 }
 .missing-col-match {
-  width: 18%;
+  width: 23%;
 }
 .missing-orphan-path {
   display: block;
@@ -243,5 +244,4 @@
   min-height: 0.9rem;
   text-align: center;
 }
-
 

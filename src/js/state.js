@@ -411,6 +411,12 @@ function adoptDatabaseForPlaylists() {
   try { localStorage.removeItem('pn_playlists'); } catch (_) {}
 }
 
+function normalizeStoredPlaylistId(id) {
+  if (typeof id !== 'string' || !/^\d+$/.test(id)) return id;
+  const numericId = Number(id);
+  return Number.isSafeInteger(numericId) ? numericId : id;
+}
+
 export function persistPlaylists() {
   try {
     const compact = getCompactPlaylists();
@@ -442,7 +448,10 @@ export async function loadPlaylistsFromDatabase() {
   try {
     const rows = await invoke('db_get_playlists');
     if (Array.isArray(rows) && rows.length > 0) {
-      state.playlists = rows;
+      state.playlists = rows.map(playlist => ({
+        ...playlist,
+        id: normalizeStoredPlaylistId(playlist.id)
+      }));
       adoptDatabaseForPlaylists();
       return true;
     }

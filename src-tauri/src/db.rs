@@ -145,6 +145,8 @@ fn init_schema(conn: &Connection) -> Result<(), String> {
 }
 
 fn migrate_from_json_if_needed(app: &AppHandle, conn: &mut Connection) -> Result<(), String> {
+    migrate_playlists_from_settings_if_needed(app, conn)?;
+
     let migrated: bool = conn
         .query_row(
             "SELECT value FROM meta WHERE key = 'migrated_from_json'",
@@ -189,6 +191,120 @@ fn migrate_from_json_if_needed(app: &AppHandle, conn: &mut Connection) -> Result
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn migrate_playlists_from_settings_if_needed(
+    app: &AppHandle,
+    conn: &mut Connection,
+) -> Result<(), String> {
+    let migrated: bool = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = 'migrated_playlists_from_settings'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .is_some_and(|value| value == "1");
+    if migrated {
+        return Ok(());
+    }
+
+    let active_settings_path = crate::storage::settings_store_path(app)?;
+    let app_data_settings_path =
+        crate::storage::app_data_storage_directory(app)?.join("settings.json");
+    let mut settings_paths = vec![active_settings_path, app_data_settings_path];
+    settings_paths.extend(crate::storage::legacy_settings_store_paths(app)?);
+    let mut seen_settings_paths = std::collections::HashSet::new();
+    settings_paths.retain(|path| seen_settings_paths.insert(path.clone()));
+    let mut imported_total = 0;
+    for settings_path in settings_paths {
+        if !settings_path.is_file() {
+            continue;
+        }
+        let contents = fs::read_to_string(&settings_path).map_err(|error| {
+            format!(
+                "No se pudieron leer los ajustes de {} para recuperar playlists: {error}",
+                settings_path.display()
+            )
+        })?;
+        let settings: serde_json::Value = serde_json::from_str(&contents).map_err(|error| {
+            format!(
+                "No se pudieron interpretar los ajustes de {} para recuperar playlists: {error}",
+                settings_path.display()
+            )
+        })?;
+        if let Some(legacy_playlists) = settings.get("pn_playlists") {
+            imported_total += merge_legacy_playlists(conn, legacy_playlists)?;
+        }
+    }
+    if imported_total > 0 {
+        eprintln!(
+            "[Resonance] Recuperadas {} playlists antiguas de settings.json → SQLite",
+            imported_total
+        );
+    }
+
+    conn.execute(
+        "INSERT OR REPLACE INTO meta(key, value) VALUES ('migrated_playlists_from_settings', '1')",
+        [],
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn playlist_id_string(playlist: &serde_json::Value) -> Option<String> {
+    playlist
+        .get("id")
+        .and_then(|value| {
+            value
+                .as_str()
+                .map(String::from)
+                .or_else(|| value.as_number().map(|number| number.to_string()))
+        })
+        .filter(|id| !id.is_empty())
+}
+
+fn merge_legacy_playlists(
+    conn: &mut Connection,
+    legacy_playlists: &serde_json::Value,
+) -> Result<usize, String> {
+    let parsed = match legacy_playlists {
+        serde_json::Value::String(serialized) => {
+            serde_json::from_str(serialized).map_err(|error| {
+                format!("No se pudieron interpretar las playlists antiguas: {error}")
+            })?
+        }
+        value => value.clone(),
+    };
+    let playlists = parsed
+        .as_array()
+        .or_else(|| {
+            parsed
+                .get("playlists")
+                .and_then(serde_json::Value::as_array)
+        })
+        .ok_or_else(|| "El formato de las playlists antiguas no es válido.".to_string())?;
+    if playlists.is_empty() {
+        return Ok(0);
+    }
+
+    let mut merged = load_playlists_payload(conn)?;
+    let existing_count = merged.len();
+    let mut known_ids: std::collections::HashSet<String> =
+        merged.iter().filter_map(playlist_id_string).collect();
+    for playlist in playlists {
+        if let Some(id) = playlist_id_string(playlist) {
+            if known_ids.insert(id) {
+                merged.push(playlist.clone());
+            }
+        }
+    }
+    let imported_count = merged.len().saturating_sub(existing_count);
+    if imported_count > 0 {
+        save_playlists_payload(conn, &merged)?;
+    }
+    Ok(imported_count)
 }
 
 fn json_bool(obj: &serde_json::Map<String, serde_json::Value>, k: &str) -> bool {
@@ -500,9 +616,13 @@ pub fn save_playlists_payload(
             };
             let id = obj
                 .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
+                .and_then(|value| {
+                    value
+                        .as_str()
+                        .map(String::from)
+                        .or_else(|| value.as_number().map(|number| number.to_string()))
+                })
+                .unwrap_or_default();
             if id.is_empty() {
                 continue;
             }
@@ -924,7 +1044,10 @@ pub async fn db_relocate_track(
 
 #[cfg(test)]
 mod tests {
-    use super::{init_schema, relocate_track_payload, save_playlists_payload, upsert_tracks};
+    use super::{
+        init_schema, merge_legacy_playlists, relocate_track_payload, save_playlists_payload,
+        upsert_tracks,
+    };
     use rusqlite::Connection;
 
     fn test_connection() -> Connection {
@@ -975,6 +1098,86 @@ mod tests {
             )
             .expect("updated playlist should remain");
         assert_eq!(title, "Updated");
+    }
+
+    #[test]
+    fn playlist_saves_accept_numeric_ids_from_javascript() {
+        let mut conn = test_connection();
+        let playlists = serde_json::json!([{
+            "id": 1730923200123_u64,
+            "title": "Playlist nueva",
+            "songs": [{"path": "music/song.mp3"}]
+        }]);
+
+        save_playlists_payload(&mut conn, playlists.as_array().unwrap())
+            .expect("playlist with numeric ID should save");
+
+        let saved_id: String = conn
+            .query_row("SELECT id FROM playlists", [], |row| row.get(0))
+            .expect("playlist should not be skipped");
+        assert_eq!(saved_id, "1730923200123");
+
+        let loaded = super::load_playlists_payload(&conn).expect("playlist should load");
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0]["id"], "1730923200123");
+        assert_eq!(loaded[0]["songs"][0]["path"], "music/song.mp3");
+    }
+
+    #[test]
+    fn legacy_playlists_in_settings_are_imported_into_an_empty_database() {
+        let mut conn = test_connection();
+        let legacy = serde_json::json!(
+            r#"[{
+                "id": 1730923200123,
+                "title": "Playlist antigua",
+                "songs": [{"path": "music/old-song.mp3"}]
+            }]"#
+        );
+
+        let imported =
+            merge_legacy_playlists(&mut conn, &legacy).expect("legacy playlists should migrate");
+
+        assert_eq!(imported, 1);
+        let loaded = super::load_playlists_payload(&conn).expect("playlist should load");
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0]["id"], "1730923200123");
+        assert_eq!(loaded[0]["title"], "Playlist antigua");
+        assert_eq!(loaded[0]["songs"][0]["path"], "music/old-song.mp3");
+    }
+
+    #[test]
+    fn legacy_playlists_merge_without_overwriting_existing_ids() {
+        let mut conn = test_connection();
+        let current = serde_json::json!([{
+            "id": "123",
+            "title": "Playlist actual",
+            "songs": []
+        }]);
+        save_playlists_payload(&mut conn, current.as_array().unwrap())
+            .expect("current playlist should save");
+        let legacy = serde_json::json!([
+            {
+                "id": 123,
+                "title": "No reemplazar",
+                "songs": []
+            },
+            {
+                "id": 456,
+                "title": "Playlist antigua",
+                "songs": []
+            }
+        ]);
+
+        let imported = merge_legacy_playlists(&mut conn, &legacy)
+            .expect("legacy playlists should merge without replacing current data");
+
+        assert_eq!(imported, 1);
+        let loaded = super::load_playlists_payload(&conn).expect("current playlist should load");
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0]["id"], "123");
+        assert_eq!(loaded[0]["title"], "Playlist actual");
+        assert_eq!(loaded[1]["id"], "456");
+        assert_eq!(loaded[1]["title"], "Playlist antigua");
     }
 
     #[test]

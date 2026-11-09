@@ -76,6 +76,21 @@ pub fn app_data_storage_directory(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(storage_directory)
 }
 
+pub(crate) fn legacy_settings_store_paths(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+    let app_data_directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
+    let parent = app_data_directory
+        .parent()
+        .ok_or_else(|| "No se pudo determinar la carpeta AppData de Resonance.".to_string())?;
+    Ok(vec![
+        app_data_directory.join("settings.json"),
+        parent.join("Resonance").join("settings.json"),
+        parent.join("com.purplenote.app").join("settings.json"),
+    ])
+}
+
 pub fn active_storage_directory(app: &AppHandle) -> Result<PathBuf, String> {
     let portable_directory = portable_storage_directory()?;
     if portable_directory.is_dir() {
