@@ -155,11 +155,22 @@ export function initAudioSettings() {
     return z20();
   };
 
+  const equalizerHint = document.getElementById('audio-equalizer-hint');
+  const syncEqualizerHeadroomHint = (enabled, gains) => {
+    const boost = enabled ? Math.max(0, ...gains) : 0;
+    if (!equalizerHint) return;
+    equalizerHint.hidden = boost <= 0;
+    equalizerHint.textContent = boost > 0
+      ? `Se aplica un preamplificador automático de -${boost.toFixed(1)} dB para reducir el riesgo de saturación.`
+      : '';
+  };
+
   refreshPresetSelect();
   applyEqualizerGains(gainsForPresetKey(equalizerPreset?.value || 'flat'));
 
   const applyEqualizer = async () => {
     const gains = readEqualizerGains();
+    syncEqualizerHeadroomHint(Boolean(equalizerEnabled?.checked), gains);
     gains.forEach((gain, index) => localStorage.setItem(`pn_audio_eq_${index}`, String(gain)));
     try {
       await configureEqualizer(Boolean(equalizerEnabled?.checked), gains);

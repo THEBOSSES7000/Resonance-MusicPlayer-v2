@@ -6,8 +6,6 @@ import { updateLyricsResyncVisibility } from './scrollResync.js';
 
 const TRANSLATION_CACHE_INDEX_KEY = 'pn_lyrics_trans_keys';
 
-const MAX_CACHED_TRANSLATIONS = 40;
-
 let lyricsTranslationShown = false;
 
 let lyricsTranslationLoading = false;
@@ -46,7 +44,7 @@ function getTranslationCacheKey(song, targetLang) {
   return `lyrics_trans_${trackKey}_${targetLang}`;
 }
 
-function saveTranslationToBoundedStorage(cacheKey, translatedLines) {
+function saveTranslationToStorage(cacheKey, translatedLines) {
   try {
     let keys = [];
     try {
@@ -56,10 +54,6 @@ function saveTranslationToBoundedStorage(cacheKey, translatedLines) {
       keys = [];
     }
     keys = keys.filter(k => k !== cacheKey);
-    while (keys.length >= MAX_CACHED_TRANSLATIONS) {
-      const oldest = keys.shift();
-      if (oldest) localStorage.removeItem(oldest);
-    }
     localStorage.setItem(cacheKey, JSON.stringify(translatedLines));
     keys.push(cacheKey);
     localStorage.setItem(TRANSLATION_CACHE_INDEX_KEY, JSON.stringify(keys));
@@ -265,7 +259,7 @@ async function loadAndShowLyricsTranslation(song, targetLang = getLyricsTranslat
     let translatedLines = getCachedTranslation(song, targetLang);
     if (!translatedLines) {
       translatedLines = await requestLyricsTranslation(song, targetLang);
-      saveTranslationToBoundedStorage(getTranslationCacheKey(song, targetLang), translatedLines);
+      saveTranslationToStorage(getTranslationCacheKey(song, targetLang), translatedLines);
     }
     if (requestId !== lyricsTranslationRequestId || getCurrentPlaybackSong()?.id !== song.id) return;
     activeTranslationSongId = song.id;

@@ -137,9 +137,7 @@ async function searchMusicBrainz(artistName) {
         provider: 'musicbrainz',
         providerLabel: 'MusicBrainz',
         name: artist.name || artistName,
-        description: String(artist.disambiguation || '').trim()
-          ? `(${String(artist.disambiguation).trim()})`
-          : '',
+        description: '',
         origin,
         type,
         genres,

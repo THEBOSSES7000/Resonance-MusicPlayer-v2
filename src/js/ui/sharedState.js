@@ -13,6 +13,7 @@ export const uiVars = {
   tempCoverFile: null,
   tempImportedSongs: [],
   tempImportedPlaylistHasM3U: false,
+  tempImportedPlaylistMetadata: null,
   songDetailsTarget: null,
   detailVisibleCount: 50,
   searchVisibleCount: SEARCH_PAGE_SIZE,

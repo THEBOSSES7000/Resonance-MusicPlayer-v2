@@ -3,7 +3,7 @@
 import { EMPTY_PIXEL_GIF, bindLazyCover, clearContainerCovers } from './covers.js';
 import { getProfileOverride } from './profileEditor.js';
 import { uiVars } from './sharedState.js';
-import { artistAlbumsGrid, artistBioToggle, artistDisambiguation, artistFacts, artistRelatedGrid, artistTagsContainer, playlistHeroCover, playlistHeroDesc } from './dom.js';
+import { artistAlbumsGrid, artistBioToggle, artistFacts, artistRelatedGrid, artistTagsContainer, playlistHeroCover, playlistHeroDesc } from './dom.js';
 import { state } from '../state.js';
 import { navigateToView } from './navigation.js';
 import { artistsFromCredit } from './libraryEntities.js';
@@ -78,7 +78,12 @@ function setBoundedArtistCacheValue(cache, key, value) {
 }
 
 async function fetchArtistPortraitFromWikipedia(artistName) {
-  const profilePhoto = getProfileOverride('artist', artistName)?.photo;
+  const override = getProfileOverride('artist', artistName);
+  if (override?.photoSource === 'generic') {
+    delete artistPortraitCache[artistName];
+    return null;
+  }
+  const profilePhoto = override?.photo;
   if (profilePhoto) {
     setBoundedArtistCacheValue(artistPortraitCache, artistName, profilePhoto);
     return profilePhoto;
@@ -183,8 +188,6 @@ async function fetchArtistInfoFromMusicBrainz(artistName) {
     const metadata = {
       type: '',
       origin: '',
-      activity: '',
-      disambiguation: '',
       genres: [],
       available: false
     };
@@ -199,13 +202,6 @@ async function fetchArtistInfoFromMusicBrainz(artistName) {
 
       metadata.type = String(artist.type || '').trim();
       metadata.origin = String(artist.area?.name || artist.country || '').trim();
-      metadata.disambiguation = String(artist.disambiguation || '').trim();
-      const lifeSpan = artist['life-span'] || {};
-      const begin = String(lifeSpan.begin || '').trim();
-      const end = String(lifeSpan.end || '').trim();
-      metadata.activity = begin
-        ? `${begin} – ${end || (!lifeSpan.ended ? 'Presente' : '?')}`
-        : end;
       const sourceGenres = Array.isArray(artist.tags) && artist.tags.length
         ? artist.tags
         : Array.isArray(artist.genres) ? artist.genres : [];
@@ -315,12 +311,11 @@ export async function applyArtistHeroMetadata(artistName) {
       ...metadata,
       type: Object.prototype.hasOwnProperty.call(override, 'type') ? override.type : metadata.type,
       origin: Object.prototype.hasOwnProperty.call(override, 'origin') ? override.origin : metadata.origin,
-      activity: Object.prototype.hasOwnProperty.call(override, 'activity') ? override.activity : metadata.activity,
-      disambiguation: Object.prototype.hasOwnProperty.call(override, 'context') ? override.context : metadata.disambiguation,
       genres: Object.prototype.hasOwnProperty.call(override, 'genres') ? override.genres : metadata.genres,
-      available: metadata.available || Boolean(override.description || override.origin || override.activity || override.type || override.context || override.genres?.length)
+      available: metadata.available || Boolean(override.description || override.origin || override.type || override.genres?.length)
     };
-    if (override.photo) wikipediaPortraitUrl = override.photo;
+    if (override.photoSource === 'generic') wikipediaPortraitUrl = null;
+    else if (override.photo) wikipediaPortraitUrl = override.photo;
   }
   const genres = Array.isArray(metadata.genres) ? metadata.genres : [];
   const artistImageUrls = [...new Set([
@@ -353,10 +348,6 @@ export async function applyArtistHeroMetadata(artistName) {
   if (metadata.available) {
     playlistHeroDesc.textContent = '';
     playlistHeroDesc.style.display = 'none';
-    if (artistDisambiguation) {
-      artistDisambiguation.textContent = '';
-      artistDisambiguation.hidden = true;
-    }
     if (artistFacts) {
       artistFacts.replaceChildren();
       const facts = [
@@ -374,10 +365,6 @@ export async function applyArtistHeroMetadata(artistName) {
       });
     }
   } else {
-    if (artistDisambiguation) {
-      artistDisambiguation.textContent = '';
-      artistDisambiguation.hidden = true;
-    }
     if (artistFacts) {
       artistFacts.replaceChildren();
       artistFacts.hidden = true;

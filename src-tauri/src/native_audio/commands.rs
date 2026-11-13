@@ -158,10 +158,15 @@ pub async fn native_audio_set_eq(
 pub async fn native_audio_set_rate(
     state: State<'_, NativeAudioState>,
     rate: f32,
+    preserve_pitch: bool,
 ) -> Result<NativeAudioStatus, String> {
     let tx = with_tx(&state, |tx| Ok(tx.clone()))?;
     tauri::async_runtime::spawn_blocking(move || {
-        send_cmd_blocking(&tx, |reply| AudioCmd::SetRate { rate, reply })
+        send_cmd_blocking(&tx, |reply| AudioCmd::SetRate {
+            rate,
+            preserve_pitch,
+            reply,
+        })
     })
     .await
     .map_err(|e| format!("Error en el motor de audio: {e}"))?
@@ -239,6 +244,8 @@ pub async fn native_audio_status(
 pub fn native_audio_set_energy_emit(enabled: bool) {
     super::measuring::ENERGY_EMIT_ENABLED.store(enabled, Ordering::Relaxed);
     if !enabled {
-        // El hilo de audio pondrá la energía a 0 en el próximo tick si aplica.
+        if let Ok(mut spectrum) = super::measuring::LATEST_SPECTRUM.lock() {
+            *spectrum = [0.0; super::measuring::SPECTRUM_BANDS];
+        }
     }
 }

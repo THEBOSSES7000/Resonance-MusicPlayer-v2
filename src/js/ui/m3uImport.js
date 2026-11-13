@@ -3,6 +3,9 @@
 import { resolveSongRef, state } from '../state.js';
 import { showConfirmDialog } from './uiUtils.js';
 import { rescanConfiguredMusic } from '../scanner.js';
+import { findM3ULibraryTrack, parseM3UEntries, parseM3UPlaylist, pathBasename, splitArtistTitleText } from './m3u8.js';
+
+export { parseM3UEntries, parseM3UPlaylist } from './m3u8.js';
 
 export function parseM3UContent(text) {
   return parseM3UEntries(text).map(entry => {
@@ -10,6 +13,10 @@ export function parseM3UContent(text) {
     const best = ranked[0];
     return best && isConfidentM3UMatch(entry, ranked) ? best.song : null;
   }).filter(Boolean);
+}
+
+export function findM3ULibraryMatch(entry, playlistPath = '') {
+  return findM3ULibraryTrack(entry, state.localMusicFiles, playlistPath);
 }
 
 function normalizeM3UText(value) {
@@ -21,42 +28,12 @@ function normalizeM3UText(value) {
     .trim();
 }
 
-function pathBasename(path) {
-  return String(path || '').replace(/\\/g, '/').split('/').pop() || '';
-}
-
 /** Quita prefijo de número de pista: "01 - ", "1-01 - ", "303 - ", etc. */
 function stripTrackNumberPrefix(text) {
   return String(text || '')
     .replace(/^\s*\d{1,3}(?:[._-]\d{1,3})?\s*[-–—.)]\s*/, '')
     .replace(/^\s*\d{1,3}(?:[._-]\d{1,3})?\s+/, '')
     .trim();
-}
-
-/** Separa "Artista - Título" de un texto (nombre de archivo o EXTINF). */
-function splitArtistTitleText(text) {
-  let raw = String(text || '')
-    .replace(/\.[^.]+$/, '')
-    .trim();
-  if (!raw) return null;
-
-  // Evitar que "1-01 - Lifelight" o "303 - Artist - Title" tome el número como artista
-  raw = stripTrackNumberPrefix(raw);
-  if (!raw) return null;
-
-  const spaced = raw.match(/^(.+?)\s+[-–—|~]+\s+(.+)$/);
-  if (spaced) {
-    const left = spaced[1].trim();
-    const right = spaced[2].trim();
-    if (left && right) {
-      // Si el lado izquierdo sigue siendo solo número, no usarlo como artista
-      if (/^\d{1,4}$/.test(left)) {
-        return { artist: '', title: right };
-      }
-      return { artist: left, title: right };
-    }
-  }
-  return null;
 }
 
 function formatTitleArtistLabel(title, artist) {
@@ -67,44 +44,6 @@ function formatTitleArtistLabel(title, artist) {
   if (t) return t;
   if (a) return a;
   return '';
-}
-
-export function parseM3UEntries(text) {
-  const entries = [];
-  let currentExtInf = null;
-  String(text).replace(/^\uFEFF/, '').split(/\r?\n/).forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    if (trimmed.startsWith('#EXTINF:')) {
-      const comma = trimmed.indexOf(',');
-      if (comma < 0) return;
-      const duration = Number(trimmed.slice(8, comma));
-      const displayName = trimmed.slice(comma + 1).trim();
-      const split = splitArtistTitleText(displayName);
-      currentExtInf = {
-        duration: Number.isFinite(duration) ? duration : 0,
-        displayName,
-        // Convención M3U habitual: "Artista - Título"
-        artist: split?.artist || '',
-        title: split?.title || displayName
-      };
-      return;
-    }
-    if (trimmed.startsWith('#')) return;
-    const sourcePath = trimmed.replace(/^file:\/\//i, '').replace(/\//g, '\\');
-    const filename = pathBasename(trimmed);
-    const fallbackTitle = filename.replace(/\.[^.]+$/, '');
-    entries.push({
-      sourcePath,
-      filename,
-      duration: currentExtInf?.duration || 0,
-      artist: currentExtInf?.artist || '',
-      title: currentExtInf?.title || fallbackTitle,
-      displayName: currentExtInf?.displayName || fallbackTitle
-    });
-    currentExtInf = null;
-  });
-  return entries;
 }
 
 /** Puntuación 0–100 de similitud para sugerencias M3U / archivos sueltos. */
@@ -319,6 +258,15 @@ export function openMissingSongsResolver(sourceSongs, onApply, showCompleteMessa
   const selectAllCheckbox = document.getElementById('missing-songs-select-all');
   if (!modal || !list || !description || !applyButton || !cancelButton || !closeButton ||
       !autoFindButton || !autoFindStatus) return;
+  let activeRowContextMenu = null;
+  const closeRowContextMenu = () => {
+    activeRowContextMenu?.remove();
+    activeRowContextMenu = null;
+    document.removeEventListener('pointerdown', dismissRowContextMenu);
+  };
+  const dismissRowContextMenu = event => {
+    if (!activeRowContextMenu?.contains(event.target)) closeRowContextMenu();
+  };
 
   const formatSuggestionLabel = song => {
     if (!song) return '';
@@ -477,6 +425,65 @@ export function openMissingSongsResolver(sourceSongs, onApply, showCompleteMessa
       }
     };
 
+    const findClosestMatch = () => {
+      const ranked = rankSongCandidates(item.song);
+      item.ranked = ranked;
+      item.suggestion = ranked[0]?.score >= 28 ? ranked[0] : null;
+      if (item.suggestion && item.suggestion.score >= 48) item.selected = true;
+      const fresh = renderRow(item);
+      tr.replaceWith(fresh);
+      rowByIndex.set(item.index, fresh);
+      syncSelectAllState();
+      updateApplyButton();
+      autoFindStatus.textContent = item.suggestion
+        ? `Coincidencia más similar: ${formatSuggestionLabel(item.suggestion.song)} (${item.suggestion.score}%).`
+        : 'No se encontró una coincidencia adecuada en la biblioteca.';
+    };
+
+    const openRowContextMenu = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeRowContextMenu();
+      const menu = document.createElement('div');
+      menu.className = 'missing-row-context-menu';
+      menu.setAttribute('role', 'menu');
+      const actions = [
+        {
+          icon: 'ph ph-magnifying-glass',
+          label: 'Buscar canción más similar en la biblioteca',
+          action: findClosestMatch
+        },
+        {
+          icon: 'ph ph-folder-open',
+          label: 'Buscar manualmente en el explorador',
+          action: pickManual
+        }
+      ];
+      actions.forEach(({ icon, label, action }) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.setAttribute('role', 'menuitem');
+        const glyph = document.createElement('i');
+        glyph.className = icon;
+        const text = document.createElement('span');
+        text.textContent = label;
+        button.append(glyph, text);
+        button.addEventListener('click', () => {
+          closeRowContextMenu();
+          void action();
+        });
+        menu.appendChild(button);
+      });
+      document.body.appendChild(menu);
+      activeRowContextMenu = menu;
+      const menuRect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - menuRect.width - 8))}px`;
+      menu.style.top = `${Math.max(8, Math.min(event.clientY, window.innerHeight - menuRect.height - 8))}px`;
+      document.addEventListener('pointerdown', dismissRowContextMenu);
+      menu.querySelector('button')?.focus();
+    };
+
+    tr.addEventListener('contextmenu', openRowContextMenu);
     tr.addEventListener('dblclick', event => {
       if (event.target.closest('input[type="checkbox"]')) return;
       void pickManual();
@@ -509,7 +516,7 @@ export function openMissingSongsResolver(sourceSongs, onApply, showCompleteMessa
     (suggestedCount
       ? `Se encontraron ${suggestedCount} reemplazo(s) sugerido(s) en la biblioteca. `
       : 'No hubo coincidencias automáticas. ') +
-    'Marcá las filas a aplicar. Doble clic en una fila para elegir el reemplazo a mano.';
+    'Marcá las filas a aplicar. Doble clic para elegir manualmente; clic derecho para buscar la coincidencia más similar o abrir el explorador.';
 
   const syncSelectAllState = () => {
     if (!selectAllCheckbox) return;
@@ -562,6 +569,7 @@ export function openMissingSongsResolver(sourceSongs, onApply, showCompleteMessa
   };
 
   const cleanup = () => {
+    closeRowContextMenu();
     modal.classList.remove('open');
     list.replaceChildren();
     rowByIndex.clear();
@@ -602,7 +610,13 @@ export function openMissingSongsResolver(sourceSongs, onApply, showCompleteMessa
   };
   const onBackdropClick = event => { if (event.target === modal) event.stopPropagation(); };
   const onKeyDown = event => {
-    if (event.key === 'Escape') close();
+    if (event.key === 'Escape') {
+      if (activeRowContextMenu) {
+        closeRowContextMenu();
+        return;
+      }
+      close();
+    }
   };
 
   if (selectAllCheckbox) {

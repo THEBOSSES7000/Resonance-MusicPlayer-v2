@@ -10,6 +10,8 @@ function safeJsonParse(raw, fallback) {
   }
 }
 
+const rememberPlaybackModes = localStorage.getItem('pn_remember_playback_modes') === 'true';
+
 export const state = {
   localMusicFiles: [],
   /** Índice O(1): soporta búsqueda por path normalizado y por id numérico/string */
@@ -21,8 +23,12 @@ export const state = {
   isHistoryOpen: false,
   isCoverExpanded: false,
   currentTrackIndex: -1,
-  isShuffle: localStorage.getItem('pn_keep_shuffle') === 'true',
-  repeatMode: localStorage.getItem('pn_keep_repeat') === 'true' ? 'all' : 'off',
+  isShuffle: rememberPlaybackModes
+    ? localStorage.getItem('pn_saved_shuffle') === 'true'
+    : localStorage.getItem('pn_keep_shuffle') === 'true',
+  repeatMode: rememberPlaybackModes
+    ? localStorage.getItem('pn_saved_repeat') === 'all' ? 'all' : 'off'
+    : localStorage.getItem('pn_keep_repeat') === 'true' ? 'all' : 'off',
   playlists: safeJsonParse(localStorage.getItem('pn_playlists'), []),
   quickAccess: safeJsonParse(localStorage.getItem('pn_quick_access'), []),
   configuredFolders: safeJsonParse(localStorage.getItem('pn_folders_info'), []),

@@ -23,6 +23,7 @@ pub struct Player {
     pub sample_rate: u32,
     pub eq: SharedEq,
     pub rate: SharedRate,
+    pub playback_error: Arc<Mutex<Option<String>>>,
     /// Nombre del dispositivo cpal actual (`None` = default del sistema).
     pub output_device_id: Option<String>,
 }
@@ -69,6 +70,7 @@ impl Player {
             sample_rate: 44100,
             eq,
             rate,
+            playback_error: Arc::new(Mutex::new(None)),
             output_device_id: None,
         })
     }
@@ -106,45 +108,58 @@ impl Player {
 
     /// Reabre el stream en otro dispositivo (WASAPI shared) y restaura pista/posición.
     pub fn set_output_device(&mut self, device_id: Option<String>) -> Result<(), String> {
+        let device_id = device_id.filter(|id| !id.is_empty());
         let was_playing = self.is_playing();
         let pos = self.position_seconds();
         let path = self.path.clone();
         let vol = self.volume;
-
+        let prepared = path
+            .as_deref()
+            .map(|p| SymphoniaPlaySource::open(Path::new(p), pos, Arc::clone(&self.playback_error)))
+            .transpose()?;
+        let (stream, handle) = open_output_stream(device_id.as_deref())?;
+        let sink = rodio::Sink::try_new(&handle)
+            .map_err(|e| format!("No se pudo crear el sink de audio: {e}"))?;
+        sink.pause();
+        sink.set_volume(vol.clamp(0.0, 1.0));
+        let frames = Arc::new(AtomicU64::new(0));
+        let mut sample_rate = self.sample_rate;
+        if let Some(source) = prepared {
+            sample_rate = source.sample_rate().max(1);
+            sink.append(Self::prepare_source(
+                source,
+                0.0,
+                Arc::clone(&self.energy),
+                Arc::clone(&frames),
+                self.eq.clone(),
+                self.rate.clone(),
+            )?);
+        }
         self.cancel_fade();
         self.abort_crossfade(false);
-        if let Some(ref mut s) = self.sink {
-            s.stop();
-            s.clear();
+        if let Some(old_sink) = self.sink.take() {
+            old_sink.stop();
+            old_sink.clear();
         }
-        self.playing_since = None;
-        self.energy.store(0f32.to_bits(), Ordering::Relaxed);
-
-        if let Some(cf) = self.crossfade_sink.take() {
-            cf.stop();
-            drop(cf);
+        if let Some(old_crossfade_sink) = self.crossfade_sink.take() {
+            old_crossfade_sink.stop();
         }
-        // Tirar stream anterior para liberar la sesión WASAPI
-        self.sink = None;
-        self.handle = None;
-        self._stream = None;
-
-        self.output_device_id = device_id.filter(|s| !s.is_empty());
-        self.ensure_output()?;
+        self.crossfade = None;
+        if was_playing {
+            sink.play();
+        } else {
+            sink.pause();
+        }
+        self.sink = Some(sink);
+        self.handle = Some(handle);
+        self._stream = Some(stream);
+        self.output_device_id = device_id;
         self.applied_volume = vol.clamp(0.0, 1.0);
         self.offset_secs = pos;
-        self.frames_played.store(0, Ordering::Relaxed);
-
-        if let Some(ref p) = path {
-            self.append_path(Path::new(p), pos, 0.0)?;
-            if was_playing {
-                self.sink_mut()?.play();
-                self.playing_since = Some(Instant::now());
-            } else {
-                self.sink_mut()?.pause();
-                self.playing_since = None;
-            }
-        }
+        self.frames_played = frames;
+        self.sample_rate = sample_rate;
+        self.playing_since = was_playing.then(Instant::now);
+        self.energy.store(0f32.to_bits(), Ordering::Relaxed);
         Ok(())
     }
 
@@ -312,42 +327,58 @@ impl Player {
 
     pub fn append_path(&mut self, path: &Path, start_secs: f64, fade_in_secs: f64) -> Result<(), String> {
         self.ensure_output()?;
+        if let Ok(mut error) = self.playback_error.lock() {
+            *error = None;
+        }
+        let source = SymphoniaPlaySource::open(path, start_secs, Arc::clone(&self.playback_error))?;
+        let sample_rate = source.sample_rate().max(1);
+        let frames = Arc::new(AtomicU64::new(0));
+        let energy = Arc::clone(&self.energy);
+        let shared_frames = Arc::clone(&frames);
+        let eq = self.eq.clone();
+        let rate = self.rate.clone();
+        if self.sink.is_none() {
+            return Err("Sink de audio no disponible".to_string());
+        }
+        let processed =
+            Self::prepare_source(source, fade_in_secs, energy, shared_frames, eq, rate)?;
+
         // Cualquier load limpia un crossfade residual
         self.abort_crossfade(false);
         // Reutilizar el Sink: recrearlo abre sesiones extra en el mezclador de Windows
         if let Some(ref mut s) = self.sink { s.stop(); };
         if let Some(ref mut s) = self.sink { s.clear(); };
+        if let Some(ref mut s) = self.sink {
+            s.append(processed);
+        };
+        self.sample_rate = sample_rate;
         // El fade de samples no usa FadeState por set_volume
         self.cancel_fade();
         self.applied_volume = self.volume.clamp(0.0, 1.0);
         let applied = self.applied_volume;
         self.sink_mut()?.set_volume(applied);
-
-        let source = SymphoniaPlaySource::open(path, start_secs)?;
-        self.sample_rate = source.sample_rate().max(1);
-        self.frames_played.store(0, Ordering::Relaxed);
-        let energy = Arc::clone(&self.energy);
-        let frames = Arc::clone(&self.frames_played);
-        let eq = self.eq.clone();
-        let rate = self.rate.clone();
-        // decode → fade → EQ → rate → medir
-        if fade_in_secs >= 0.05 {
-            self.sink_mut()?.append(MeasuringSource::new(
-                RateSource::new(
-                    EqSource::new(FadeInSource::new(source, fade_in_secs), eq),
-                    rate,
-                ),
-                energy,
-                frames,
-            ));
-        } else {
-            self.sink_mut()?.append(MeasuringSource::new(
-                RateSource::new(EqSource::new(source, eq), rate),
-                energy,
-                frames,
-            ));
-        }
+        self.frames_played = frames;
         Ok(())
+    }
+
+    fn prepare_source(
+        source: SymphoniaPlaySource,
+        fade_in_secs: f64,
+        energy: Arc<AtomicU32>,
+        frames: Arc<AtomicU64>,
+        eq: SharedEq,
+        rate: SharedRate,
+    ) -> Result<MeasuringSource<Box<dyn Source<Item = f32> + Send>>, String> {
+        let source = BufferedSource::new(source)?;
+        let processed: Box<dyn Source<Item = f32> + Send> = if fade_in_secs >= 0.05 {
+            rate_source(
+                EqSource::new(FadeInSource::new(source, fade_in_secs), eq),
+                rate,
+            )
+        } else {
+            rate_source(EqSource::new(source, eq), rate)
+        };
+        Ok(MeasuringSource::new(processed, energy, frames))
     }
 
     /// Inicia fundido cruzado hacia `path`. La UI ve ya la pista nueva (path/posición 0).
@@ -369,23 +400,30 @@ impl Player {
         let duration = probe_duration_secs(path);
         let incoming = rodio::Sink::try_new(self.handle_ref()?)
             .map_err(|e| format!("No se pudo crear sink de crossfade: {e}"))?;
-        let source = SymphoniaPlaySource::open(path, 0.0)?;
-        self.sample_rate = source.sample_rate().max(1);
+        incoming.pause();
+        if let Ok(mut error) = self.playback_error.lock() {
+            *error = None;
+        }
+        let source = SymphoniaPlaySource::open(path, 0.0, Arc::clone(&self.playback_error))?;
+        let sample_rate = source.sample_rate().max(1);
         // IMPORTANTE: nuevo Arc de frames para la pista entrante.
         // La saliente sigue con el Arc viejo y dejaría de actualizar self.frames_played;
         // si compartieran el mismo Atomic, ambas pistas sumarían frames y la
         // posición (y la letra) irían ~2x más rápido → letra adelantada.
-        self.frames_played = Arc::new(AtomicU64::new(0));
+        let frames = Arc::new(AtomicU64::new(0));
         let energy = Arc::clone(&self.energy);
-        let frames = Arc::clone(&self.frames_played);
+        let shared_frames = Arc::clone(&frames);
         let eq = self.eq.clone();
         let rate = self.rate.clone();
         // Solo medir energía/posición de la pista entrante
-        incoming.append(MeasuringSource::new(
-            RateSource::new(EqSource::new(source, eq), rate),
+        incoming.append(Self::prepare_source(
+            source,
+            0.0,
             energy,
-            frames,
-        ));
+            shared_frames,
+            eq,
+            rate,
+        )?);
         incoming.set_volume(0.0);
         incoming.play();
 
@@ -402,12 +440,13 @@ impl Player {
 
         self.crossfade = Some(CrossfadeState {
             steps_left: steps,
-            out_current: from,
-            out_delta: -from / steps as f32,
-            in_current: 0.0,
-            in_delta: target / steps as f32,
+            total_steps: steps,
+            out_start: from,
+            in_target: target,
         });
         self.crossfade_sink = Some(incoming);
+        self.sample_rate = sample_rate;
+        self.frames_played = frames;
 
         // La pista "actual" para UI es la nueva
         self.path = Some(path.to_string_lossy().into_owned());
@@ -426,11 +465,11 @@ impl Player {
             self.finish_crossfade();
             return;
         }
-        cf.out_current = (cf.out_current + cf.out_delta).clamp(0.0, 1.0);
-        cf.in_current = (cf.in_current + cf.in_delta).clamp(0.0, 1.0);
         cf.steps_left = cf.steps_left.saturating_sub(1);
-        let out_v = cf.out_current;
-        let in_v = cf.in_current;
+        let progress = 1.0 - cf.steps_left as f32 / cf.total_steps.max(1) as f32;
+        let angle = progress * std::f32::consts::FRAC_PI_2;
+        let out_v = cf.out_start * angle.cos();
+        let in_v = cf.in_target * angle.sin();
         self.applied_volume = out_v;
         if let Some(ref mut s) = self.sink { s.set_volume(out_v); }
         if let Some(ref incoming) = self.crossfade_sink {
@@ -469,6 +508,26 @@ pub fn probe_duration_secs(path: &Path) -> f64 {
         }
     }
     0.0
+}
+
+fn emit_pending_playback_error(app: Option<&AppHandle>, player: &Player) {
+    let Some(app) = app else {
+        return;
+    };
+    let error = player
+        .playback_error
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    if let Some(message) = error {
+        let payload = serde_json::json!({
+            "path": player.path,
+            "message": message,
+        });
+        if let Err(error) = app.emit("audio-error", payload) {
+            eprintln!("[Resonance] No se pudo informar el error de audio: {error}");
+        }
+    }
 }
 
 pub fn audio_thread_main(
@@ -522,6 +581,7 @@ pub fn audio_thread_main(
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 player.tick_fade();
                 player.tick_crossfade();
+                emit_pending_playback_error(app_handle.as_ref(), &player);
                 // No marcar fin de pista mientras hay crossfade (el sink saliente se vacía a propósito)
                 if player.crossfade.is_none()
                     && player.playing_since.is_some()
@@ -563,6 +623,7 @@ pub fn audio_thread_main(
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         };
         let Some(cmd) = cmd else { continue; };
+        emit_pending_playback_error(app_handle.as_ref(), &player);
 
         if player.crossfade.is_none() && player.playing_since.is_some() && player.sink.as_ref().map(|s| s.empty()).unwrap_or(true) {
             player.playing_since = None;
@@ -738,10 +799,7 @@ pub fn audio_thread_main(
             AudioCmd::SetVolume { volume, reply } => {
                 player.volume = volume.clamp(0.0, 1.0);
                 if let Some(cf) = player.crossfade.as_mut() {
-                    // Ajustar rampa entrante al nuevo volumen objetivo
-                    if cf.steps_left > 0 {
-                        cf.in_delta = (player.volume - cf.in_current) / cf.steps_left as f32;
-                    }
+                    cf.in_target = player.volume;
                 } else if let Some(fade) = player.fade.as_mut() {
                     if matches!(fade.kind, FadeKind::In) {
                         fade.target = player.volume;
@@ -763,12 +821,40 @@ pub fn audio_thread_main(
                 player.eq.set(enabled, &gains_db);
                 let _ = reply.send(Ok(player.status()));
             }
-            AudioCmd::SetRate { rate, reply } => {
+            AudioCmd::SetRate {
+                rate,
+                preserve_pitch,
+                reply,
+            } => {
                 // Congelar posición de contenido antes de cambiar el rate
-                player.offset_secs = player.position_seconds();
+                let position = player.position_seconds();
+                let was_playing = player.is_playing();
+                let mode_changed = player.rate.preserves_pitch() != preserve_pitch;
+                player.offset_secs = position;
                 player.frames_played.store(0, Ordering::Relaxed);
-                player.rate.set(rate);
-                let _ = reply.send(Ok(player.status()));
+                player.rate.set(rate, preserve_pitch);
+                let result = if mode_changed {
+                    if let Some(path) = player.path.clone() {
+                        player
+                            .append_path(Path::new(&path), position, 0.0)
+                            .map(|_| {
+                                player.playing_since = was_playing.then(Instant::now);
+                                if let Some(ref mut sink) = player.sink {
+                                    if was_playing {
+                                        sink.play();
+                                    } else {
+                                        sink.pause();
+                                    }
+                                }
+                                player.status()
+                            })
+                    } else {
+                        Ok(player.status())
+                    }
+                } else {
+                    Ok(player.status())
+                };
+                let _ = reply.send(result);
             }
             AudioCmd::SetOutputDevice { device_id, reply } => {
                 let result = player.set_output_device(device_id).map(|_| player.status());

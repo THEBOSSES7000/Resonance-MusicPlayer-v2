@@ -34,7 +34,10 @@ export function getCollectionForOptions() {
     return {
       title: playlist.title,
       songs: songs.filter(song => matchesTrackFilter(song, uiVars.activeTrackFilter) && matchesListSearch(song)),
-      contextId: `playlist_${playlist.id}`
+      contextId: `playlist_${playlist.id}`,
+      id: playlist.id,
+      description: playlist.description,
+      coverUrl: playlist.coverUrl
     };
   }
   if (state.currentView === 'folder-detail') {
@@ -222,9 +225,58 @@ export function getCollectionExportContextItem(collection) {
   };
 }
 
+async function playlistCoverToWebPBase64(coverUrl) {
+  if (!coverUrl) return '';
+  let blob;
+  try {
+    const response = await fetch(coverUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    blob = await response.blob();
+  } catch (error) {
+    throw new Error(`No se pudo leer la carátula de la playlist: ${error.message}`);
+  }
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('No se pudo preparar el lienzo de conversión.');
+    context.drawImage(bitmap, 0, 0);
+    const webp = await new Promise((resolve, reject) => {
+      canvas.toBlob(result => result ? resolve(result) : reject(new Error('No se pudo convertir a WEBP.')), 'image/webp');
+    });
+    if (webp.type !== 'image/webp') throw new Error('Este entorno no pudo codificar la carátula en WEBP.');
+    const bytes = new Uint8Array(await webp.arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
+    return btoa(binary);
+  } catch (error) {
+    throw new Error(`No se pudo convertir la carátula a WEBP: ${error.message}`);
+  } finally {
+    bitmap?.close();
+  }
+}
+
 export async function exportCollectionM3U8(collection, filenameOverride = null, showError = true) {
   try {
     const lines = ['#EXTM3U'];
+    const playlist = state.playlists.find(item => String(item.id) === String(collection.id));
+    const description = String(playlist?.description || collection.description || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\r\n|\r|\n/g, '\\n');
+    const cover = await playlistCoverToWebPBase64(playlist?.coverUrl || collection.coverUrl);
+    lines.push(
+      `#EXT-RESONANCE-ID: ${playlist?.id ?? collection.id ?? ''}`,
+      `#EXT-RESONANCE-NAME: ${String(collection.title || playlist?.title || '').replace(/[\r\n]/g, ' ')}`,
+      `#EXT-RESONANCE-DESC: ${description}`,
+      `#EXT-RESONANCE-COVER: ${cover}`
+    );
+    let exportedTrackCount = 0;
     collection.songs.forEach(song => {
       const fileLocation = song.file?.path || song.file?.webkitRelativePath || song.file?.name;
       if (!fileLocation) return;
@@ -233,15 +285,16 @@ export async function exportCollectionM3U8(collection, filenameOverride = null, 
         : -1;
       const trackName = [song.artist, song.title].filter(Boolean).join(' - ').replace(/[\r\n]/g, ' ');
       lines.push(`#EXTINF:${duration},${trackName}`, fileLocation.replace(/[\r\n]/g, ''));
+      exportedTrackCount++;
     });
 
-    if (lines.length === 1) {
+    if (exportedTrackCount === 0) {
       throw new Error('No hay rutas de archivo disponibles para exportar esta lista.');
     }
 
     const safeName = (filenameOverride || collection.title).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim() || 'playlist';
     const fileName = `${safeName}.m3u8`;
-    const contents = `\uFEFF${lines.join('\r\n')}\r\n`;
+    const contents = `${lines.join('\r\n')}\r\n`;
     const invoke = window.__TAURI__?.core?.invoke;
 
     if (invoke) {
@@ -365,7 +418,10 @@ export function openPlaylistExportPicker() {
       titleCounts.set(baseTitle, occurrence);
       const filename = occurrence > 1 ? `${baseTitle} (${occurrence})` : baseTitle;
       const result = await exportCollectionM3U8({
+        id: playlist.id,
         title: baseTitle,
+        description: playlist.description,
+        coverUrl: playlist.coverUrl,
         songs: playlist.smartFilter ? getSmartPlaylistSongs(playlist) : (playlist.songs || [])
       }, filename, false);
       if (result === true) {

@@ -148,13 +148,62 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-top: 0.75rem;
+}
+.missing-songs-card--table .missing-songs-footer {
+  justify-content: space-between;
+}
+.missing-songs-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .missing-songs-footer .btn-pill-save {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+}
+.missing-row-context-menu {
+  position: fixed;
+  z-index: 12020;
+  min-width: 240px;
+  padding: 0.3rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--bg-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+.missing-row-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.missing-row-context-menu button:hover,
+.missing-row-context-menu button:focus-visible {
+  background: var(--bg-surface);
+  outline: none;
+}
+.missing-row-context-menu button i {
+  color: var(--accent-light);
+}
+@media (max-width: 560px) {
+  .missing-songs-footer {
+    justify-content: flex-start;
+  }
+  .missing-songs-footer #missing-songs-cancel {
+    margin-left: auto;
+  }
 }
 
 /* —— Ecualizador gráfico 20 bandas —— */
@@ -244,4 +293,3 @@
   min-height: 0.9rem;
   text-align: center;
 }
-

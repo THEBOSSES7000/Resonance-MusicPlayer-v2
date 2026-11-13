@@ -139,8 +139,17 @@ export async function configureEqualizer(enabled, gains = equalizerGains) {
 function ensureDeckAudioNodes(deck) {
   if (!audioContext) return;
   const deckState = getDeckState(deck);
+  const maximumBoostDb = equalizerEnabled
+    ? equalizerGains.reduce((maximum, gain) => Math.max(maximum, gain), 0)
+    : 0;
+  const preampGain = 10 ** (-maximumBoostDb / 20);
+  if (deckState.preamp) {
+    deckState.preamp.gain.setTargetAtTime(preampGain, audioContext.currentTime, 0.025);
+  }
   if (!deckState.source) {
     deckState.source = audioContext.createMediaElementSource(deck);
+    deckState.preamp = audioContext.createGain();
+    deckState.preamp.gain.value = preampGain;
     deckState.filters = EQUALIZER_FREQUENCIES.map((frequency, index) => {
       const filter = audioContext.createBiquadFilter();
       filter.type = index === 0 ? 'lowshelf' : index === EQUALIZER_FREQUENCIES.length - 1 ? 'highshelf' : 'peaking';
@@ -196,11 +205,13 @@ export function releaseWebAudioIfPossible() {
     audioDecks.forEach(deck => {
       const deckState = getDeckState(deck);
       try { deckState.source?.disconnect(); } catch (_) {}
+      try { deckState.preamp?.disconnect(); } catch (_) {}
       try { deckState.analyser?.disconnect(); } catch (_) {}
       (deckState.filters || []).forEach(filter => {
         try { filter.disconnect(); } catch (_) {}
       });
       deckState.source = null;
+      deckState.preamp = null;
       deckState.filters = [];
       deckState.analyser = null;
       deckState.analysisData = null;
@@ -216,11 +227,14 @@ export function releaseWebAudioIfPossible() {
 function routeDeckAudio(deck) {
   const deckState = getDeckState(deck);
   deckState.source.disconnect();
+  deckState.preamp?.disconnect();
   deckState.filters.forEach(filter => filter.disconnect());
   deckState.analyser?.disconnect();
 
   let outputNode = deckState.source;
   if (equalizerEnabled) {
+    outputNode.connect(deckState.preamp);
+    outputNode = deckState.preamp;
     outputNode.connect(deckState.filters[0]);
     for (let index = 0; index < deckState.filters.length - 1; index += 1) {
       deckState.filters[index].connect(deckState.filters[index + 1]);

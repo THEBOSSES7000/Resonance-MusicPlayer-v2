@@ -18,11 +18,13 @@ function initWindowChrome() {
     void action().catch(error => console.error('No se pudo completar la acción de ventana:', error));
   };
   let windowBoundsSaveTimer = null;
+  let fullscreenRestoreMaximized = null;
 
   const saveWindowBounds = async () => {
     const invoke = window.__TAURI__?.core?.invoke;
     if (!invoke) return;
     if (await currentWindow.isMinimized()) return;
+    if (await currentWindow.isFullscreen()) return;
     const [position, size, maximized] = await Promise.all([
       currentWindow.outerPosition(),
       currentWindow.outerSize(),
@@ -76,6 +78,46 @@ function initWindowChrome() {
     } catch (_) {}
   };
 
+  const syncFullscreenState = async () => {
+    try {
+      const fullscreen = await currentWindow.isFullscreen();
+      document.body.classList.toggle('app-window-fullscreen', fullscreen);
+    } catch (error) {
+      console.error('No se pudo sincronizar el modo de pantalla completa de la ventana:', error);
+    }
+  };
+  const toggleAppFullscreen = async () => {
+    const fullscreen = await currentWindow.isFullscreen();
+    if (fullscreen) {
+      await currentWindow.setFullscreen(false);
+      if (fullscreenRestoreMaximized) {
+        await currentWindow.toggleMaximize();
+      }
+      fullscreenRestoreMaximized = null;
+    } else {
+      const wasMaximized = await currentWindow.isMaximized();
+      // Tao keeps maximized window state through fullscreen, which can constrain it to the work area.
+      if (wasMaximized) await currentWindow.toggleMaximize();
+      try {
+        await currentWindow.setFullscreen(true);
+        fullscreenRestoreMaximized = wasMaximized;
+      } catch (error) {
+        if (wasMaximized) {
+          try {
+            await currentWindow.toggleMaximize();
+          } catch (restoreError) {
+            console.error('No se pudo restaurar el estado maximizado de la ventana:', restoreError);
+          }
+        }
+        throw error;
+      }
+    }
+    await syncFullscreenState();
+  };
+
+  window.addEventListener('pn-toggle-app-fullscreen', () => {
+    runWindowAction(toggleAppFullscreen);
+  });
   minimizeButton.addEventListener('click', () => runWindowAction(() =>
     localStorage.getItem('pn_minimize_to_tray') === 'true'
       ? currentWindow.hide()
@@ -106,7 +148,10 @@ function initWindowChrome() {
   window.addEventListener('resize', () => {
     void updateMaximizeButton();
     void updateMinimizedState();
+    void syncFullscreenState();
   });
+  window.addEventListener('focus', () => void syncFullscreenState());
+  window.addEventListener('blur', () => void syncFullscreenState());
   if (typeof currentWindow.onMoved === 'function') {
     void currentWindow.onMoved(scheduleWindowBoundsSave).catch(error => {
       console.error('No se pudo observar el movimiento de la ventana:', error);
@@ -116,6 +161,7 @@ function initWindowChrome() {
     void currentWindow.onResized(() => {
       scheduleWindowBoundsSave();
       void updateMinimizedState();
+      void syncFullscreenState();
     }).catch(error => {
       console.error('No se pudo observar el cambio de tamaño de la ventana:', error);
     });
@@ -125,6 +171,7 @@ function initWindowChrome() {
   });
   document.documentElement.dataset.tauriWindowChrome = 'true';
   void updateMaximizeButton();
+  void syncFullscreenState();
 
   const invoke = window.__TAURI__?.core?.invoke;
   if (invoke) {

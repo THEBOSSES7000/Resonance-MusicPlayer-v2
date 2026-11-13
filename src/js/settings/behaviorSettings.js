@@ -2,6 +2,7 @@
 
 import { readStoredBoolean } from './appearance.js';
 import { getPlayCountThresholdPercent, setPlayCountThresholdPercent, setRepeatMode, setShuffleEnabled } from '../audioPlayer.js';
+import { state } from '../state.js';
 import { showConfirmDialog } from '../ui.js';
 
 export function initBehaviorSettings() {
@@ -37,6 +38,22 @@ export function initBehaviorSettings() {
     restorePlaybackSessionInput.checked = localStorage.getItem('pn_restore_playback_session') !== 'false';
     restorePlaybackSessionInput.addEventListener('change', () => {
       localStorage.setItem('pn_restore_playback_session', String(restorePlaybackSessionInput.checked));
+    });
+  }
+
+  const rememberPlaybackModesInput = document.getElementById('behavior-remember-playback-modes');
+  if (rememberPlaybackModesInput) {
+    rememberPlaybackModesInput.checked = readStoredBoolean('pn_remember_playback_modes');
+    rememberPlaybackModesInput.addEventListener('change', () => {
+      const enabled = rememberPlaybackModesInput.checked;
+      localStorage.setItem('pn_remember_playback_modes', String(enabled));
+      if (enabled) {
+        localStorage.setItem('pn_saved_shuffle', String(state.isShuffle));
+        localStorage.setItem('pn_saved_repeat', state.repeatMode === 'all' ? 'all' : 'off');
+      } else {
+        localStorage.removeItem('pn_saved_shuffle');
+        localStorage.removeItem('pn_saved_repeat');
+      }
     });
   }
 

@@ -255,6 +255,8 @@ function applyNowPlayingFsLayout(mode, { persist = true, animate = true } = {}) 
 
 function trackHasDisplayableLyrics(song) {
   if (!song) return false;
+  // No confundir metadata todavía pendiente con una canción sin letras.
+  if (!song.lyricsLoaded) return null;
   const lines = song.lyrics?.lines;
   if (!Array.isArray(lines) || lines.length === 0) return false;
   return lines.some(line => String(line?.text || '').trim().length > 0);
@@ -265,6 +267,7 @@ function resolveAdaptLayoutTarget() {
     ? state.activeQueue?.[state.currentTrackIndex]
     : null;
   const hasLyrics = trackHasDisplayableLyrics(song);
+  if (hasLyrics === null) return null;
   let preferred = 'default';
   try {
     const storedPreferred = localStorage.getItem(NP_FS_PREFERRED_LAYOUT_KEY);
@@ -287,6 +290,7 @@ export function syncNowPlayingFsLayoutForLyrics() {
   const run = async () => {
     npFsLayoutSyncTimer = null;
     let target = resolveAdaptLayoutTarget();
+    if (target === null) return;
     if (target === getCurrentFsLayoutMode() && !npFsContentHidden) return;
     if (isAudioCrossfadeActive() && !npFsContentHidden) await waitForAudioCrossfade();
     if (
@@ -295,6 +299,7 @@ export function syncNowPlayingFsLayoutForLyrics() {
       !isFsAdaptLyricsEnabled()
     ) return;
     target = resolveAdaptLayoutTarget();
+    if (target === null) return;
     applyNowPlayingFsLayout(target, {
       persist: false,
       animate: true,
@@ -397,7 +402,7 @@ export function setNowPlayingFullscreen(enabled) {
       npFsLayoutSyncTimer = null;
     }
     const initialLayout = isFsAdaptLyricsEnabled()
-      ? resolveAdaptLayoutTarget()
+      ? resolveAdaptLayoutTarget() || getNowPlayingFsLayout()
       : getNowPlayingFsLayout();
     applyNowPlayingFsLayout(initialLayout, { persist: false, animate: false });
     try { syncNowPlayingFsLayoutForLyrics(); } catch (_) {}

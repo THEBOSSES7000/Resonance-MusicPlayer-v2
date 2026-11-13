@@ -178,6 +178,7 @@ pub fn run() {
             music_directories::add_music_directory,
             music_directories::select_music_file,
             exports::save_m3u8_file,
+            exports::load_m3u8_file,
             exports::save_settings_backup,
             music_directories::remove_music_directory,
             music_directories::list_music_subfolders,

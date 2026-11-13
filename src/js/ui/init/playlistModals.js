@@ -9,7 +9,7 @@ import { addSmartPlaylistFilterRow, readSmartPlaylistFilters, setSmartPlaylistFi
 import { renderFoldersUI, renderPlaylistsHubUI } from '../folderPlaylistViews.js';
 import { renderPlaylistDetailView } from '../playlistDetail.js';
 import { escapeHtml, showConfirmDialog } from '../uiUtils.js';
-import { createUnresolvedM3USong, isConfidentM3UMatch, openMissingSongsResolver, parseM3UEntries, rankM3UCandidates } from '../m3uImport.js';
+import { createUnresolvedM3USong, findM3ULibraryMatch, isConfidentM3UMatch, openMissingSongsResolver, parseM3UPlaylist, rankM3UCandidates } from '../m3uImport.js';
 import { renderPlaylistsUI } from '../collections.js';
 
 /** Cola, historial, letras, y modales de playlists/carpetas con importación y guardado. */
@@ -54,6 +54,7 @@ export function bindPlaylistModals() {
     clearTempPlaylistCover();
     uiVars.tempImportedSongs = [];
     uiVars.tempImportedPlaylistHasM3U = false;
+    uiVars.tempImportedPlaylistMetadata = null;
     playlistModalHeading.textContent = 'Crear playlist';
     modalCoverPreview.innerHTML = `<i class="ph ph-music-notes"></i>`;
     playlistTitleInput.value = `Mi playlist n.° ${state.playlists.length + 1}`;
@@ -181,7 +182,66 @@ export function bindPlaylistModals() {
     }
   });
 
-  btnImportPlaylistFile.addEventListener('click', () => {
+  const applyM3UImport = (contents, name, path = '') => {
+    const imported = parseM3UPlaylist(contents, name.replace(/\.[^.]+$/, ''));
+    const entries = imported.entries;
+    uiVars.tempImportedPlaylistMetadata = imported;
+    uiVars.tempImportedPlaylistHasM3U = true;
+    let automaticallyLocated = 0;
+    uiVars.tempImportedSongs = entries.map(entry => {
+      const exact = findM3ULibraryMatch(entry, path);
+      if (exact) {
+        automaticallyLocated++;
+        return exact;
+      }
+      const ranked = rankM3UCandidates(entry);
+      const best = ranked[0];
+      if (best && isConfidentM3UMatch(entry, ranked)) {
+        automaticallyLocated++;
+        return best.song;
+      }
+      return createUnresolvedM3USong(entry);
+    });
+    playlistTitleInput.value = imported.name || name.replace(/\.[^.]+$/, '');
+    playlistDescInput.value = imported.description || '';
+    clearTempPlaylistCover();
+    if (imported.cover) {
+      uiVars.tempModalCoverUrl = imported.cover;
+      modalCoverPreview.innerHTML = `<img src="${escapeHtml(imported.cover)}" class="modal-preview-img" alt="Cover" />`;
+    } else {
+      modalCoverPreview.innerHTML = '<i class="ph ph-music-notes"></i>';
+    }
+    const unresolvedCount = uiVars.tempImportedSongs.filter(song => song.isUnresolvedM3U).length;
+    m3uImportStatus.textContent = `${automaticallyLocated} canciones asociadas, ${unresolvedCount} por confirmar`;
+    m3uImportStatus.style.display = 'inline';
+    document.getElementById('btn-find-imported-songs').hidden = unresolvedCount === 0;
+    if (unresolvedCount) {
+      openMissingSongsResolver(uiVars.tempImportedSongs, songs => {
+        uiVars.tempImportedSongs = songs;
+        const remaining = songs.filter(song => song.isUnresolvedM3U).length;
+        m3uImportStatus.textContent = `${songs.length - remaining} canciones asociadas, ${remaining} sin ubicar`;
+        document.getElementById('btn-find-imported-songs').hidden = remaining === 0;
+      }, false);
+    }
+  };
+
+  btnImportPlaylistFile.addEventListener('click', async () => {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (typeof invoke === 'function') {
+      try {
+        const selected = await invoke('load_m3u8_file');
+        if (selected) applyM3UImport(selected.contents, selected.name, selected.path);
+      } catch (error) {
+        console.error('No se pudo importar la playlist M3U8:', error);
+        await showConfirmDialog({
+          title: 'No se pudo importar',
+          message: error instanceof Error ? error.message : 'Ocurrió un error al leer el archivo.',
+          confirmText: 'Entendido',
+          showCancel: false
+        });
+      }
+      return;
+    }
     playlistFileImportInput.click();
   });
 
@@ -191,36 +251,40 @@ export function bindPlaylistModals() {
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const entries = parseM3UEntries(ev.target.result);
-      uiVars.tempImportedPlaylistHasM3U = true;
-      let automaticallyLocated = 0;
-      uiVars.tempImportedSongs = entries.map(entry => {
-        const ranked = rankM3UCandidates(entry);
-        const best = ranked[0];
-        if (best && isConfidentM3UMatch(entry, ranked)) {
-          automaticallyLocated++;
-          return best.song;
-        }
-        return createUnresolvedM3USong(entry);
+      applyM3UImport(ev.target.result, file.name);
+    };
+    reader.onerror = () => {
+      void showConfirmDialog({
+        title: 'No se pudo importar',
+        message: reader.error?.message || 'No se pudo leer el archivo de playlist.',
+        confirmText: 'Entendido',
+        showCancel: false
       });
-      const cleanFileName = file.name.substring(0, file.name.lastIndexOf('.'));
-      if (cleanFileName) playlistTitleInput.value = cleanFileName;
-
-      const unresolvedCount = uiVars.tempImportedSongs.filter(song => song.isUnresolvedM3U).length;
-      m3uImportStatus.textContent = `${automaticallyLocated} canciones asociadas, ${unresolvedCount} por confirmar`;
-      m3uImportStatus.style.display = "inline";
-      document.getElementById('btn-find-imported-songs').hidden = unresolvedCount === 0;
-      if (unresolvedCount) {
-        openMissingSongsResolver(uiVars.tempImportedSongs, songs => {
-          uiVars.tempImportedSongs = songs;
-          const remaining = uiVars.tempImportedSongs.filter(song => song.isUnresolvedM3U).length;
-          m3uImportStatus.textContent = `${uiVars.tempImportedSongs.length - remaining} canciones asociadas, ${remaining} sin ubicar`;
-          document.getElementById('btn-find-imported-songs').hidden = remaining === 0;
-        }, false);
-      }
     };
     reader.readAsText(file);
     playlistFileImportInput.value = '';
+  });
+
+  playlistModalOverlay.addEventListener('dragover', event => {
+    if ([...(event.dataTransfer?.items || [])].some(item =>
+      item.kind === 'file' && /\.(?:m3u8?|pls)$/i.test(item.getAsFile()?.name || '')
+    )) event.preventDefault();
+  });
+  playlistModalOverlay.addEventListener('drop', event => {
+    const file = [...(event.dataTransfer?.files || [])].find(item => /\.(?:m3u8?|pls)$/i.test(item.name));
+    if (!file) return;
+    event.preventDefault();
+    const reader = new FileReader();
+    reader.onload = loadEvent => applyM3UImport(loadEvent.target.result, file.name);
+    reader.onerror = () => {
+      void showConfirmDialog({
+        title: 'No se pudo importar',
+        message: 'No se pudo leer el archivo de playlist arrastrado.',
+        confirmText: 'Entendido',
+        showCancel: false
+      });
+    };
+    reader.readAsText(file);
   });
 
   document.getElementById('btn-find-imported-songs').addEventListener('click', () => {
@@ -235,7 +299,9 @@ export function bindPlaylistModals() {
 
   btnSavePlaylist.addEventListener('click', async () => {
     const title = playlistTitleInput.value.trim() || `Mi playlist n.° ${state.playlists.length + 1}`;
-    const desc = playlistDescInput.value.trim();
+    const desc = uiVars.tempImportedPlaylistMetadata
+      ? playlistDescInput.value
+      : playlistDescInput.value.trim();
     const isSmartPlaylist = playlistModalOverlay.dataset.mode === 'smart';
     const smartFilter = isSmartPlaylist
       ? {
@@ -244,26 +310,34 @@ export function bindPlaylistModals() {
       }
       : null;
 
-    const playlistId = state.editingPlaylistId ?? Date.now();
+    const importedId = uiVars.tempImportedPlaylistMetadata?.id;
+    const playlistId = state.editingPlaylistId ?? importedId ?? Date.now();
     btnSavePlaylist.disabled = true;
     try {
       const coverUrl = await persistPlaylistCover(playlistId);
-      if (state.editingPlaylistId !== null) {
-        const existingPl = state.playlists.find(p => p.id === state.editingPlaylistId);
-        if (existingPl) {
-          const wasSmartPlaylist = Boolean(existingPl.smartFilter);
-          existingPl.title = title;
-          existingPl.description = desc;
-          if (isSmartPlaylist) {
-            existingPl.smartFilter = smartFilter;
-            existingPl.songs = [];
-            if (coverUrl) existingPl.coverUrl = coverUrl;
-          } else {
-            if (wasSmartPlaylist) existingPl.songs = getSmartPlaylistSongs(existingPl);
-            delete existingPl.smartFilter;
-            delete existingPl.viewFilter;
-            existingPl.coverUrl = coverUrl;
+      const existingId = state.editingPlaylistId ?? (importedId == null ? null : playlistId);
+      const existingPl = existingId == null
+        ? null
+        : state.playlists.find(p => String(p.id) === String(existingId));
+      if (existingPl) {
+        const wasSmartPlaylist = Boolean(existingPl.smartFilter);
+        existingPl.title = title;
+        existingPl.description = desc;
+        if (isSmartPlaylist) {
+          existingPl.smartFilter = smartFilter;
+          existingPl.songs = [];
+          if (coverUrl) existingPl.coverUrl = coverUrl;
+        } else {
+          if (importedId != null && state.editingPlaylistId == null) {
+            existingPl.songs = uiVars.tempImportedSongs.map((song, index) => (
+              song?.playlistAddedAt ? song : stampSongForPlaylist(song, Date.now() + index)
+            ));
+          } else if (wasSmartPlaylist) {
+            existingPl.songs = getSmartPlaylistSongs(existingPl);
           }
+          delete existingPl.smartFilter;
+          delete existingPl.viewFilter;
+          existingPl.coverUrl = coverUrl || null;
         }
         state.editingPlaylistId = null;
       } else {
@@ -283,6 +357,7 @@ export function bindPlaylistModals() {
       }
 
       uiVars.tempImportedSongs = [];
+      uiVars.tempImportedPlaylistMetadata = null;
       persistPlaylists();
       renderPlaylistsUI();
       if (state.currentView === 'playlists-hub') {
@@ -295,7 +370,7 @@ export function bindPlaylistModals() {
       clearTempPlaylistCover();
       setPlaylistModalDynamicMode(false);
     } catch (error) {
-      console.error('No se pudo guardar la portada de la playlist:', error);
+      console.error('No se pudo guardar la playlist:', error);
       await showConfirmDialog({
         title: 'No se pudo guardar la playlist',
         message: error instanceof Error ? error.message : 'Ocurrió un error inesperado al guardar la portada.',

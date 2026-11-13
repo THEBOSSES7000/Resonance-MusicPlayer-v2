@@ -1,4 +1,4 @@
-// Ajustes · Ajustes de biblioteca: caché y copias de seguridad (acciones).
+                          // Ajustes · Ajustes de biblioteca: caché y copias de seguridad (acciones).
 
 import { openPlaylistExportPicker, showConfirmDialog } from '../ui.js';
 import { exportSettingsBackup, importSettingsBackup } from './backup.js';

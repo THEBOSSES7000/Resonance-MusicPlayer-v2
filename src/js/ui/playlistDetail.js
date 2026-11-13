@@ -4,7 +4,7 @@ import { ensureTrackSortDirState, loadTrackSortModeForView, trackSortMul, update
 import { matchesListSearch, matchesTrackFilter, syncTrackFilterContext } from './trackFilters.js';
 import { formatTime, state } from '../state.js';
 import { uiVars } from './sharedState.js';
-import { artistAlbumsSection, artistBioToggle, artistDisambiguation, artistFacts, artistLoadMoreButton, artistLoadMoreWrap, artistRelatedSection, artistTagsContainer, btnCollectionOptions, btnPlayAllFavorites, collectionOptionsMenu, collectionOptionsWrap, currentTrackSortLabel, mainContent, playlistBadgeType, playlistHeroAuthor, playlistHeroBanner, playlistHeroCount, playlistHeroCover, playlistHeroDesc, playlistHeroDuration, playlistHeroTitle, playlistTracksBody, trackSortMenu, tracksFilterBar } from './dom.js';
+import { artistAlbumsSection, artistBioToggle, artistFacts, artistLoadMoreButton, artistLoadMoreWrap, artistRelatedSection, artistTagsContainer, btnCollectionOptions, btnPlayAllFavorites, collectionOptionsMenu, collectionOptionsWrap, currentTrackSortLabel, mainContent, playlistBadgeType, playlistHeroAuthor, playlistHeroBanner, playlistHeroCount, playlistHeroCover, playlistHeroDesc, playlistHeroDuration, playlistHeroTitle, playlistTracksBody, trackSortMenu, tracksFilterBar } from './dom.js';
 import { pnStartPointerDrag, updateTrackReorderToggle } from './dragReorder.js';
 import { queueDetailShowHistory } from './init.js';
 import { albumContextId, artistContextId, matchingAlbumSongs, matchingArtistSongs, buildArtistMetaHtml, buildAlbumMetaHtml } from './libraryEntities.js';
@@ -77,10 +77,6 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     artistTagsContainer.hidden = true;
   }
   if (!isArtist) {
-    if (artistDisambiguation) {
-      artistDisambiguation.textContent = '';
-      artistDisambiguation.hidden = true;
-    }
     if (artistFacts) {
       artistFacts.replaceChildren();
       artistFacts.hidden = true;
@@ -164,10 +160,6 @@ export async function renderPlaylistDetailView({ append = false, previousVisible
     playlistHeroDesc.textContent = 'Cargando información de MusicBrainz…';
     playlistHeroDesc.style.removeProperty('display');
     playlistHeroDesc.classList.remove('artist-bio-clamped', 'is-expanded');
-    if (artistDisambiguation) {
-      artistDisambiguation.textContent = '';
-      artistDisambiguation.hidden = true;
-    }
     if (artistFacts) {
       artistFacts.replaceChildren();
       artistFacts.hidden = true;

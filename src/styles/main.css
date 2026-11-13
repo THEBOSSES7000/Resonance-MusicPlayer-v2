@@ -266,6 +266,8 @@ body {
   flex-direction: column;
 }
 
+body.app-window-fullscreen .window-titlebar { display: none; }
+
 .window-titlebar {
   position: relative;
   height: calc(36px / var(--ui-scale));

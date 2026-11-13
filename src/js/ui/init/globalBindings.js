@@ -10,7 +10,7 @@ import { state } from '../../state.js';
 import { stopLyricsActiveRowAnimation, updateActiveRowFill, updateSyncedLyricsProgress } from '../lyricsRender.js';
 import { uiVars } from '../sharedState.js';
 import { ARTIST_TRACK_PAGE_SIZE, renderPlaylistDetailView } from '../playlistDetail.js';
-import { bindArtistSearchPanel, closeProfileEditor, prepareProfilePhoto, saveProfileEditor, setProfileEditorPhoto } from '../profileEditor.js';
+import { bindProfileEditorControls, closeProfileEditor, prepareProfilePhoto, saveProfileEditor, setProfileEditorPhoto } from '../profileEditor.js';
 
 let lyricsPlaybackListenersInitialized = false;
 
@@ -95,16 +95,14 @@ export function bindGlobalEvents() {
   document.getElementById('profile-editor-save')?.addEventListener('click', saveProfileEditor);
   document.getElementById('profile-editor-photo-pick')?.addEventListener('click', () => profileEditorPhotoInput?.click());
   document.getElementById('profile-editor-photo-remove')?.addEventListener('click', () => {
-    uiVars.profileEditorPhotoData = null;
-    setProfileEditorPhoto(null);
+    setProfileEditorPhoto(null, 'base');
   });
   profileEditorPhotoInput?.addEventListener('change', async () => {
     const file = profileEditorPhotoInput.files?.[0];
     if (!file) return;
     profileEditorStatus.hidden = true;
     try {
-      uiVars.profileEditorPhotoData = await prepareProfilePhoto(file);
-      setProfileEditorPhoto(uiVars.profileEditorPhotoData);
+      setProfileEditorPhoto(await prepareProfilePhoto(file), 'local');
     } catch (error) {
       profileEditorStatus.textContent = error.message || 'No se pudo procesar la imagen.';
       profileEditorStatus.hidden = false;
@@ -113,5 +111,5 @@ export function bindGlobalEvents() {
   profileEditorModal?.addEventListener('click', event => {
     if (event.target === profileEditorModal) event.stopPropagation();
   });
-  bindArtistSearchPanel();
+  bindProfileEditorControls();
 }

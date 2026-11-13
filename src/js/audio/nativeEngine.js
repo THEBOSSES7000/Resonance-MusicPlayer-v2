@@ -8,7 +8,7 @@ import { audioDecks, playIcon, progressContainer } from './dom.js';
 import { maybeCountPlayFromProgress, resetPlayCountSession } from './playCount.js';
 import { notifyDiscordPresence, updateWindowsMediaPlayback, updateWindowsMediaPosition } from './windowIntegration.js';
 import { crossfadeDuration, crossfadeEnabled, masterVolume, pauseFadeEnabled, pauseFadeInDuration, pauseFadeOutDuration, playbackFadeInDuration, playbackFadeInEnabled, playbackFadeOutDuration, playbackFadeOutEnabled, releaseWebAudioIfPossible, silenceHtmlAudioDecks } from './webAudio.js';
-import { crossfadeToNext, nextSong } from './playback.js';
+import { crossfadeToNext, finishPlaybackAtQueueEnd, nextSong } from './playback.js';
 import { handleSleepTimerTrackEnd } from './sleepTimer.js';
 import { cancelCrossfade, getReplayGainLevel } from './decks.js';
 import { pushNativeEqualizer, pushNativeRate } from './effects.js';
@@ -25,6 +25,8 @@ export let nativeAudioSpectrum = null;
 
 
 let nativeEnergyUnlisten = null;
+let nativeAudioErrorListener = null;
+let nativeAudioErrorListenerPromise = null;
 
 export let nativeShadow = {
   paused: true,
@@ -78,6 +80,27 @@ export function canUseNativeAudio(track) {
 
 export async function nativeInvoke(cmd, args = {}) {
   return window.__TAURI__.core.invoke(cmd, args);
+}
+
+async function ensureNativeAudioErrorListener() {
+  if (!window.__TAURI__?.event?.listen || nativeAudioErrorListener) return;
+  if (!nativeAudioErrorListenerPromise) {
+    nativeAudioErrorListenerPromise = window.__TAURI__.event.listen('audio-error', event => {
+      const message = String(event?.payload?.message || 'Error desconocido del decodificador.');
+      console.error('[Resonance] Error de reproducción nativa:', event?.payload);
+      void import('../ui/libraryToast.js')
+        .then(({ showLibraryToast }) => {
+          showLibraryToast(`Error al leer el audio: ${message}`, { type: 'error' });
+        })
+        .catch(error => console.error('No se pudo mostrar el error de audio:', error));
+    }).then(unlisten => {
+      nativeAudioErrorListener = unlisten;
+    }).catch(error => {
+      nativeAudioErrorListenerPromise = null;
+      console.error('No se pudo escuchar los errores del motor de audio:', error);
+    });
+  }
+  await nativeAudioErrorListenerPromise;
 }
 
 export function stopNativeProgressPoll() {
@@ -233,12 +256,7 @@ function handleNativeTrackEnded() {
     void nextSong(true);
     return;
   }
-  stopNativeProgressPoll();
-  void nativeInvoke('native_audio_pause').catch(() => {});
-  nativeShadow.paused = true;
-  playIcon.className = 'ph-fill ph-play';
-  syncPlayingUI(false);
-  updateWindowsMediaPlayback(false);
+  finishPlaybackAtQueueEnd();
 }
 
 export async function nativeLoadTrack(track, autoPlay) {
@@ -253,6 +271,7 @@ export async function nativeLoadTrack(track, autoPlay) {
       deck.volume = 0;
     } catch (_) {}
   });
+  await ensureNativeAudioErrorListener();
   const fadeIn = autoPlay ? nativeFadeInSecs() : 0;
   const st = await nativeInvoke('native_audio_load', {
     path,

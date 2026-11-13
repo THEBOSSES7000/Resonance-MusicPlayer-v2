@@ -5,15 +5,18 @@ import { playlistHeroCover, profileEditorModal, profileEditorPhotoInput, profile
 import { uiVars } from './sharedState.js';
 import { state } from '../state.js';
 import { artistPortraitCache, mbArtistCache } from './artists.js';
-import { invalidateLibraryEntityCaches } from './libraryEntities.js';
+import { invalidateLibraryEntityCaches, matchingArtistSongs } from './libraryEntities.js';
 import { renderGrids } from './homeGrids.js';
 import { renderPlaylistDetailView } from './playlistDetail.js';
 import { showConfirmDialog } from './uiUtils.js';
 import { searchAllArtistProviders } from './artistProviders.js';
+import { resolveCoverUrl } from '../scanner.js';
 
 let profileEditorTarget = null;
+let profileEditorPhotoSource = null;
 let artistSearchResults = [];
 let artistSearching = false;
+let artistSearchRequestId = 0;
 
 export function getProfileOverride(type, artistName, albumTitle = '') {
   const key = profileOverrideStorageKey(type, artistName, albumTitle);
@@ -57,12 +60,12 @@ function enforceProfileOverrideStorageLimit(justWrittenKey = null) {
   } catch (_) {}
 }
 
-export function setProfileEditorPhoto(photoUrl) {
+function renderProfileEditorPhoto(photoUrl, photoSource = null) {
   clearContainerCovers(profileEditorPhotoPreview);
   profileEditorPhotoPreview.replaceChildren();
   if (!photoUrl) {
     const icon = document.createElement('i');
-    icon.className = 'ph ph-image';
+    icon.className = photoSource === 'generic' ? 'ph ph-user-circle' : 'ph ph-image';
     profileEditorPhotoPreview.appendChild(icon);
     return;
   }
@@ -72,16 +75,33 @@ export function setProfileEditorPhoto(photoUrl) {
   profileEditorPhotoPreview.appendChild(image);
 }
 
+export function setProfileEditorPhoto(photoUrl, photoSource = 'custom') {
+  uiVars.profileEditorPhotoData = photoUrl || null;
+  profileEditorPhotoSource = photoSource;
+  renderProfileEditorPhoto(photoUrl, photoSource);
+}
+
 export function closeProfileEditor() {
   profileEditorModal?.classList.remove('open');
   profileEditorTarget = null;
+  artistSearchRequestId++;
+  artistSearching = false;
   uiVars.profileEditorPhotoData = null;
+  profileEditorPhotoSource = null;
   if (profileEditorPhotoInput) profileEditorPhotoInput.value = '';
   artistSearchResults = [];
   const panel = document.getElementById('profile-editor-search-panel');
   if (panel) panel.hidden = true;
   const results = document.getElementById('profile-editor-search-results');
   if (results) results.replaceChildren();
+  document.getElementById('profile-editor-search-online').disabled = false;
+  document.getElementById('profile-editor-auto-fill').disabled = false;
+  const albumPhotoPicker = document.getElementById('profile-editor-album-photo-picker');
+  if (albumPhotoPicker) {
+    albumPhotoPicker.hidden = true;
+    albumPhotoPicker.replaceChildren();
+  }
+  document.getElementById('profile-editor-photo-album')?.setAttribute('aria-expanded', 'false');
 }
 
 function getCachedMbArtist(artistName) {
@@ -143,6 +163,8 @@ export function openProfileEditor() {
   const artistName = String(isArtist ? state.artistName : (state.albumArtistName || state.artistName) || '').trim();
   const albumTitle = String(state.albumTitle || '').trim();
   if (!artistName || (isAlbum && !albumTitle)) return;
+  artistSearchRequestId++;
+  artistSearching = false;
   const override = getProfileOverride(isArtist ? 'artist' : 'album', artistName, albumTitle) || {};
   profileEditorTarget = { type: isArtist ? 'artist' : 'album', artistName, albumTitle };
   document.getElementById('profile-editor-heading').textContent = isArtist ? 'Editar artista' : 'Editar álbum';
@@ -151,6 +173,17 @@ export function openProfileEditor() {
     : `Los cambios se guardan en este dispositivo para ${albumTitle}.`;
   document.getElementById('profile-editor-artist-fields').hidden = !isArtist;
   document.getElementById('profile-editor-album-fields').hidden = !isAlbum;
+  document.getElementById('profile-editor-photo-album').hidden = !isArtist;
+  document.getElementById('profile-editor-photo-generic').hidden = !isArtist;
+  document.getElementById('profile-editor-auto-fill').hidden = !isArtist;
+  document.getElementById('profile-editor-search-online').disabled = false;
+  document.getElementById('profile-editor-auto-fill').disabled = false;
+  const albumPhotoPicker = document.getElementById('profile-editor-album-photo-picker');
+  if (albumPhotoPicker) {
+    albumPhotoPicker.hidden = true;
+    albumPhotoPicker.replaceChildren();
+  }
+  document.getElementById('profile-editor-photo-album').setAttribute('aria-expanded', 'false');
 
   artistSearchResults = [];
   const searchPanel = document.getElementById('profile-editor-search-panel');
@@ -166,13 +199,18 @@ export function openProfileEditor() {
   if (isArtist) {
     const photo = prefillArtistFields(artistName, override);
     uiVars.profileEditorPhotoData = override.photo || null;
-    setProfileEditorPhoto(uiVars.profileEditorPhotoData || photo || null);
+    profileEditorPhotoSource = override.photoSource || (override.photo ? 'custom' : null);
+    renderProfileEditorPhoto(
+      profileEditorPhotoSource === 'generic' ? null : uiVars.profileEditorPhotoData || photo || null,
+      profileEditorPhotoSource
+    );
   } else {
     uiVars.profileEditorPhotoData = override.photo || null;
+    profileEditorPhotoSource = override.photo ? 'custom' : null;
     document.getElementById('profile-editor-album-description').value = override.description || '';
     document.getElementById('profile-editor-album-year').value = override.year || '';
     document.getElementById('profile-editor-album-label').value = override.label || '';
-    setProfileEditorPhoto(uiVars.profileEditorPhotoData || playlistHeroCover.querySelector('img')?.src || null);
+    renderProfileEditorPhoto(uiVars.profileEditorPhotoData || playlistHeroCover.querySelector('img')?.src || null);
   }
 
   profileEditorStatus.hidden = true;
@@ -203,7 +241,8 @@ export async function saveProfileEditor() {
       origin: document.getElementById('profile-editor-origin').value.trim(),
       type: document.getElementById('profile-editor-type').value.trim(),
       genres: document.getElementById('profile-editor-genres').value.split(',').map(value => value.trim()).filter(Boolean),
-      photo: uiVars.profileEditorPhotoData
+      photo: uiVars.profileEditorPhotoData,
+      photoSource: profileEditorPhotoSource
     }
     : {
       description: document.getElementById('profile-editor-album-description').value.trim(),
@@ -256,8 +295,11 @@ export async function refreshCurrentProfile() {
     localStorage.removeItem(key);
     if (isArtist) {
       localStorage.removeItem(`mb_artist_${artistName}`);
-      if (currentOverride?.photo) {
-        localStorage.setItem(key, JSON.stringify({ photo: currentOverride.photo }));
+      const preservedPhoto = {};
+      if (currentOverride?.photo) preservedPhoto.photo = currentOverride.photo;
+      if (currentOverride?.photoSource === 'generic') preservedPhoto.photoSource = 'generic';
+      if (Object.keys(preservedPhoto).length) {
+        localStorage.setItem(key, JSON.stringify(preservedPhoto));
       }
     }
   } catch (error) {
@@ -376,8 +418,7 @@ function applyArtistSearchField(item, field) {
   }
   if (field === 'all' || field === 'photo') {
     if (item.photo) {
-      uiVars.profileEditorPhotoData = item.photo;
-      setProfileEditorPhoto(item.photo);
+      setProfileEditorPhoto(item.photo, 'provider');
     }
   }
   const labels = {
@@ -391,11 +432,61 @@ function applyArtistSearchField(item, field) {
   setSearchStatus((labels[field] || 'Aplicado') + ` desde ${item.providerLabel}.`);
 }
 
-export async function searchArtistOnline() {
+function renderArtistAlbumPhotoOptions() {
+  const picker = document.getElementById('profile-editor-album-photo-picker');
+  if (!picker || !profileEditorTarget || profileEditorTarget.type !== 'artist') return;
+  picker.replaceChildren();
+
+  const albums = new Map();
+  matchingArtistSongs(profileEditorTarget.artistName).forEach(song => {
+    const title = String(song.album || '').trim();
+    if (!title) return;
+    const key = title.toLocaleLowerCase();
+    if (albums.has(key)) return;
+    const photo = getProfileOverride('album', profileEditorTarget.artistName, title)?.photo || resolveCoverUrl(song);
+    if (photo) albums.set(key, { title, photo });
+  });
+
+  if (!albums.size) {
+    const empty = document.createElement('div');
+    empty.className = 'profile-search-empty';
+    empty.textContent = 'No se encontraron portadas de álbum para este artista.';
+    picker.appendChild(empty);
+    return;
+  }
+
+  albums.forEach(({ title, photo }) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'profile-editor-album-photo-option';
+    button.title = `Usar la portada de ${title}`;
+    const image = document.createElement('img');
+    image.src = photo;
+    image.alt = '';
+    image.loading = 'lazy';
+    const label = document.createElement('span');
+    label.textContent = title;
+    button.append(image, label);
+    button.addEventListener('click', () => {
+      setProfileEditorPhoto(photo, 'album');
+      picker.hidden = true;
+      document.getElementById('profile-editor-photo-album')?.setAttribute('aria-expanded', 'false');
+    });
+    picker.appendChild(button);
+  });
+}
+
+export async function searchArtistOnline({ autoApply = false } = {}) {
   if (!profileEditorTarget || profileEditorTarget.type !== 'artist') return;
   if (artistSearching) return;
-  const artistName = profileEditorTarget.artistName;
+  const searchTarget = profileEditorTarget;
+  const requestId = ++artistSearchRequestId;
+  const artistName = searchTarget.artistName;
   artistSearching = true;
+  const searchButton = document.getElementById('profile-editor-search-online');
+  const autoFillButton = document.getElementById('profile-editor-auto-fill');
+  if (searchButton) searchButton.disabled = true;
+  if (autoFillButton) autoFillButton.disabled = true;
   const panel = document.getElementById('profile-editor-search-panel');
   if (panel) panel.hidden = false;
   setSearchStatus('Buscando en MusicBrainz, Last.fm, Wikipedia, Deezer, TheAudioDB y Fanart.tv…');
@@ -404,35 +495,71 @@ export async function searchArtistOnline() {
 
   try {
     const results = await searchAllArtistProviders(artistName);
+    if (requestId !== artistSearchRequestId || profileEditorTarget !== searchTarget) return;
     artistSearchResults = results;
-    setSearchStatus(
-      results.length
-        ? `${results.length} resultado(s). Podés aplicar todo o campo por campo.`
-        : 'Sin resultados en los proveedores.'
-    );
     renderArtistSearchResults();
+    const bestResult = results[0];
+    if (autoApply && bestResult && (
+      bestResult.description ||
+      bestResult.origin ||
+      bestResult.type ||
+      bestResult.genres?.length ||
+      bestResult.photo
+    )) {
+      applyArtistSearchField(bestResult, 'all');
+      setSearchStatus(`Mejor resultado de ${bestResult.providerLabel} aplicado. Revisá los cambios y guardá.`);
+    } else if (autoApply) {
+      setSearchStatus('No se encontró información que se pueda aplicar.');
+    } else {
+      setSearchStatus(
+        results.length
+          ? `${results.length} resultado(s). Podés aplicar todo o campo por campo.`
+          : 'Sin resultados en los proveedores.'
+      );
+    }
   } catch (err) {
+    if (requestId !== artistSearchRequestId || profileEditorTarget !== searchTarget) return;
     console.error(err);
     artistSearchResults = [];
     setSearchStatus('Error al buscar: ' + (err?.message || err), true);
     renderArtistSearchResults();
   } finally {
-    artistSearching = false;
+    if (requestId === artistSearchRequestId) {
+      artistSearching = false;
+      if (searchButton) searchButton.disabled = false;
+      if (autoFillButton) autoFillButton.disabled = false;
+    }
   }
 }
 
-/** Wire search panel buttons (call once from global bindings). */
-export function bindArtistSearchPanel() {
+/** Wire profile editor actions (call once from global bindings). */
+export function bindProfileEditorControls() {
   document.getElementById('profile-editor-search-online')?.addEventListener('click', () => {
     void searchArtistOnline();
   });
+  document.getElementById('profile-editor-auto-fill')?.addEventListener('click', () => {
+    void searchArtistOnline({ autoApply: true });
+  });
   document.getElementById('profile-editor-search-results')?.addEventListener('click', (event) => {
-    const btn = event.target.closest('[data-artist-apply]');
+    const btn = event.target instanceof Element ? event.target.closest('[data-artist-apply]') : null;
     if (!btn) return;
     const index = Number(btn.dataset.index);
     const field = btn.dataset.artistApply;
     const item = artistSearchResults[index];
     if (!item) return;
     applyArtistSearchField(item, field);
+  });
+  document.getElementById('profile-editor-photo-album')?.addEventListener('click', event => {
+    const picker = document.getElementById('profile-editor-album-photo-picker');
+    if (!picker) return;
+    picker.hidden = !picker.hidden;
+    event.currentTarget.setAttribute('aria-expanded', String(!picker.hidden));
+    if (!picker.hidden) renderArtistAlbumPhotoOptions();
+  });
+  document.getElementById('profile-editor-photo-generic')?.addEventListener('click', () => {
+    setProfileEditorPhoto(null, 'generic');
+    const picker = document.getElementById('profile-editor-album-photo-picker');
+    if (picker) picker.hidden = true;
+    document.getElementById('profile-editor-photo-album')?.setAttribute('aria-expanded', 'false');
   });
 }

@@ -13,6 +13,7 @@
   overflow: hidden;
   transition: top 320ms ease, bottom 320ms ease, padding 320ms ease, background-color 320ms ease;
 }
+body.app-window-fullscreen .lyrics-overlay { top: 0; }
 .lyrics-overlay.open { display: flex; background: var(--bg-app); }
 .lyrics-overlay.open.visual-plus-active { bottom: 0; }
 .lyrics-overlay #visual-plus-canvas {

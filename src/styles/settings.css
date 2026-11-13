@@ -235,7 +235,7 @@
   padding: 1.25rem 1.35rem 1.35rem;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1rem;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--text-main) 4%, transparent);
 }
 .settings-card + .settings-card {
@@ -312,13 +312,13 @@
 .settings-card .audio-setting-row + .audio-setting-row,
 .settings-card .interface-setting-row + .interface-setting-row {
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 55%, transparent);
-  padding-top: 0.85rem;
+  padding-top: 1rem;
   margin-top: 0;
 }
 .settings-card .setting-range-row + .setting-range-row,
 .settings-card .visual-plus-range-row + .visual-plus-range-row {
   border-top: 1px solid color-mix(in srgb, var(--border-subtle) 45%, transparent);
-  padding-top: 0.8rem;
+  padding-top: 0.95rem;
   margin-top: 0.1rem;
 }
 .visual-plus-options { display: grid; gap: 1rem; padding-top: 0.25rem; }
@@ -435,14 +435,14 @@
 .audio-setting-row > .switch { flex: 0 0 44px; }
 .interface-setting-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   align-items: center;
   gap: 1.25rem;
   min-width: 0;
 }
 .setting-row-select {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   align-items: center;
   gap: 1.25rem;
   min-width: 0;
@@ -451,12 +451,13 @@
 .setting-row-select > .settings-select,
 .interface-setting-row > .settings-select {
   min-width: 0;
-  max-width: 320px;
+  max-width: 100%;
+  justify-self: end;
 }
 .settings-divider {
   width: 100%;
   height: 1px;
-  margin: 0.15rem 0;
+  margin: 0.35rem 0;
   background: color-mix(in srgb, var(--border-subtle) 65%, transparent);
 }
 .np-fs-lyrics-custom-settings {
@@ -519,12 +520,12 @@
 .audio-setting-description { display: flex; flex-direction: column; gap: 0.35rem; }
 .audio-setting-description strong { font-size: 0.88rem; }
 .audio-setting-description p, .audio-setting-status { color: var(--text-muted); font-size: 0.78rem; line-height: 1.5; }
-.audio-setting-control { display: flex; align-items: center; gap: 0.65rem; }
+.audio-setting-control { display: flex; align-items: center; gap: 0.75rem; }
 .audio-setting-control .switch { flex: 0 0 44px; }
 .settings-select {
-  width: 100%;
+  width: max-content;
   min-width: 0;
-  max-width: 100%;
+  max-width: min(100%, 420px);
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
@@ -536,19 +537,25 @@
 .settings-select:disabled { opacity: 0.6; cursor: not-allowed; }
 .setting-range-row:has(> .settings-select) {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   align-items: center;
   gap: 1.25rem;
-  max-width: 640px;
+  max-width: none;
 }
 .setting-range-row:has(> .settings-select) > .settings-select {
   min-width: 0;
-  max-width: 320px;
+  max-width: min(100%, 420px);
+  justify-self: end;
 }
 .audio-setting-row > .settings-select,
 .audio-setting-control > .settings-select {
-  width: min(100%, 320px);
+  width: max-content;
   min-width: 0;
+  max-width: min(100%, 420px);
+}
+.audio-setting-row > .settings-select,
+.audio-setting-row > .audio-setting-control:has(> .settings-select) {
+  justify-self: end;
 }
 .storage-location-path { min-width: 0; overflow-wrap: anywhere; text-align: right; }
 .storage-location-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; min-width: 0; }
@@ -560,6 +567,7 @@
 .settings-backup-category-list .multi-playlist-option { margin: 0; }
 .settings-backup-category-list input { accent-color: var(--accent-purple); }
 .settings-backup-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.65rem; }
+.audio-setting-control > .setting-help { order: -1; }
 .setting-help { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; color: var(--text-muted); cursor: help; }
 .setting-help > i { font-size: 1rem; }
 .setting-tooltip {
@@ -751,7 +759,7 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
 }
 @media (max-width: 640px) {
   .audio-setting-row { gap: 0.75rem; }
-  .audio-setting-control { width: min(100%, 300px); min-width: 0; justify-self: end; }
+  .audio-setting-control { width: min(100%, 420px); min-width: 0; justify-self: end; }
   .audio-setting-control .settings-select { min-width: 0; }
   .settings-select { min-width: 0; }
   .progress-style-options { grid-template-columns: 1fr; }
@@ -778,8 +786,8 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
   .setting-row-select > .settings-select,
   .setting-range-row:has(> .settings-select) > .settings-select,
   .np-fs-volume-setting-row > .settings-select,
-  .audio-setting-row:has(> .settings-select) > .settings-select { justify-self: start; }
-  .audio-setting-row:has(> .audio-setting-control > .settings-select) > .audio-setting-control { justify-self: start; }
+  .audio-setting-row:has(> .settings-select) > .settings-select { justify-self: end; }
+  .audio-setting-row:has(> .audio-setting-control > .settings-select) > .audio-setting-control { justify-self: end; }
 }
 
 @media (max-width: 760px) {
@@ -826,7 +834,7 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
   .settings-card { padding: 0.85rem; }
   .setting-alignment-options { flex-wrap: wrap; }
   .interface-setting-row > .settings-select,
-  .setting-row-select > .settings-select { width: min(100%, 320px); justify-self: start; }
+  .setting-row-select > .settings-select { width: max-content; max-width: min(100%, 420px); justify-self: end; }
   .interface-fit-row .setting-alignment-options { justify-self: end; }
   .interface-fit-row .setting-alignment-options { width: 100%; }
 }

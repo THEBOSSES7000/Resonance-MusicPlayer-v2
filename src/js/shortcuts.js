@@ -37,10 +37,11 @@ const SHORTCUT_ACTIONS = {
   shuffle: { label: 'Alternar aleatorio', local: 'Ctrl+Shift+S', global: null },
   repeat: { label: 'Cambiar modo de repetición', local: 'Ctrl+Shift+R', global: null },
   queue: { label: 'Abrir / Cerrar cola', local: 'Ctrl+Shift+Q', global: null },
+  appFullscreen: { label: 'Alternar pantalla completa de la aplicación', local: 'F11', global: null },
   lyrics: { label: 'Abrir / Cerrar letras', local: 'Ctrl+Shift+L', global: null },
-  lyricsCompactPlayer: { label: 'Ocultar interfaz (letras / pantalla completa)', local: 'Ctrl+Shift+P', global: null },
-  nowPlayingFullscreen: { label: 'Abrir / cerrar pantalla completa', local: 'Ctrl+Shift+F', global: null },
-  cycleFsLayout: { label: 'Cambiar diseño de pantalla completa', local: 'Ctrl+Shift+D', global: null },
+  lyricsCompactPlayer: { label: 'Ocultar interfaz (letras / Modo Cine)', local: 'Ctrl+Shift+P', global: null },
+  nowPlayingFullscreen: { label: 'Abrir / cerrar Modo Cine', local: 'Ctrl+Shift+F', global: null },
+  cycleFsLayout: { label: 'Cambiar diseño del Modo Cine', local: 'Ctrl+Shift+D', global: null },
   pinLyricsLine: { label: 'Fijar línea activa de la letra', local: 'Ctrl+Shift+J', global: null },
   toggleLyricsTranslation: { label: 'Activar / desactivar letras traducidas', local: 'Ctrl+Shift+T', global: null },
   cycleVisualPlusTheme: { label: 'Cambiar modo de Visual+', local: 'Ctrl+Shift+E', global: null },
@@ -435,6 +436,13 @@ function dispatchShortcut(action) {
       break;
     case 'queue':
       document.getElementById('btn-toggle-queue')?.click();
+      break;
+    case 'appFullscreen':
+      if (!window.__TAURI__?.window?.getCurrentWindow) {
+        setStatus('La pantalla completa de la aplicación solo está disponible en escritorio.', true);
+        break;
+      }
+      window.dispatchEvent(new Event('pn-toggle-app-fullscreen'));
       break;
     case 'pinLyricsLine':
       resumeLyricsAutoScrollAtActiveLine();

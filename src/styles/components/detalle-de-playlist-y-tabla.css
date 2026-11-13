@@ -70,12 +70,6 @@
   letter-spacing: -1.2px;
   color: #fff;
 }
-.artist-disambiguation {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-}
-.artist-disambiguation[hidden],
 .artist-facts[hidden] { display: none !important; }
 .artist-facts {
   display: flex;
@@ -274,6 +268,7 @@
 .profile-editor-footer {
   flex: 0 0 auto;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding-top: 0.75rem;
   margin-top: 0.25rem;
@@ -282,6 +277,8 @@
   position: sticky;
   bottom: 0;
 }
+.playlist-modal-card .modal-card-footer.profile-editor-footer { justify-content: flex-end; }
+.profile-editor-footer #profile-editor-cancel { margin-right: auto; }
 #profile-editor-status {
   flex: 0 0 auto;
 }
@@ -305,6 +302,51 @@
 }
 .profile-editor-photo img { width: 100%; height: 100%; object-fit: cover; }
 .profile-editor-photo-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.profile-editor-album-photo-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+  max-height: min(220px, 30vh);
+  overflow-y: auto;
+  padding: 0.6rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+.profile-editor-album-photo-picker[hidden] { display: none; }
+.profile-editor-album-photo-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.profile-editor-album-photo-option:hover,
+.profile-editor-album-photo-option:focus-visible {
+  outline: none;
+  border-color: var(--accent-light);
+}
+.profile-editor-album-photo-option img {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.profile-editor-album-photo-option span {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
 .profile-editor-fields { display: flex; flex-direction: column; gap: 0.8rem; }
 .profile-editor-fields[hidden] { display: none; }
 .profile-editor-fields .track-edit-field { display: flex; flex-direction: column; gap: 0.35rem; }

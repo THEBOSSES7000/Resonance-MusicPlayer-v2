@@ -436,8 +436,11 @@
   transform: translateY(-50%);
 }
 .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] {
+  height: 4px;
   background: var(--progress-track, var(--border-subtle));
 }
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"]:hover,
+.progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"].is-seeking { height: 5.5px; }
 .progress-container[data-progress-style="solid"][data-animated="true"][data-animation-style="continuous"] .progress-bar {
   overflow: visible;
   background: transparent;

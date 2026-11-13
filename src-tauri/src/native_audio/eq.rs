@@ -117,6 +117,7 @@ where
     pub channel_ix: u16,
     pub generation: u64,
     pub coeffs: [BiquadCoeffs; 20],
+    pub preamp: f32,
     /// estado [banda][canal] — máx 2 canales para el gráfico típico
     pub states: [[BiquadState; 2]; 20],
     pub bypass: bool,
@@ -137,6 +138,7 @@ where
             channel_ix: 0,
             generation: u64::MAX,
             coeffs: [BiquadCoeffs::identity(); 20],
+            preamp: 1.0,
             states: [[BiquadState::new(); 2]; 20],
             bypass: true,
         };
@@ -153,6 +155,12 @@ where
         let enabled = self.shared.enabled.load(Ordering::Acquire);
         let gains = self.shared.gains_db();
         self.bypass = !enabled || gains.iter().all(|g| g.abs() < 0.05);
+        let maximum_boost = if enabled {
+            gains.iter().copied().fold(0.0f32, f32::max)
+        } else {
+            0.0
+        };
+        self.preamp = 10.0f32.powf(-maximum_boost / 20.0);
         let sr = self.sample_rate as f32;
         // Q ≈ √2 para separación de bandas de un gráfico denso
         let q = std::f32::consts::SQRT_2;
@@ -178,6 +186,7 @@ where
         self.rebuild_if_needed();
         let mut sample = self.inner.next()?;
         if !self.bypass {
+            sample *= self.preamp;
             let ch = (self.channel_ix as usize).min(1);
             for band in 0..20 {
                 sample = self.states[band][ch].process(sample, &self.coeffs[band]);

@@ -33,6 +33,7 @@ export function getDeckState(deck) {
       envelopeLevel: 1,
       replayGainLevel: 1,
       source: null,
+      preamp: null,
       filters: [],
       analyser: null,
       analysisData: null,

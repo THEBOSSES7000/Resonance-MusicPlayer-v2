@@ -66,8 +66,6 @@ export const artistRelatedGrid = document.getElementById('artist-related-grid');
 
 export const artistBioToggle = document.getElementById('artist-bio-toggle');
 
-export const artistDisambiguation = document.getElementById('artist-disambiguation');
-
 export const artistFacts = document.getElementById('artist-facts');
 
 export const artistTagsContainer = document.getElementById('artist-tags');

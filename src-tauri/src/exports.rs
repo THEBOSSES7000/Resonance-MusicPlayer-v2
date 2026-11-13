@@ -68,6 +68,35 @@ pub fn save_m3u8_file(file_name: String, contents: String) -> Result<bool, Strin
 }
 
 #[tauri::command]
+pub fn load_m3u8_file() -> Result<Option<serde_json::Value>, String> {
+    let Some(path) = rfd::FileDialog::new()
+        .set_title("Importar playlist M3U8")
+        .add_filter("Playlist M3U8", &["m3u8", "m3u"])
+        .pick_file()
+    else {
+        return Ok(None);
+    };
+    let metadata = fs::metadata(&path).map_err(|error| {
+        format!(
+            "No se pudo consultar el archivo {}: {error}",
+            path.display()
+        )
+    })?;
+    if metadata.len() > 16 * 1024 * 1024 {
+        return Err("El archivo de playlist supera el tamaño máximo de 16 MiB.".to_string());
+    }
+    let bytes =
+        fs::read(&path).map_err(|error| format!("No se pudo leer {}: {error}", path.display()))?;
+    let contents = String::from_utf8(bytes)
+        .map_err(|error| format!("El archivo M3U8 no contiene texto UTF-8 válido: {error}"))?;
+    Ok(Some(serde_json::json!({
+        "path": path.to_string_lossy(),
+        "name": path.file_name().and_then(|name| name.to_str()).unwrap_or("playlist.m3u8"),
+        "contents": contents
+    })))
+}
+
+#[tauri::command]
 pub fn save_settings_backup(contents: String) -> Result<bool, String> {
     if contents.len() > 32 * 1024 * 1024 {
         return Err("La copia de seguridad supera el tamaño máximo de 32 MiB.".to_string());

@@ -423,7 +423,6 @@
           <div class="playlist-hero-info">
             <span class="playlist-badge-type">Playlist</span>
             <h1 class="playlist-hero-title" id="playlist-hero-title">Tus me gusta</h1>
-            <p class="artist-disambiguation" id="artist-disambiguation" hidden></p>
             <div class="artist-facts" id="artist-facts" hidden></div>
             <div class="artist-tags" id="artist-tags" aria-label="Géneros del artista" hidden></div>
             <p class="playlist-hero-desc" id="playlist-hero-desc" style="display: none;"></p>
@@ -867,12 +866,14 @@
         </div>
         <p class="missing-songs-hint" id="missing-songs-auto-status" role="status" aria-live="polite"></p>
         <div class="modal-card-footer missing-songs-footer">
-          <button class="btn-pill-save" id="missing-songs-apply" type="button" disabled>
-            <i class="ph ph-check"></i> Aplicar a lo seleccionado
-          </button>
-          <button class="btn-pill-save secondary" id="missing-songs-auto-find" type="button">
-            <i class="ph ph-magnifying-glass"></i> Buscar…
-          </button>
+          <div class="missing-songs-primary-actions">
+            <button class="btn-pill-save" id="missing-songs-apply" type="button" disabled>
+              <i class="ph ph-check"></i> Aplicar a lo seleccionado
+            </button>
+            <button class="btn-pill-save secondary" id="missing-songs-auto-find" type="button">
+              <i class="ph ph-magnifying-glass"></i> Buscar…
+            </button>
+          </div>
           <button class="btn-pill-save secondary" id="missing-songs-cancel" type="button">Cancelar</button>
         </div>
       </div>
@@ -1011,55 +1012,69 @@
             <i class="ph ph-x"></i>
           </button>
         </div>
-        <p class="modal-note-text" id="profile-editor-note"></p>
-        <div class="profile-editor-photo-row">
-          <div class="profile-editor-photo" id="profile-editor-photo-preview">
-            <i class="ph ph-image"></i>
+        <div class="profile-editor-body">
+          <p class="modal-note-text" id="profile-editor-note"></p>
+          <div class="profile-editor-photo-row">
+            <div class="profile-editor-photo" id="profile-editor-photo-preview">
+              <i class="ph ph-image"></i>
+            </div>
+            <div class="profile-editor-photo-actions">
+              <button class="btn-import-m3u" id="profile-editor-photo-pick" type="button">
+                <i class="ph ph-upload-simple"></i> Cargar foto local
+              </button>
+              <button class="btn-import-m3u" id="profile-editor-photo-album" type="button" aria-expanded="false">
+                <i class="ph ph-disc"></i> Elegir portada de álbum
+              </button>
+              <button class="btn-import-m3u" id="profile-editor-photo-generic" type="button">
+                <i class="ph ph-user-circle"></i> Usar imagen genérica
+              </button>
+              <button class="btn-import-m3u" id="profile-editor-photo-remove" type="button">
+                <i class="ph ph-arrow-counter-clockwise"></i> Usar foto de la base
+              </button>
+              <input type="file" id="profile-editor-photo-input" accept="image/*" hidden>
+            </div>
           </div>
-          <div class="profile-editor-photo-actions">
-            <button class="btn-import-m3u" id="profile-editor-photo-pick" type="button">
-              <i class="ph ph-camera"></i> Elegir foto
-            </button>
-            <button class="btn-import-m3u" id="profile-editor-photo-remove" type="button">
-              <i class="ph ph-arrow-counter-clockwise"></i> Usar foto de la base
-            </button>
-            <input type="file" id="profile-editor-photo-input" accept="image/*" hidden>
+          <div class="profile-editor-album-photo-picker" id="profile-editor-album-photo-picker" hidden></div>
+          <div class="profile-editor-fields" id="profile-editor-artist-fields">
+            <div class="profile-editor-online-bar">
+              <button class="btn-import-m3u" id="profile-editor-search-online" type="button">
+                <i class="ph ph-magnifying-glass"></i> Buscar en todas las bases de datos
+              </button>
+              <span class="profile-editor-online-hint">Elegí qué datos o foto aplicar de cada resultado.</span>
+            </div>
+            <div class="profile-editor-search-panel" id="profile-editor-search-panel" hidden>
+              <p class="profile-editor-search-status" id="profile-editor-search-status" role="status" aria-live="polite" hidden></p>
+              <div class="profile-editor-search-results" id="profile-editor-search-results"></div>
+            </div>
+            <label class="track-edit-field" for="profile-editor-description"><span>Descripción</span>
+              <textarea class="modal-textarea-input" id="profile-editor-description" maxlength="3000" autocomplete="off"></textarea>
+            </label>
+            <label class="track-edit-field" for="profile-editor-origin"><span>Origen / país</span>
+              <input class="modal-text-input" id="profile-editor-origin" maxlength="200">
+            </label>
+            <label class="track-edit-field" for="profile-editor-type"><span>Tipo de artista</span>
+              <input class="modal-text-input" id="profile-editor-type" maxlength="100">
+            </label>
+            <label class="track-edit-field" for="profile-editor-genres"><span>Géneros (separados por coma)</span>
+              <input class="modal-text-input" id="profile-editor-genres" maxlength="500">
+            </label>
           </div>
+          <div class="profile-editor-fields" id="profile-editor-album-fields" hidden>
+            <label class="track-edit-field" for="profile-editor-album-description"><span>Descripción</span>
+              <textarea class="modal-textarea-input" id="profile-editor-album-description" maxlength="3000" autocomplete="off"></textarea>
+            </label>
+            <label class="track-edit-field" for="profile-editor-album-year"><span>Año de publicación</span>
+              <input class="modal-text-input" id="profile-editor-album-year" maxlength="20">
+            </label>
+            <label class="track-edit-field" for="profile-editor-album-label"><span>Sello discográfico</span>
+              <input class="modal-text-input" id="profile-editor-album-label" maxlength="200">
+            </label>
+          </div>
+          <p class="lyrics-search-status" id="profile-editor-status" role="status" hidden></p>
         </div>
-        <div class="profile-editor-fields" id="profile-editor-artist-fields">
-          <label class="track-edit-field" for="profile-editor-description"><span>Descripción</span>
-            <textarea class="modal-textarea-input" id="profile-editor-description" maxlength="3000" autocomplete="off"></textarea>
-          </label>
-          <label class="track-edit-field" for="profile-editor-origin"><span>Origen / país</span>
-            <input class="modal-text-input" id="profile-editor-origin" maxlength="200">
-          </label>
-          <label class="track-edit-field" for="profile-editor-activity"><span>Años de actividad</span>
-            <input class="modal-text-input" id="profile-editor-activity" maxlength="200">
-          </label>
-          <label class="track-edit-field" for="profile-editor-type"><span>Tipo de artista</span>
-            <input class="modal-text-input" id="profile-editor-type" maxlength="100">
-          </label>
-          <label class="track-edit-field" for="profile-editor-genres"><span>Géneros (separados por coma)</span>
-            <input class="modal-text-input" id="profile-editor-genres" maxlength="500">
-          </label>
-          <label class="track-edit-field" for="profile-editor-context"><span>Contexto / desambiguación</span>
-            <input class="modal-text-input" id="profile-editor-context" maxlength="500">
-          </label>
-        </div>
-        <div class="profile-editor-fields" id="profile-editor-album-fields" hidden>
-          <label class="track-edit-field" for="profile-editor-album-description"><span>Descripción</span>
-            <textarea class="modal-textarea-input" id="profile-editor-album-description" maxlength="3000" autocomplete="off"></textarea>
-          </label>
-          <label class="track-edit-field" for="profile-editor-album-year"><span>Año de publicación</span>
-            <input class="modal-text-input" id="profile-editor-album-year" maxlength="20">
-          </label>
-          <label class="track-edit-field" for="profile-editor-album-label"><span>Sello discográfico</span>
-            <input class="modal-text-input" id="profile-editor-album-label" maxlength="200">
-          </label>
-        </div>
-        <p class="lyrics-search-status" id="profile-editor-status" role="status" hidden></p>
         <div class="modal-card-footer profile-editor-footer">
           <button class="btn-pill-save" id="profile-editor-cancel" type="button">Cancelar</button>
+          <button class="btn-pill-save" id="profile-editor-auto-fill" type="button" title="Buscar y aplicar el mejor resultado">Autocompletar</button>
           <button class="btn-pill-save" id="profile-editor-save" type="button">Guardar</button>
         </div>
       </div>
@@ -1253,6 +1268,10 @@
           <button class="settings-tab-btn" data-tab="tab-appearance">
             <i class="ph ph-palette"></i>
             <span>Apariencia</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-lyrics-fullscreen">
+            <i class="ph ph-text-aa"></i>
+            <span>Modo Cine y letras</span>
           </button>
           <button class="settings-tab-btn" data-tab="tab-behavior">
             <i class="ph ph-gear-six"></i>
@@ -1752,7 +1771,7 @@
         <section class="settings-tab-content" id="tab-appearance">
           <div class="settings-header">
             <h2>Apariencia</h2>
-            <p>Personaliza la escala, el comportamiento adaptable, los colores y la forma en que se muestran las letras.</p>
+            <p>Personaliza la escala, el comportamiento adaptable, los colores y la interfaz.</p>
           </div>
           <div class="settings-card">
             <div class="audio-setting-row">
@@ -2017,24 +2036,31 @@
             </div>
           </div>
           
+        </section>
+
+        <section class="settings-tab-content" id="tab-lyrics-fullscreen">
+          <div class="settings-header">
+            <h2>Modo Cine y letras</h2>
+            <p>Personaliza el Modo Cine del reproductor y la apariencia y el comportamiento de las letras.</p>
+          </div>
           <div class="settings-card" id="now-playing-fs-settings-card">
             <div>
-              <div class="settings-card-title">Pantalla completa</div>
-              <p>Personaliza la vista de pantalla completa del reproductor (carátula, controles y letras).</p>
+              <div class="settings-card-title">Modo Cine</div>
+              <p>Personaliza la vista del reproductor (carátula, controles y letras).</p>
             </div>
             <div class="audio-setting-row">
               <div class="audio-setting-description">
                 <strong>Adaptar diseño según letras</strong>
                 <p>Si la canción tiene letra, usa la posición de carátula configurada (izquierda/derecha). Si no tiene, centra la carátula con una transición suave.</p>
               </div>
-              <label class="switch" aria-label="Adaptar diseño de pantalla completa según si hay letras">
+              <label class="switch" aria-label="Adaptar diseño del Modo Cine según si hay letras">
                 <input id="np-fs-adapt-lyrics" type="checkbox">
                 <span class="slider"></span>
               </label>
             </div>
             <label class="setting-row-select" for="np-fs-cover-size">
               <span><strong>Tamaño de carátula y controles</strong></span>
-              <select id="np-fs-cover-size" class="settings-select" aria-label="Tamaño de carátula y controles en pantalla completa">
+              <select id="np-fs-cover-size" class="settings-select" aria-label="Tamaño de carátula y controles en Modo Cine">
                 <option value="medium" selected>Mediano</option>
                 <option value="large">Grande</option>
               </select>
@@ -2042,9 +2068,9 @@
             <div class="audio-setting-row np-fs-volume-setting-row">
               <div class="audio-setting-description">
                 <strong>Barra de volumen</strong>
-                <p>Mostrar una barra de volumen en pantalla completa. En automático se ubica según la posición de la carátula.</p>
+                <p>Mostrar una barra de volumen en Modo Cine. En automático se ubica según la posición de la carátula.</p>
               </div>
-              <select id="np-fs-volume-bar" class="settings-select" aria-label="Barra de volumen en pantalla completa">
+              <select id="np-fs-volume-bar" class="settings-select" aria-label="Barra de volumen en Modo Cine">
                 <option value="off" selected>Desactivada</option>
                 <option value="auto">Automática</option>
                 <option value="left">Vertical izquierda</option>
@@ -2057,10 +2083,10 @@
             <div class="audio-setting-row np-fs-vinyl-setting-row" id="np-fs-vinyl-setting-row">
               <div class="audio-setting-description">
                 <strong>Efecto vinilo en carátula</strong>
-                <p>Muestra un disco de vinilo girando detrás de la carátula en pantalla completa.</p>
+                <p>Muestra un disco de vinilo girando detrás de la carátula en Modo Cine.</p>
                 <p class="np-fs-vinyl-conflict-hint" id="np-fs-vinyl-conflict-hint" hidden>No disponible mientras la barra de volumen esté a la derecha.</p>
               </div>
-              <label class="switch" aria-label="Efecto vinilo en pantalla completa">
+              <label class="switch" aria-label="Efecto vinilo en Modo Cine">
                 <input id="np-fs-vinyl-enabled" type="checkbox">
                 <span class="slider"></span>
               </label>
@@ -2068,7 +2094,7 @@
 <div class="audio-setting-row">
               <div class="audio-setting-description">
                 <strong>Sincronizar opciones de letras con el menú de letras</strong>
-                <p>Si está activo, la pantalla completa usa los mismos tamaños, tipografía y estilo que las letras del menú completo (sincronizadas y normales).</p>
+                <p>Si está activo, el Modo Cine usa los mismos tamaños, tipografía y estilo que las letras del menú (sincronizadas y normales).</p>
               </div>
               <label class="switch" aria-label="Sincronizar opciones de letras con el menú de letras">
                 <input id="np-fs-sync-lyrics" type="checkbox" checked>
@@ -2077,7 +2103,7 @@
             </div>
             <div id="np-fs-lyrics-custom-settings" class="np-fs-lyrics-custom-settings" hidden>
               <div class="settings-divider"></div>
-              <p class="settings-inline-note">Personalización solo para pantalla completa (letras sincronizadas y normales).</p>
+              <p class="settings-inline-note">Personalización solo para Modo Cine (letras sincronizadas y normales).</p>
               <label class="setting-range-row" for="np-fs-active-size">
                 <span><strong>Tamaño del renglón activo</strong><output id="np-fs-active-size-value"></output></span>
                 <input id="np-fs-active-size" type="range" min="24" max="72" step="1" value="42">
@@ -2096,7 +2122,7 @@
               </label>
               <label class="setting-row-select" for="np-fs-font-family">
                 <span><strong>Tipografía</strong></span>
-                <select id="np-fs-font-family" class="settings-select" aria-label="Fuente de letras en pantalla completa">
+                <select id="np-fs-font-family" class="settings-select" aria-label="Fuente de letras en Modo Cine">
                   <option value="jakarta">Plus Jakarta Sans</option>
                   <option value="arial">Arial</option>
                   <option value="trebuchet">Trebuchet MS</option>
@@ -2110,7 +2136,7 @@
                   <strong>Cursiva</strong>
                   <p>Muestra las letras en estilo itálico.</p>
                 </div>
-                <label class="switch" aria-label="Cursiva en letras de pantalla completa">
+                <label class="switch" aria-label="Cursiva en letras de Modo Cine">
                   <input id="np-fs-italic" type="checkbox">
                   <span class="slider"></span>
                 </label>
@@ -2118,7 +2144,7 @@
               <div class="setting-alignment-row">
                 <strong>Alineación del texto</strong>
                 <p class="settings-inline-note">Alinea el texto según el lado donde estén las letras; no cambia de columna la vista.</p>
-                <div class="setting-alignment-options" id="np-fs-alignment" role="group" aria-label="Alineación de letras en pantalla completa">
+                <div class="setting-alignment-options" id="np-fs-alignment" role="group" aria-label="Alineación de letras en Modo Cine">
                   <button type="button" data-alignment="left" aria-pressed="false">Izquierda</button>
                   <button type="button" data-alignment="center" aria-pressed="true">Centro</button>
                   <button type="button" data-alignment="right" aria-pressed="false">Derecha</button>
@@ -2411,6 +2437,20 @@
                 <input id="restore-playback-session" type="checkbox">
                 <span class="slider"></span>
               </label>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div class="audio-setting-row">
+              <div class="audio-setting-description">
+                <strong>Recordar aleatorio y repetición</strong>
+                <p>Al iniciar Resonance, restaura los estados de Aleatorio y Repetir cola. No guarda el modo “Repetir canción actual”.</p>
+              </div>
+              <span class="audio-setting-control">
+                <label class="switch" aria-label="Recordar aleatorio y repetición al iniciar">
+                  <input id="behavior-remember-playback-modes" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+              </span>
             </div>
           </div>
           <div class="settings-card">
@@ -2961,7 +3001,12 @@
               <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
             <div class="shortcuts-section-divider" role="separator">
-              <span>Letras y pantalla completa</span>
+              <span>Letras y Modo Cine</span>
+            </div>
+            <div class="shortcuts-row" role="row" data-shortcut-action="appFullscreen">
+              <strong role="rowheader">Alternar pantalla completa de la aplicación</strong>
+              <div class="shortcut-slot" data-shortcut-slot="local"></div>
+              <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
             <div class="shortcuts-row" role="row" data-shortcut-action="lyrics">
               <strong role="rowheader">Abrir / Cerrar letras</strong>
@@ -2969,17 +3014,17 @@
               <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
             <div class="shortcuts-row" role="row" data-shortcut-action="lyricsCompactPlayer">
-              <strong role="rowheader">Ocultar interfaz (letras / pantalla completa)</strong>
+              <strong role="rowheader">Ocultar interfaz (letras / Modo Cine)</strong>
               <div class="shortcut-slot" data-shortcut-slot="local"></div>
               <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
             <div class="shortcuts-row" role="row" data-shortcut-action="nowPlayingFullscreen">
-              <strong role="rowheader">Abrir / cerrar pantalla completa</strong>
+              <strong role="rowheader">Abrir / cerrar Modo Cine</strong>
               <div class="shortcut-slot" data-shortcut-slot="local"></div>
               <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
             <div class="shortcuts-row" role="row" data-shortcut-action="cycleFsLayout">
-              <strong role="rowheader">Cambiar diseño de pantalla completa</strong>
+              <strong role="rowheader">Cambiar diseño del Modo Cine</strong>
               <div class="shortcut-slot" data-shortcut-slot="local"></div>
               <div class="shortcut-slot" data-shortcut-slot="global"></div>
             </div>
@@ -3215,7 +3260,7 @@
               <div class="playback-pitch-control">
                 <label for="playback-pitch">Tono <output id="playback-pitch-value">0 st</output></label>
                 <input type="range" id="playback-pitch" min="-12" max="12" step="1" value="0" aria-describedby="playback-pitch-hint">
-                <small id="playback-pitch-hint">El cambio de tono también modifica ligeramente la velocidad.</small>
+                <small id="playback-pitch-hint">Mantener el tono original usa estiramiento temporal; sin esa opción, variar el tono también modifica la velocidad.</small>
               </div>
               <label class="playback-pitch-option" for="playback-preserve-pitch">
                 <input type="checkbox" id="playback-preserve-pitch" checked>
@@ -3234,7 +3279,7 @@
             </div>
             <span class="volume-percentage" id="volume-percentage" aria-label="Nivel de volumen">80%</span>
           </div>
-          <button type="button" class="btn-icon" id="btn-now-playing-fs" title="Pantalla completa" aria-label="Pantalla completa" aria-pressed="false">
+          <button type="button" class="btn-icon" id="btn-now-playing-fs" title="Modo Cine" aria-label="Modo Cine" aria-pressed="false">
             <i class="ph ph-corners-out" aria-hidden="true"></i>
           </button>
         </div>

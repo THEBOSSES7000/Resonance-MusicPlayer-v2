@@ -7,7 +7,7 @@ import { applyNativeStatusToUi, canUseNativeAudio, nativeAudioEnabled, nativeFad
 import { notifyDiscordPresence, updateWindowSongTitle, updateWindowsMediaMetadata, updateWindowsMediaPlayback, updateWindowsMediaPosition } from './windowIntegration.js';
 import { resetProgressVisual, setProgressVisual, updateAudioQuality, updateCrossfadeIndicator, updateProgressTimes } from './progressUI.js';
 import { paintPlayerCover, resetPlayerCoverToPlaceholder } from './playerCover.js';
-import { ensureSongMetadata, persistPlaybackSession, renderQueue, showConfirmDialog, syncPlayingUI, updateFavIcon, updateLyricsUI, updateSyncedLyricsProgress } from '../ui.js';
+import { ensureSongMetadata, persistPlaybackSession, renderQueue, showConfirmDialog, syncPlayingUI, updateFavIcon, updateLyricsUI, updateNowPlayingFsAvailability, updateSyncedLyricsProgress } from '../ui.js';
 import { formatTime, getSongByIdOrPath, resolveAudioUrl, resolveCoverUrl, state } from '../state.js';
 import { crossfadeAutomaticOnly, crossfadeDuration, crossfadeEnabled, masterVolume, pauseFadeEnabled, pauseFadeInDuration, pauseFadeOutDuration, playbackFadeInDuration, playbackFadeInEnabled, playbackFadeOutDuration, playbackFadeOutEnabled, updateLyricsButtonVisibility } from './webAudio.js';
 import { loadWaveformForTrack } from './waveform.js';
@@ -251,6 +251,23 @@ export function stopPlaybackForDeletedFile() {
   notifyDiscordPresence(true, true);
 }
 
+export function finishPlaybackAtQueueEnd() {
+  state.currentTrackIndex = -1;
+  stopPlaybackForDeletedFile();
+  nativeShadow.paused = true;
+  nativeShadow.currentTime = 0;
+  nativeShadow.duration = 0;
+  nativeShadow.path = null;
+  updateWindowsMediaPlayback(false);
+  updateLyricsButtonVisibility(null);
+  updateLyricsUI();
+  updateFavIcon();
+  renderQueue();
+  updateNowPlayingFsAvailability();
+  document.dispatchEvent(new CustomEvent('pn-track-changed'));
+  persistPlaybackSession(false);
+}
+
 function resetInactiveDeck() {
   const inactiveDeck = otherDeck(audio);
   inactiveDeck.pause();
@@ -306,8 +323,9 @@ export async function crossfadeToNext(index) {
       const step = now => {
         if (!audioVars.crossfadeInProgress) return;
         const progress = Math.min(1, (now - startTime) / (duration * 1000));
-        outgoingState.transitionLevel = 1 - progress;
-        incomingState.transitionLevel = progress;
+        const angle = progress * Math.PI / 2;
+        outgoingState.transitionLevel = Math.cos(angle);
+        incomingState.transitionLevel = Math.sin(angle);
         updateDeckVolume(outgoingDeck);
         updateDeckVolume(incomingDeck);
         if (progress >= 1) {
@@ -932,17 +950,7 @@ export async function nextSong(isAutoEnd = false) {
       if (keepPaused) void seekPlayback(0);
       else restartCurrentTrack();
     } else {
-      if (audioVars.nativeAudioActive) {
-        stopNativeProgressPoll();
-        void nativeInvoke('native_audio_pause', { fadeOutSecs: 0 }).catch(() => {});
-        void seekPlayback(0);
-        nativeShadow.paused = true;
-      } else {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-      playIcon.className = "ph-fill ph-play";
-      syncPlayingUI(false);
+      finishPlaybackAtQueueEnd();
     }
   }
 }
@@ -1029,6 +1037,9 @@ export function updateRepeatButton() {
 
 export function setShuffleEnabled(enabled) {
   state.isShuffle = Boolean(enabled);
+  if (localStorage.getItem('pn_remember_playback_modes') === 'true') {
+    localStorage.setItem('pn_saved_shuffle', String(state.isShuffle));
+  }
   const button = document.getElementById('btn-shuffle');
   if (button) {
     button.classList.toggle('active-toggle', state.isShuffle);
@@ -1050,6 +1061,9 @@ export function setRepeatMode(mode) {
     throw new Error(`Modo de repetición no válido: ${mode}`);
   }
   state.repeatMode = mode;
+  if (localStorage.getItem('pn_remember_playback_modes') === 'true') {
+    localStorage.setItem('pn_saved_repeat', mode === 'all' ? 'all' : 'off');
+  }
   updateRepeatButton();
 }
 

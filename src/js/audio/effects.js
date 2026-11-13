@@ -72,7 +72,8 @@ export async function pushNativeRate() {
   if (!nativeAudioEnabled) return;
   try {
     await nativeInvoke('native_audio_set_rate', {
-      rate: Math.max(0.25, Math.min(4, effectivePlaybackRate()))
+      rate: Math.max(0.25, Math.min(4, effectivePlaybackRate())),
+      preservePitch: Boolean(audioVars.preservePitch)
     });
   } catch (error) {
     console.error('native_audio_set_rate:', error);
@@ -120,4 +121,5 @@ export function setPreservePitch(enabled) {
   localStorage.setItem('pn_playback_preserve_pitch', String(audioVars.preservePitch));
   const checkbox = document.getElementById('playback-preserve-pitch');
   if (checkbox) checkbox.checked = audioVars.preservePitch;
+  applyPlaybackRate();
 }

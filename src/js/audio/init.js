@@ -9,7 +9,7 @@ import { initWindowsMediaControlListener, notifyDiscordPresence, updateTaskbarPl
 import { audioDecks, currentArtistEl, currentTitleTextEl, playIcon, progressContainer, volIcon, volumeBox, volumeRange } from './dom.js';
 import { clearProgressPreview, lastProgressRatio, setProgressVisual, updateAudioQuality, updateProgressPreview, updateProgressTimes, updateSeekPosition } from './progressUI.js';
 import { paintPlayerCover } from './playerCover.js';
-import { audio, handleTrackEffects, nextSong, prevSong, setRepeatMode, setShuffleEnabled, togglePlay, updateRepeatButton, updateTitleMarquee } from './playback.js';
+import { audio, finishPlaybackAtQueueEnd, handleTrackEffects, nextSong, prevSong, setRepeatMode, setShuffleEnabled, togglePlay, updateRepeatButton, updateTitleMarquee } from './playback.js';
 import { navigateToView, persistPlaybackSession, renderGrids, syncPlayingUI, updateSyncedLyricsProgress } from '../ui.js';
 import { getPlaybackDuration, getPlaybackPosition, isPlaybackPaused, seekPlayback } from './position.js';
 import { masterVolume, setAppVolume, showVolumeTooltip, syncAudioContextPlaybackState } from './webAudio.js';
@@ -265,10 +265,7 @@ export function initAudioPlayer() {
         nextSong(true);
         return;
       }
-      audio.pause();
-      audio.currentTime = 0;
-      playIcon.className = 'ph-fill ph-play';
-      syncPlayingUI(false);
+      finishPlaybackAtQueueEnd();
     });
 
     deck.addEventListener('play', () => {

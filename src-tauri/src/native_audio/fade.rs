@@ -3,16 +3,22 @@
 use super::*;
 
 /// Fundido de entrada en la cadena de samples (no depende del hilo de comandos).
-pub struct FadeInSource {
-    pub inner: SymphoniaPlaySource,
+pub struct FadeInSource<S = SymphoniaPlaySource>
+where
+    S: Source<Item = f32>,
+{
+    pub inner: S,
     /// Samples interleaved ya emitidos dentro del fade
     pub pos: usize,
     /// Total de samples interleaved del fade
     pub fade_len: usize,
 }
 
-impl FadeInSource {
-    pub fn new(inner: SymphoniaPlaySource, fade_secs: f64) -> Self {
+impl<S> FadeInSource<S>
+where
+    S: Source<Item = f32>,
+{
+    pub fn new(inner: S, fade_secs: f64) -> Self {
         let sr = inner.sample_rate() as f64;
         let ch = inner.channels() as f64;
         let fade_len = if fade_secs <= 0.0 {
@@ -28,7 +34,10 @@ impl FadeInSource {
     }
 }
 
-impl Iterator for FadeInSource {
+impl<S> Iterator for FadeInSource<S>
+where
+    S: Source<Item = f32>,
+{
     type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -44,7 +53,10 @@ impl Iterator for FadeInSource {
     }
 }
 
-impl Source for FadeInSource {
+impl<S> Source for FadeInSource<S>
+where
+    S: Source<Item = f32>,
+{
     fn current_frame_len(&self) -> Option<usize> {
         self.inner.current_frame_len()
     }
@@ -82,8 +94,7 @@ pub struct FadeState {
 /// Rampa dual de volúmenes para crossfade (~20 ms por paso).
 pub struct CrossfadeState {
     pub steps_left: u32,
-    pub out_current: f32,
-    pub out_delta: f32,
-    pub in_current: f32,
-    pub in_delta: f32,
+    pub total_steps: u32,
+    pub out_start: f32,
+    pub in_target: f32,
 }

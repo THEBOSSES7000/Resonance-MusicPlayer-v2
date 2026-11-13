@@ -55,6 +55,7 @@ pub enum AudioCmd {
     /// Velocidad efectiva (1.0 = normal; el tono se combina en el frontend).
     SetRate {
         rate: f32,
+        preserve_pitch: bool,
         reply: Sender<Result<NativeAudioStatus, String>>,
     },
     /// Cambiar dispositivo de salida (`None` = predeterminado). WASAPI compartido.
